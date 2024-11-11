@@ -1,0 +1,7 @@
+# ignorando files
+*.csv
+*.dat
+*.png
+
+# ignorando cats
+cats/
