@@ -3,12 +3,18 @@ import numpy as np
 from astropy.cosmology import LambdaCDM
 
 def loadvoidcat(Mr, Delta, sim):
+    '''
+    Loads void catalog and select those w flag == 2.
+    '''
     #0: Rv; 1: RA; 2:DEC; 3:z; 4,5,6: xv,yv,zv; 7: rho1; 8: rho2; 11: flag
     Vcat = np.loadtxt(f'../cats/voids_{sim}_Mr-{Mr}_Delta-{Delta}.dat').T
     Vcat = Vcat[:,Vcat[11] >= 2.0]
     return Vcat
 
 def Vol(z):
+    '''
+    Comoving volume between 2 redshifts z[0],z[1].
+    '''
     global cosmo
     chi = cosmo.comoving_distance(z).value
     volcom = 4/3 * np.pi * (chi[1]**3 - chi[0]**3)
@@ -16,6 +22,9 @@ def Vol(z):
     return volcom
 
 def N(Rv,z):
+    '''
+    Count number of voids between Rv[0] < N < Rv[1] and z[0] < N < z[1].
+    '''
     global Vcat
     mask = (Vcat[0] >= Rv[0]) & (Vcat[0] < Rv[1]) & (Vcat[3] >= z[0]) & (Vcat[3] < z[1])
 
@@ -23,7 +32,9 @@ def N(Rv,z):
 
 def VSF(rvmin, rvmax, zmin, zmax,
         nbins_Rv=5, nbins_z=50):
-
+    '''
+    Void Size Function in the range (rvmin, rvmax) and for the redshifts (zmin,zmax)
+    '''
     # global Vcat
 
     logrvmin, logrvmax = np.log10(rvmin), np.log10(rvmax)
@@ -40,6 +51,44 @@ def VSF(rvmin, rvmax, zmin, zmax,
     V  = np.array([Vol(z_j) for z_j in z])
     vsf = Nv/(V*DlogRv)
     e_vsf = np.sqrt(Nv)/(V*DlogRv)      ## asumiendo poisson e(x) = sqrt(x)
+
+    return rv_list, vsf, e_vsf
+
+def cN(Rv,z):
+    '''
+    Cumulative version of `N(Rv,z)`
+    Count number of voids between N < Rv and z[0] < N < z[1].
+    '''
+
+    global Vcat
+    mask = (Vcat[0] < Rv[1]) & (Vcat[3] >= z[0]) & (Vcat[3] < z[1])
+
+    return np.sum(mask)
+
+def cVSF(rvmin, rvmax, zmin, zmax,
+        nbins_Rv=5, nbins_z=50):
+    '''
+    Cumulative Void Size Function. Not implemented
+    '''
+
+    # global Vcat
+
+    logrvmin, logrvmax = np.log10(rvmin), np.log10(rvmax)
+    rvbins = np.logspace(logrvmin, logrvmax, nbins_Rv)
+    DlogRv = np.cumsum(np.diff(np.log10(rvbins)))
+
+    Rv = np.array([[rvbins[j],rvbins[j+1]] for j in range(nbins_Rv-1)])
+    rv_list = rvbins[:-1] + np.diff(rvbins)*0.5
+
+    zbins = np.linspace(zmin,zmax,nbins_z)
+    z = np.array([[zbins[j], zbins[j+1]] for j in range(nbins_z-1)])
+
+    Nv = np.array([[cN(Rv_i,z_j) for z_j in z] for Rv_i in Rv])
+    V  = np.array([Vol(z_j) for z_j in z])
+    vsf = (Nv.T/DlogRv).T
+    vsf /= V
+    e_vsf = (np.sqrt(Nv.T)/DlogRv).T      ## asumiendo poisson e(x) = sqrt(x)
+    e_vsf /= V 
 
     return rv_list, vsf, e_vsf
 
@@ -73,9 +122,8 @@ if __name__ == '__main__':
     a.n_z  = int(a.n_z)
     a.Mr   = int(a.Mr)
 
-    h = 1.0
-
     print('----- MG vs GR -----')
+    h = 1.0
     Om0, Ode0 = 0.3089, 0.6911
     print('Cosmology: Planck15')
     cosmo = LambdaCDM(H0=100.0*h, Om0=Om0, Ode0=Ode0)
