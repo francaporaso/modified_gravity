@@ -155,34 +155,46 @@ if __name__ == '__main__':
 
     if a['plot']:
         import matplotlib.pyplot as plt
-        fig, (ax1,ax2) = plt.subplots(2,1, sharex=True, sharey=False) # divide as 2x2, plot top left
-        colormap = plt.cm.Reds
-        colors = [colormap(i) for i in np.linspace(0.5,1,a['n_z'])]
-        for i in range(a['n_z']):
-            ax1.errorbar(rv_mg,vsf_mg.T[i],e_vsf_mg.T[i], c=colors[i], mfc='w', fmt='.-')
-            #ax1.set_title('MG')
-            ax1.loglog()
-            ax1.grid(True, which="both")
+        from matplotlib.ticker import ScalarFormatter
+        import scienceplots
 
-        colormap = plt.cm.Blues
-        colors = [colormap(i) for i in np.linspace(0.5,1,a['n_z'])]
-        for i in range(a['n_z']):
-            ax1.errorbar(rv_gr,vsf_gr.T[i],e_vsf_gr.T[i], c=colors[i], mfc='w', fmt='.-')
-            #ax1.set_title('$\\Lambda$CDM')
+        rvplt = np.linspace(a['rvmin'], a['rvmax'], a['n_rv'])
+        ms = 8
+        with plt.style.context('science'):
+            fig, (ax1,ax2) = plt.subplots(2,1, sharex=True, sharey=False,
+                                          figsize=(5,10), height_ratios = [1.5,1],
+                                          ) # divide as 2x2, plot top left
+            colormap = plt.cm.Reds
+            colors = [colormap(i) for i in np.linspace(0.5,1,a['n_z'])]
+            for i in range(a['n_z']):
+                ax1.errorbar(rv_mg,vsf_mg.T[i],e_vsf_mg.T[i], c=colors[i],
+                        mfc='w', fmt='.-', ms=ms)
+
+            colormap = plt.cm.Blues
+            colors = [colormap(i) for i in np.linspace(0.5,1,a['n_z'])]
+            for i in range(a['n_z']):
+                ax1.errorbar(rv_gr,vsf_gr.T[i],e_vsf_gr.T[i], c=colors[i],
+                        mfc='w', fmt='.-', ms=ms)
+            
+            ax1.set_ylabel('VSF [$h^3/\\mathrm{Mpc}^3$]')
+            ax1.set_title(f"$\\Lambda$CDM vs $f(R)$ -- $M_r = -{a['Mr']}$, $\\Delta = -{a['Delta']}$")
+
             ax1.loglog()
-            ax1.grid(True, which="both")
-        #ax1.set_ylim(1e-7, 1e-4)
-        ax1.set_title("LCDM (blue) vs f(R) (red)")
-	
-        ax3 = plt.subplot(2, 1, 2) # divide as 2x1, plot bottom
-        colormap = plt.cm.Greens
-        colors = [colormap(i) for i in np.linspace(0.5,1.0,a['n_z'])]
-        for i in range(a['n_z']):
-            ax2.errorbar(rv_mg, D.T[i], eD.T[i], c=colors[i], mfc='w', fmt='.-')
-            ax2.fill_between(rv_mg, -.10, .10, color='gray', alpha=0.2, zorder=1)
-            ax2.set_title('Diferencia porcentual GR/MG - 1')
-            ax2.grid(True, which='both')
-        plt.show()
+            
+            colormap = plt.cm.Greens
+            colors = [colormap(i) for i in np.linspace(0.5,1.0,a['n_z'])]
+            for i in range(a['n_z']):
+                ax2.errorbar(rv_mg, D.T[i], eD.T[i], c=colors[i], mfc='w',
+                        fmt='.-', ms=ms)
+            # ax2.fill_between(np.linspace(a['rvmin'],a['rvmax']), -.10, .10, color='gray', alpha=0.2, zorder=1)
+            ax2.axhline(0, ls='--', c='gray')
+            ax2.set_xlabel('$R_v$ [$\\mathrm{Mpc}$]')
+            ax2.set_ylabel('$f(R)/\\Lambda CDM - 1$')
+            ax2.set_xticks(rvplt.astype(int))
+            ax2.get_xaxis().set_major_formatter(ScalarFormatter())
+
+            plt.subplots_adjust(wspace=0.1, hspace=0.1)
+            plt.show()
 
     else:   
         np.savetxt('vsf_MG_'+filename, np.column_stack([rv_mg, vsf_mg, e_vsf_mg]), delimiter=',')
