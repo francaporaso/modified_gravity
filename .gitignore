@@ -5,3 +5,6 @@
 
 # ignorando cats
 cats/
+
+# ignorando checkpoints
+.ipynb_checkpoints/
