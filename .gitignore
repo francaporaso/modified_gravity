@@ -3,6 +3,9 @@
 *.dat
 *.png
 
+# ignorando test.ipynb
+test.ipynb
+
 # ignorando cats
 cats/
 
