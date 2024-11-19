@@ -109,6 +109,7 @@ if __name__ == '__main__':
         '--n_rv':50, '--n_z':5,
         '--Mr':21, '--Delta':0.9,
         '--filename':'test', '--simuname':'MG-GR',
+        '--plot':False
     }
     parser = ag.ArgumentParser()
     for key,value in options.items():
@@ -116,11 +117,13 @@ if __name__ == '__main__':
             parser.add_argument(key, action='store', dest=key[2:], default=value, type=str)
         else:
             parser.add_argument(key, action='store', dest=key[2:], default=value, type=float)
-    a = parser.parse_args()
+    args = parser.parse_args()
+    a = args.__dict__
 
-    a.n_rv = int(a.n_rv)
-    a.n_z  = int(a.n_z)
-    a.Mr   = int(a.Mr)
+    a['n_rv'] = int(a['n_rv'])
+    a['n_z']  = int(a['n_z'])
+    a['Mr']   = int(a['Mr'])
+    a['plot']   = bool(a['plot'])
 
     print('----- MG vs GR -----')
     h = 1.0
@@ -128,43 +131,78 @@ if __name__ == '__main__':
     print('Cosmology: Planck15')
     cosmo = LambdaCDM(H0=100.0*h, Om0=Om0, Ode0=Ode0)
 
-    Vcat = loadvoidcat(Mr=a.Mr, Delta=a.Delta, sim='MG')
-    if Vcat[0].min() > a.rvmin:
-        a.rvmin = Vcat[0].min()
-    if Vcat[0].max() < a.rvmax:
-        a.rvmax = Vcat[0].max()
-    rv_mg, vsf_mg, e_vsf_mg = VSF(a.rvmin, a.rvmax, a.zmin, a.zmax,
-                                a.n_rv+1,a.n_z+1)
+    Vcat = loadvoidcat(Mr=a['Mr'], Delta=a['Delta'], sim='MG')
+    # if Vcat[0].min() > a['rvmin']:
+    #     a['rvmin'] = Vcat[0].min()
+    # if Vcat[0].max() < a['rvmax']:
+    #     a['rvmax'] = Vcat[0].max()
+    rv_mg, vsf_mg, e_vsf_mg = VSF(a['rvmin'], a['rvmax'], a['zmin'], a['zmax'],
+                                a['n_rv']+1,a['n_z']+1)
 
-    Vcat = loadvoidcat(Mr=a.Mr, Delta=a.Delta, sim='GR')
-    # if Vcat[0].min() > a.rvmin:
-    #     a.rvmin = Vcat[0].min()
-    # if Vcat[0].max() < a.rvmax:
-    #     a.rvmax = Vcat[0].max()
-    rv_gr, vsf_gr, e_vsf_gr = VSF(a.rvmin, a.rvmax, a.zmin, a.zmax,
-                                a.n_rv+1,a.n_z+1)
+    Vcat = loadvoidcat(Mr=a['Mr'], Delta=a['Delta'], sim='GR')
+    # if Vcat[0].min() > a['rvmin']:
+    #     a['rvmin'] = Vcat[0].min()
+    # if Vcat[0].max() < a['rvmax']:
+    #     a['rvmax'] = Vcat[0].max()
+    rv_gr, vsf_gr, e_vsf_gr = VSF(a['rvmin'], a['rvmax'], a['zmin'], a['zmax'],
+                                a['n_rv']+1,a['n_z']+1)
     
-    D, eD = diff(vsf_gr, e_vsf_gr, vsf_mg, e_vsf_mg)
-    filename = f'z0{int(a.zmin*10)}-0{int(a.zmax*10)}_rv{int(a.rvmin)}-{int(a.rvmax)}_Mr-{a.Mr}_D-{int(a.Delta*10)}.csv'
+    D, eD = diff(vsf_mg, e_vsf_mg, vsf_gr, e_vsf_gr)
+    filename = f"z0{int(a['zmin']*10)}-0{int(a['zmax']*10)}_rv{int(a['rvmin'])}-{int(a['rvmax'])}_Mr-{a['Mr']}_D-{int(a['Delta']*10)}.csv"
 
-    np.savetxt('vsf_MG_'+filename, np.column_stack([rv_mg, vsf_mg, e_vsf_mg]), delimiter=',')
-    np.savetxt('vsf_GR_'+filename, np.column_stack([rv_gr, vsf_gr, e_vsf_gr]), delimiter=',')
-    np.savetxt(f'vsf_diff_GR-MG_'+filename, np.column_stack([D, eD]), delimiter=',')
+    # print(rv_gr == rv_mg)
+    # assert False
 
-    if a.simuname == 'MICE':
+    if a['plot']:
+        import matplotlib.pyplot as plt
+        fig, (ax1,ax2) = plt.subplots(2,1, sharex=True, sharey=False) # divide as 2x2, plot top left
+        colormap = plt.cm.Reds
+        colors = [colormap(i) for i in np.linspace(0.5,1,a['n_z'])]
+        for i in range(a['n_z']):
+            ax1.errorbar(rv_mg,vsf_mg.T[i],e_vsf_mg.T[i], c=colors[i], mfc='w', fmt='.-')
+            #ax1.set_title('MG')
+            ax1.loglog()
+            ax1.grid(True, which="both")
+
+        colormap = plt.cm.Blues
+        colors = [colormap(i) for i in np.linspace(0.5,1,a['n_z'])]
+        for i in range(a['n_z']):
+            ax1.errorbar(rv_gr,vsf_gr.T[i],e_vsf_gr.T[i], c=colors[i], mfc='w', fmt='.-')
+            #ax1.set_title('$\\Lambda$CDM')
+            ax1.loglog()
+            ax1.grid(True, which="both")
+        #ax1.set_ylim(1e-7, 1e-4)
+        ax1.set_title("LCDM (blue) vs f(R) (red)")
+	
+        ax3 = plt.subplot(2, 1, 2) # divide as 2x1, plot bottom
+        colormap = plt.cm.Greens
+        colors = [colormap(i) for i in np.linspace(0.5,1.0,a['n_z'])]
+        for i in range(a['n_z']):
+            ax2.errorbar(rv_mg, D.T[i], eD.T[i], c=colors[i], mfc='w', fmt='.-')
+            ax2.fill_between(rv_mg, -.10, .10, color='gray', alpha=0.2, zorder=1)
+            ax2.set_title('Diferencia porcentual GR/MG - 1')
+            ax2.grid(True, which='both')
+        plt.show()
+
+    else:   
+        np.savetxt('vsf_MG_'+filename, np.column_stack([rv_mg, vsf_mg, e_vsf_mg]), delimiter=',')
+        np.savetxt('vsf_GR_'+filename, np.column_stack([rv_gr, vsf_gr, e_vsf_gr]), delimiter=',')
+        np.savetxt(f'vsf_diff_GR-MG_'+filename, np.column_stack([D, eD]), delimiter=',')
+
+    if a['simuname'] == 'MICE':
         print('----- MICE -----')
         Om0, Ode0 = 0.25, 0.75
         print('Cosmology: WMAP7')
 
         Vcat = np.loadtxt('../../../FAMAF/Lensing/cats/MICE/voids_MICE.dat').T
         Vcat = Vcat[1:,Vcat[11] >= 2]
-        if Vcat[0].min() > a.rvmin:
-            a.rvmin = Vcat[0].min()
-        if Vcat[0].max() < a.rvmax:
-            a.rvmax = Vcat[0].max()
+        if Vcat[0].min() > a['rvmin']:
+            a['rvmin'] = Vcat[0].min()
+        if Vcat[0].max() < a['rvmax']:
+            a['rvmax'] = Vcat[0].max()
         cosmo = LambdaCDM(H0=100.0*h, Om0=Om0, Ode0=Ode0)
-        rv_mice, vsf_mice, e_vsf_mice = VSF(a.rvmin, a.rvmax, a.zmin, a.zmax,
-                                         a.n_rv+1,a.n_z+1)
+        rv_mice, vsf_mice, e_vsf_mice = VSF(a['rvmin'], a['rvmax'], a['zmin'], a['zmax'],
+                                         a['n_rv']+1,a['n_z']+1)
         np.savetxt(f'vsf_mice_'+filename, np.column_stack([rv_mice, vsf_mice, e_vsf_mice]), delimiter=',')
 
         print('Diff con MICE')
