@@ -55,26 +55,6 @@ domap      = False
 addnoise   = False
 '''
 
-def div_area(a, b, num=50):
-    '''a(float): radio interno
-       b(float): radio externo
-       num(int): numero de anillos de igual area
-       
-       returns
-       r(1d-array): radios de los num+1 anillos, con el último elemento igual a b'''
-    num = int(num)
-    r = np.zeros(num+1)
-    r[0] = a
-    A = np.pi * (b**2 - a**2)
-    
-    for k in np.arange(1,num+1):
-        r[k] = np.round(np.sqrt(k*A/(num*np.pi) + a**2),2)
-        
-    if r[-1] != b:
-        raise ValueError(f'No se calcularon los radios de forma correcta, el ultimo radio es {r[-1]} != {b}')
-    return r
-
-
 def SigmaCrit(zl, zs, h=1.):
     '''Calcula el Sigma_critico dados los redshifts. 
     Debe ser usada con astropy.cosmology y con astropy.constants
@@ -94,10 +74,6 @@ def SigmaCrit(zl, zs, h=1.):
     BETA_array = dls / ds
 
     return (((cvel**2.0)/(4.0*np.pi*G*Dl))*(1./BETA_array))*(pc**2/Msun)
-
-
-def partial_map():
-        pass
 
 def partial_profile(RA0,DEC0,Z,Rv,
                     RIN,ROUT,ndots,h,
