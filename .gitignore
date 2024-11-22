@@ -5,6 +5,7 @@
 
 # ignorando test.ipynb
 **/test.ipynb
+**/tests.ipynb
 
 # ignorando cats
 **/cats/
