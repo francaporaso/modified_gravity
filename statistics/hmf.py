@@ -7,7 +7,7 @@ def loadgxcat(catname):
     '''
     Loads gx catalog and select w given masks.
     '''
-    with fits.open('home/fcaporaso/cats/L768/'+catname) as f:
+    with fits.open('/home/fcaporaso/cats/L768/'+catname) as f:
         z_halo  = f[1].data.true_redshift_gal
         lm_halo = f[1].data.halo_lm
 
@@ -72,7 +72,6 @@ if __name__ == '__main__':
 
     options = {
         '--logm_min':5.0, '--logm_max':50.0, '--zmin':0.0, '--zmax':1.0,
-        '--flag':2.0,
         '--n_logm':10, '--n_z':3,
         '--filename':'test', '--simuname':'MG',
         '--plot':0
