@@ -105,7 +105,7 @@ if __name__ == '__main__':
                                 a['n_logm']+1, a['n_z']+1)
     
     D, eD = diff(hmf_mg, e_hmf_mg, hmf_gr, e_hmf_gr)
-    filename = f"z0{int(a['zmin']*10)}-0{int(a['zmax']*10)}_logm{int(a['logm_min'])}-{int(a['logm_max'])}.csv"
+    filename = f"n{a['n_z']}_z0{int(a['zmin']*10)}-0{int(a['zmax']*10)}_n{a['n_logm']}_logm{int(a['logm_min'])}-{int(a['logm_max'])}.csv"
 
     # print(rv_gr == rv_mg)
     # assert False
