@@ -29,7 +29,7 @@ def N(logm,z):
     '''
 
     global Tcat
-    mask = (Tcat[0] >= logm[0]) & (Tcat[0] < logm[1]) & (Tcat[3] >= z[0]) & (Tcat[3] < z[1])
+    mask = (Tcat[1] >= logm[0]) & (Tcat[1] < logm[1]) & (Tcat[0] >= z[0]) & (Tcat[0] < z[1])
 
     return np.sum(mask)
 
