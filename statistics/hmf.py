@@ -8,8 +8,9 @@ def loadgxcat(catname):
     Loads gx catalog and select w given masks.
     '''
     with fits.open('/home/fcaporaso/cats/L768/'+catname) as f:
-        z_halo  = f[1].data.true_redshift_gal
-        lm_halo = f[1].data.halo_lm
+        central = f[1].data.kind == 0
+        z_halo  = f[1].data.true_redshift_gal[central]
+        lm_halo = f[1].data.halo_lm[central]
 
     return z_halo, lm_halo
 
@@ -38,8 +39,6 @@ def HMF(logm_min, logm_max, zmin, zmax,
     '''
     Halo Mass Function in the range (rvmin, rvmax) and for the redshifts (zmin,zmax)
     '''
-    # global Vcat
-
     
     logm_bins = np.linspace(logm_min, logm_max, n_logm)
     DlogM = np.diff(logm_bins)[0]
