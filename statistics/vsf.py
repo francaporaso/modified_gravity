@@ -55,14 +55,6 @@ def VSF(rvmin, rvmax, zmin, zmax,
 
     return rv_list, vsf, e_vsf
 
-def diff(vsf1, e_vsf1, vsf2, e_vsf2):
-    ## vsf1 == GR
-    ## vsf2 == MG
-    D = vsf1/vsf2 - 1
-    eD = np.sqrt( (e_vsf1/vsf2)**2 + (e_vsf2*vsf1/vsf2**2)**2 )
-
-    return D, eD
-
 
 if __name__ == '__main__':
 
@@ -108,7 +100,7 @@ if __name__ == '__main__':
                                     a['foldername'], vname,
                                     cosmo=cosmo)
             
-            np.savetxt('/home/franco/ICE/modified_gravity/statistics/results/'+'vsf_'+vname[:-4]+f'z_n{a["n_z"]}_{10*int(a["zmin"])}-{10*int(a["zmax"])}'+'.csv',
+            np.savetxt('/home/franco/ICE/modified_gravity/statistics/results/'+'vsf_'+vname[:-4]+f'z_n{a["n_z"]}_{int(10*a["zmin"])}-{int(10*a["zmax"])}'+'.csv',
                     np.column_stack([rv_list, vsf, e_vsf]),
                     delimiter=',')
 
