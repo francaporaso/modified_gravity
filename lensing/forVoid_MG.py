@@ -55,14 +55,14 @@ Msun = M_sun.value # Solar mass (kg)
 ## añadir loop para q calcule ambos fR y LCDM
 
 def lenscat_load(Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max, 
-                 flag=2.0, lensname="/home/fcaporaso/cats/L768/voids_LCDM_09.dat",
+                 flag=2.0, lensname="voids_LCDM_09.dat",
                  split=False, NSPLITS=1,
                  octant=True):
 
     ## 0:Rv, 1:ra, 2:dec, 3:z, 4:xv, 5:yv, 6:zv, 7:rho1, 8:rho2, 9:logp, 10:diff CdM y CdV, 11:flag
     ## CdM: centro de masa
     ## CdV: centro del void
-    L = np.loadtxt(lensname).T
+    L = np.loadtxt("/home/fcaporaso/cats/L768/"+lensname).T
 
     if octant:
         # selecciono los void en un octante
@@ -370,7 +370,7 @@ def run_in_parts(RIN,ROUT, nslices,
 if __name__=='__main__':
 
     folder = '/home/fcaporaso/cats/L768/'
-    with fits.open(folder+'l768_gr_octant_19218.fits') as f:
+    with fits.open(folder+'l768_mg_octant_19218.fits') as f:
         S = f[1].data
 
     tin = time.time()
