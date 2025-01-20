@@ -135,8 +135,9 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     # sigma_c = SigmaCrit(Z, catdata.z_cgal)
     sigma_c = SigmaCrit(Z, catdata.z_cgal, cosmo)   # Higuchi et al 2013 (ec 4)
     
-    rads, theta, *_ = eq2p2(np.deg2rad(catdata.ra_gal), np.deg2rad(catdata.dec_gal),
-                              np.deg2rad(RA0), np.deg2rad(DEC0))
+    rads, theta, *_ = eq2p2(
+        np.deg2rad(catdata.ra_gal), np.deg2rad(catdata.dec_gal),
+        np.deg2rad(RA0), np.deg2rad(DEC0))
                            
     e1 = catdata.gamma1
     e2 = -1.*catdata.gamma2
@@ -205,11 +206,12 @@ def main(lcat, sample='pru', output_file=None,
         print('ADDING SHAPE NOISE')
     
     #reading Lens catalog
-    L, K, nvoids = lenscat_load(Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max,
-                                flag=FLAG, lensname=lcat, split=True, NSPLITS=ncores, octant=True)
+    L, K, nvoids = lenscat_load(
+        Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max,
+        flag=FLAG, lensname=lcat, split=True, NSPLITS=ncores, octant=True
+    )
     nk = 100
-    
-	assert len(L[0]!=0)
+    assert len(L[0]!=0)
 
     print(f'Nvoids {nvoids}')
     print(f'CORRIENDO EN {ncores} CORES')
