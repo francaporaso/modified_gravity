@@ -376,7 +376,7 @@ if __name__=='__main__':
         args.RIN, 
         args.ROUT, 
         args.nslices,
-        args.lcat, 
+        args.lens_cat, 
         args.sample,
         Rv_min=args.Rv_min, Rv_max=args.Rv_max, 
         rho1_min=args.rho1_min, rho1_max=args.rho1_max, 
