@@ -31,7 +31,7 @@ options = {
 	'-addnoise':False,
 	'-RIN':0.05,
 	'-ROUT':5.,
-	'-nbins':40,
+	'-ndots':40,
 	'-ncores':10,
 	'-nslices':1.,
 }
@@ -51,7 +51,6 @@ pc   = pc.value    # 1 pc (m)
 Msun = M_sun.value # Solar mass (kg)
 
 ### TODO
-## cambiar direcciones y carpetas para q lea...
 ## testear que funcione
 ## añadir loop para q calcule ambos fR y LCDM
 
@@ -364,6 +363,7 @@ def run_in_parts(RIN,ROUT, nslices,
         #print(f'{np.round(tslice[j],2)} min')
         print('Estimated remaining time for run in parts')
         print(f'{np.round(np.mean(tslice[:j+1])*(nslices-(j+1)),2)} min')
+
 
 if __name__=='__main__':
 
