@@ -129,11 +129,11 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     c1 = SkyCoord(RA0*u.deg, DEC0*u.deg)
     c2 = np.array([c1.directional_offset_by(pos_angle, delta) for pos_angle in pos_angles])
     mask = (S.dec_gal < c2[0].dec.deg)&(S.dec_gal > c2[2].dec.deg)&(S.ra_gal < c2[1].ra.deg)&(
-            S.ra_gal > c2[3].ra.deg)&(S.z_cgal > (Z+0.1))
+            S.ra_gal > c2[3].ra.deg)&(S.true_redshift_gal > (Z+0.1))
     
     catdata = S[mask]
-    # sigma_c = SigmaCrit(Z, catdata.z_cgal)
-    sigma_c = SigmaCrit(Z, catdata.z_cgal, cosmo)   # Higuchi et al 2013 (ec 4)
+    # sigma_c = SigmaCrit(Z, catdata.true_redshift_gal)
+    sigma_c = SigmaCrit(Z, catdata.true_redshift_gal, cosmo)   # Higuchi et al 2013 (ec 4)
     
     rads, theta, *_ = eq2p2(
         np.deg2rad(catdata.ra_gal), np.deg2rad(catdata.dec_gal),
@@ -143,8 +143,8 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     e2 = -1.*catdata.gamma2
     # Add shape noise due to intrisic galaxy shapes        
     if addnoise:
-        es1 = -1.*catdata.eps1
-        es2 = catdata.eps2
+        es1 = -1.*catdata.defl1
+        es2 = catdata.defl2
         e1 += es1
         e2 += es2
     
