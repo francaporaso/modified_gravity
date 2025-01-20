@@ -13,7 +13,7 @@ from astropy.coordinates import SkyCoord, Angle
 from multiprocessing import Pool, Process
 import argparse
 from astropy.constants import G,c,M_sun,pc
-import tqdm
+from tqdm import tqdm
 from functools import partial
 
 options = {
