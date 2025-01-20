@@ -212,9 +212,9 @@ def main(lcat, sample='pru', output_file=None,
     print(f'Nvoids {nvoids}')
     print(f'CORRIENDO EN {ncores} CORES')
         
-    zmean    = np.concatenate([L[i][:,3] for i in range(nvoids)]).mean()
-    rvmean   = np.concatenate([L[i][:,0] for i in range(nvoids)]).mean()
-    rho2mean = np.concatenate([L[i][:,8] for i in range(nvoids)]).mean()
+    zmean    = np.concatenate([L[i][:,3] for i in range(ncores)]).mean()
+    rvmean   = np.concatenate([L[i][:,0] for i in range(ncores)]).mean()
+    rho2mean = np.concatenate([L[i][:,8] for i in range(ncores)]).mean()
 
     print(f'Profile has {ndots} bins')
     print(f'from {RIN} Rv to {ROUT} Rv')
