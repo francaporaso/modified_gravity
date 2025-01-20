@@ -211,15 +211,13 @@ def main(lcat, sample='pru', output_file=None,
         flag=FLAG, lensname=lcat, split=True, NSPLITS=ncores, octant=True
     )
     nk = 100
-    print(L[0])
-    return 0
 
     print(f'Nvoids {nvoids}')
     print(f'CORRIENDO EN {ncores} CORES')
         
-    zmean    = np.concatenate([L[i][:,3] for i in range(ncores)]).mean()
-    rvmean   = np.concatenate([L[i][:,0] for i in range(ncores)]).mean()
-    rho2mean = np.concatenate([L[i][:,8] for i in range(ncores)]).mean()
+    zmean    = np.concatenate([L[i][:,3] for i in range(len(L))]).mean()
+    rvmean   = np.concatenate([L[i][:,0] for i in range(len(L))]).mean()
+    rho2mean = np.concatenate([L[i][:,8] for i in range(len(L))]).mean()
 
     print(f'Profile has {ndots} bins')
     print(f'from {RIN} Rv to {ROUT} Rv')
