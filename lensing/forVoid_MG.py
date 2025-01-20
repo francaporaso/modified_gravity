@@ -132,8 +132,7 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
             S.ra_gal > c2[3].ra.deg)&(S.true_redshift_gal > (Z+0.1))
     
     catdata = S[mask]
-    # sigma_c = SigmaCrit(Z, catdata.true_redshift_gal)
-    sigma_c = SigmaCrit(Z, catdata.true_redshift_gal, cosmo)   # Higuchi et al 2013 (ec 4)
+    sigma_c = SigmaCrit(Z, catdata.true_redshift_gal)
     
     rads, theta, *_ = eq2p2(
         np.deg2rad(catdata.ra_gal), np.deg2rad(catdata.dec_gal),
