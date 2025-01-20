@@ -328,11 +328,11 @@ def run_in_parts(RIN,ROUT, nslices,
     cuts = np.round(np.linspace(RIN,ROUT,num=nslices+1),2)
     
     try:
-        os.mkdir(f'../profiles/voids/Rv_{round(Rv_min)}-{round(Rv_max)}')
+        os.mkdir(f'/home/fcaporaso/modified_gravity/lensing/profiles/Rv{round(Rv_min)}-{round(Rv_max)}/')
     except FileExistsError:
         pass
     if not output_file:
-        output_file = f'../profiles/voids/Rv_{round(Rv_min)}-{round(Rv_max)}/'
+        output_file = f'/home/fcaporaso/modified_gravity/lensing/profiles/Rv{round(Rv_min)}-{round(Rv_max)}/'
     
     tslice = np.zeros(nslices)
     #orden inverso: calcula del corte mas externo al mas interno
