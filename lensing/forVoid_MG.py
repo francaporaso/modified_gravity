@@ -211,7 +211,8 @@ def main(lcat, sample='pru', output_file=None,
         flag=FLAG, lensname=lcat, split=True, NSPLITS=ncores, octant=True
     )
     nk = 100
-    assert len(L[0]!=0)
+    print(L[0])
+    return 0
 
     print(f'Nvoids {nvoids}')
     print(f'CORRIENDO EN {ncores} CORES')
