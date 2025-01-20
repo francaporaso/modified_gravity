@@ -208,6 +208,8 @@ def main(lcat, sample='pru', output_file=None,
     L, K, nvoids = lenscat_load(Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max,
                                 flag=FLAG, lensname=lcat, split=True, NSPLITS=ncores, octant=True)
     nk = 100
+    
+	assert len(L[0]!=0)
 
     print(f'Nvoids {nvoids}')
     print(f'CORRIENDO EN {ncores} CORES')
