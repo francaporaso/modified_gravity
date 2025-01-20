@@ -13,3 +13,6 @@ tests.ipynb
 # ignorando checkpoints
 **/.ipynb_checkpoints/
 **/__pycache__/
+
+# ignorando resultados
+**/profiles/
