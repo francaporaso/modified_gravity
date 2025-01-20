@@ -33,7 +33,7 @@ options = {
 	'-ROUT':5.,
 	'-ndots':40,
 	'-ncores':10,
-	'-nslices':1.,
+	'-nslices':1,
 }
 
 parser = argparse.ArgumentParser()
