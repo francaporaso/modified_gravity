@@ -222,12 +222,12 @@ def main(lcat, sample='pru', output_file=None,
     print(f'Profile has {ndots} bins')
     print(f'from {RIN} Rv to {ROUT} Rv')
     try:
-        os.mkdir('/results/')
+        os.mkdir('results/')
     except FileExistsError:
         pass
     
     if not output_file:
-        output_file = f'/results/'
+        output_file = f'results/'
     # Defining radial bins
     bines = np.linspace(RIN,ROUT,num=ndots+1)
     R = (bines[:-1] + np.diff(bines)*0.5)
