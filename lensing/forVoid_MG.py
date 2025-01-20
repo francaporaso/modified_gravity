@@ -370,7 +370,7 @@ def run_in_parts(RIN,ROUT, nslices,
 if __name__=='__main__':
 
     folder = '/home/fcaporaso/cats/L768/'
-    with fits.open(folder+'l768_mg_octant_19218.fits') as f:
+    with fits.open(folder+'l768_gr_octant_19218.fits') as f:
         g1_mask = np.abs(f[1].data.gamma1) < 10.0
         S = f[1].data[g1_mask]
 
