@@ -273,7 +273,8 @@ def main(lcat, sample='pru', output_file=None,
             DSIGMAwsum_X += np.tile(res[2],(nk+1,1))*km
             Ninbin += np.tile(res[3],(nk+1,1))*km
 
-        print(DSIGMAwsum_T)
+        print(DSIGMAwsum_T[0])
+        print(SIGMAwsum[0])
         assert False
         # t2 = time.time()
         # ts = (t2-t1)/60.
