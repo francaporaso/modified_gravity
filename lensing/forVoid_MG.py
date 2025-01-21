@@ -179,7 +179,7 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
 
     if any(np.isnan(DSIGMAwsum_T)):
         print(RA0,DEC0,Z,Rv)
-        assert False
+        # assert False
     
     return SIGMAwsum, DSIGMAwsum_T, DSIGMAwsum_X, N_inbin
 
