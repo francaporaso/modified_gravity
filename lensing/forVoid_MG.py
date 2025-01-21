@@ -176,6 +176,10 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
         DSIGMAwsum_T[nbin] = et[mbin].sum()
         DSIGMAwsum_X[nbin] = ex[mbin].sum()
         N_inbin[nbin]      = np.count_nonzero(mbin)
+
+    if any(np.isnan(DSIGMAwsum_T)):
+        print(RA0,DEC0,Z,Rv)
+        assert False
     
     return SIGMAwsum, DSIGMAwsum_T, DSIGMAwsum_X, N_inbin
 
@@ -273,9 +277,6 @@ def main(lcat, sample='pru', output_file=None,
             DSIGMAwsum_X += np.tile(res[2],(nk+1,1))*km
             Ninbin += np.tile(res[3],(nk+1,1))*km
 
-        print(DSIGMAwsum_T[0])
-        print(SIGMAwsum[0])
-        assert False
         # t2 = time.time()
         # ts = (t2-t1)/60.
         # tslice = np.append(tslice, ts)
