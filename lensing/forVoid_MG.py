@@ -157,8 +157,6 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     #get cross ellipticities
     ex = (-e1*np.sin(2*theta)+e2*np.cos(2*theta))*sigma_c/Rv.value
            
-    print(et)
-    assert False
     #get convergence
     k  = catdata.kappa*sigma_c/Rv.value
     r = (np.rad2deg(rads)/DEGxMPC.value)/(Rv.value)
@@ -275,6 +273,8 @@ def main(lcat, sample='pru', output_file=None,
             DSIGMAwsum_X += np.tile(res[2],(nk+1,1))*km
             Ninbin += np.tile(res[3],(nk+1,1))*km
 
+        print(DSIGMAwsum_T)
+        assert False
         # t2 = time.time()
         # ts = (t2-t1)/60.
         # tslice = np.append(tslice, ts)
