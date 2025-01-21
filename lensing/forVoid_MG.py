@@ -1,20 +1,17 @@
-import sys
-import os
-# sys.path.append('home/fcaporaso/lens_codes_v3.7/')
-from maria_func import *
-import time
-import numpy as np
-from astropy.io import fits
-from astropy.table import Table
-from astropy.cosmology import LambdaCDM
-from astropy.wcs import WCS
-import astropy.units as u
-from astropy.coordinates import SkyCoord, Angle
-from multiprocessing import Pool, Process
 import argparse
+from astropy.cosmology import LambdaCDM
+from astropy.coordinates import SkyCoord
 from astropy.constants import G,c,M_sun,pc
-from tqdm import tqdm
+from astropy.io import fits
+import astropy.units as u
 from functools import partial
+from maria_func import *
+from multiprocessing import Pool
+import numpy as np
+import os
+import sys
+import time
+from tqdm import tqdm
 
 options = {
 	'-sample':'pru',
@@ -160,6 +157,8 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     #get cross ellipticities
     ex = (-e1*np.sin(2*theta)+e2*np.cos(2*theta))*sigma_c/Rv.value
            
+    print(et)
+    assert False
     #get convergence
     k  = catdata.kappa*sigma_c/Rv.value
     r = (np.rad2deg(rads)/DEGxMPC.value)/(Rv.value)
