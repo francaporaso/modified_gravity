@@ -18,7 +18,8 @@ from functools import partial
 
 options = {
 	'-sample':'pru',
-	'-lens_cat':'voids_MICE.dat',
+	'-lens_cat':'voids_LCDM_09.dat',
+	'-source_cat':'l768_gr_octant_19218.fits',
 	'-Rv_min':0.,
 	'-Rv_max':50.,
 	'-rho1_min':-1.,
@@ -106,6 +107,12 @@ def lenscat_load(Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho
 
     return L, K, nvoids
 
+def sourcecat_load(sourcename):
+    folder = '/home/fcaporaso/cats/L768/'
+    with fits.open(folder+sourcename) as f:
+        S = f[1].data
+    return S
+        
 def SigmaCrit(zl, zs):
     
     dl  = cosmo.angular_diameter_distance(zl).value
@@ -118,6 +125,7 @@ def SigmaCrit(zl, zs):
     return (((cvel**2.0)/(4.0*np.pi*G*Dl))*(1./BETA_array))*(pc**2/Msun)
 
 def partial_profile(RIN, ROUT, ndots, addnoise,
+                    S,
                     RA0, DEC0, Z, Rv):
     
     ndots = int(ndots)
@@ -174,7 +182,9 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     
     return SIGMAwsum, DSIGMAwsum_T, DSIGMAwsum_X, N_inbin
 
-part_profile_func = partial(partial_profile, args.RIN, args.ROUT, args.ndots, args.addnoise)
+part_profile_func = partial(
+    partial_profile, args.RIN, args.ROUT, args.ndots, args.addnoise, sourcecat_load(args.source_cat)
+)
 def partial_profile_unpack(minput):
     return part_profile_func(*minput)
 
@@ -183,9 +193,8 @@ def main(lcat, sample='pru', output_file=None,
          rho1_min=-1., rho1_max=0.,
          rho2_min=-1., rho2_max=100.,
          z_min = 0.1, z_max = 1.0,
-         domap = False, RIN = .05, ROUT =5.,
+         RIN = .05, ROUT =5.,
          ndots= 40, ncores=10, 
-         idlist= None, 
          addnoise = False, FLAG = 2.):
         
     tini = time.time()
@@ -207,7 +216,7 @@ def main(lcat, sample='pru', output_file=None,
     #reading Lens catalog
     L, K, nvoids = lenscat_load(
         Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max,
-        flag=FLAG, lensname=lcat, split=True, NSPLITS=ncores, octant=True
+        flag=FLAG, lensname=lcat, split=True, NSPLITS=ncores, octant=False,
     )
     nk = 100
 
@@ -369,10 +378,10 @@ def run_in_parts(RIN,ROUT, nslices,
 
 if __name__=='__main__':
 
-    folder = '/home/fcaporaso/cats/L768/'
-    with fits.open(folder+'l768_gr_octant_19218.fits') as f:
-        g1_mask = np.abs(f[1].data.gamma1) < 10.0
-        S = f[1].data[g1_mask]
+    # folder = '/home/fcaporaso/cats/L768/'
+    # with fits.open(folder+'l768_mg_octant_19219.fits') as f:
+    #     g1_mask = np.abs(f[1].data.gamma1) < 10.0
+    #     S = f[1].data[g1_mask]
 
     tin = time.time()
     run_in_parts(
