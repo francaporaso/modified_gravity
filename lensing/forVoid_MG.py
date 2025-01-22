@@ -107,7 +107,8 @@ def lenscat_load(Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho
 def sourcecat_load(sourcename):
     folder = '/home/fcaporaso/cats/L768/'
     with fits.open(folder+sourcename) as f:
-        S = f[1].data
+        mask = np.log10(np.abs(f[1].data.gamma1)) < 0
+        S = f[1].data[mask]
     return S
         
 def SigmaCrit(zl, zs):
@@ -141,7 +142,8 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     
     rads, theta, *_ = eq2p2(
         np.deg2rad(catdata.ra_gal), np.deg2rad(catdata.dec_gal),
-        np.deg2rad(RA0), np.deg2rad(DEC0))
+        np.deg2rad(RA0), np.deg2rad(DEC0)
+    )
                            
     # e1 = catdata.gamma1
     # e2 = -1.*catdata.gamma2
