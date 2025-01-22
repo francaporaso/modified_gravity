@@ -143,19 +143,19 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
         np.deg2rad(catdata.ra_gal), np.deg2rad(catdata.dec_gal),
         np.deg2rad(RA0), np.deg2rad(DEC0))
                            
-    e1 = catdata.gamma1
-    e2 = -1.*catdata.gamma2
-    # Add shape noise due to intrisic galaxy shapes        
-    if addnoise:
-        es1 = -1.*catdata.defl1
-        es2 = catdata.defl2
-        e1 += es1
-        e2 += es2
+    # e1 = catdata.gamma1
+    # e2 = -1.*catdata.gamma2
+    # # Add shape noise due to intrisic galaxy shapes        
+    # if addnoise:
+    #     es1 = -1.*catdata.defl1
+    #     es2 = catdata.defl2
+    #     e1 += es1
+    #     e2 += es2
     
-    #get tangential ellipticities 
-    et = (-e1*np.cos(2*theta)-e2*np.sin(2*theta))*sigma_c/Rv.value
-    #get cross ellipticities
-    ex = (-e1*np.sin(2*theta)+e2*np.cos(2*theta))*sigma_c/Rv.value
+    # #get tangential ellipticities 
+    # et = (-e1*np.cos(2*theta)-e2*np.sin(2*theta))*sigma_c/Rv.value
+    # #get cross ellipticities
+    # ex = (-e1*np.sin(2*theta)+e2*np.cos(2*theta))*sigma_c/Rv.value
            
     #get convergence
     k  = catdata.kappa*sigma_c/Rv.value
@@ -173,13 +173,13 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     for nbin in range(ndots):
         mbin = dig == nbin+1              
         SIGMAwsum[nbin]    = k[mbin].sum()
-        DSIGMAwsum_T[nbin] = et[mbin].sum()
-        DSIGMAwsum_X[nbin] = ex[mbin].sum()
+        # DSIGMAwsum_T[nbin] = et[mbin].sum()
+        # DSIGMAwsum_X[nbin] = ex[mbin].sum()
         N_inbin[nbin]      = np.count_nonzero(mbin)
 
-    if any(np.isnan(DSIGMAwsum_T)):
-        print(RA0,DEC0,Z,Rv)
-        # assert False
+    # if any(np.isnan(DSIGMAwsum_T)):
+    #     print(RA0,DEC0,Z,Rv)
+    #     # assert False
     
     return SIGMAwsum, DSIGMAwsum_T, DSIGMAwsum_X, N_inbin
 
