@@ -127,15 +127,14 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
                     RA0, DEC0, Z, Rv):
     
     ndots = int(ndots)
-    Rv   = Rv/h *u.Mpc
     
-    DEGxMPC = cosmo.arcsec_per_kpc_proper(Z).to('deg/Mpc')
+    DEGxMPC = cosmo.arcsec_per_kpc_proper(Z).to('deg/Mpc').value
     delta = (DEGxMPC*(ROUT*Rv))
-    pos_angles = 0*u.deg, 90*u.deg, 180*u.deg, 270*u.deg
-    c1 = SkyCoord(RA0*u.deg, DEC0*u.deg)
-    c2 = np.array([c1.directional_offset_by(pos_angle, delta) for pos_angle in pos_angles])
-    mask = (S.dec_gal < c2[0].dec.deg)&(S.dec_gal > c2[2].dec.deg)&(S.ra_gal < c2[1].ra.deg)&(
-            S.ra_gal > c2[3].ra.deg)&(S.true_redshift_gal > (Z+0.1))
+    # great-circle separation of sources from void centre
+    sep = SkyCoord(S.ra_gal, S.dec_gal, unit='deg').separation(SkyCoord(RA0,DEC0,unit='deg')).value
+    mask = (sep < delta)&(S.true_redshift_gal > (Z+0.1))
+    
+    assert mask.sum() != 0
     
     catdata = S[mask]
     sigma_c = SigmaCrit(Z, catdata.true_redshift_gal)
@@ -178,10 +177,6 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
         # DSIGMAwsum_T[nbin] = et[mbin].sum()
         # DSIGMAwsum_X[nbin] = ex[mbin].sum()
         N_inbin[nbin]      = np.count_nonzero(mbin)
-
-    # if any(np.isnan(DSIGMAwsum_T)):
-    #     print(RA0,DEC0,Z,Rv)
-    #     # assert False
     
     return SIGMAwsum, DSIGMAwsum_T, DSIGMAwsum_X, N_inbin
 
