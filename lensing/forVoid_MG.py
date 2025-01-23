@@ -107,7 +107,7 @@ def lenscat_load(Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho
 def sourcecat_load(sourcename):
     folder = '/home/fcaporaso/cats/L768/'
     with fits.open(folder+sourcename) as f:
-        mask = np.log10(np.abs(f[1].data.gamma1)) < 0
+        mask = np.abs(f[1].data.gamma1) < 10.0
         S = f[1].data[mask]
     return S
         
