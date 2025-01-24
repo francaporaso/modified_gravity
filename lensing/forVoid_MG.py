@@ -55,6 +55,7 @@ Msun = M_sun.value # Solar mass (kg)
 def lenscat_load(Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max, 
                  flag=2.0, lensname="voids_LCDM_09.dat",
                  split=False, NSPLITS=1,
+                 nk = 100, 
                  octant=True):
 
     ## 0:Rv, 1:ra, 2:dec, 3:z, 4:xv, 5:yv, 6:zv, 7:rho1, 8:rho2, 9:logp, 10:diff CdM y CdV, 11:flag
@@ -67,7 +68,7 @@ def lenscat_load(Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho
         eps = 1.0
         L = L[:, (L[1] >= 0.0+eps) & (L[1] <= 90.0-eps) & (L[2]>= 0.0+eps) & (L[2] <= 90.0-eps)]
 
-    nk = 100 ## para cambiarlo hay que repensar el calculo de (dra,ddec) y el doble for loop
+    sqrt_nk = int(np.sqrt(nk))
     NNN = len(L[0]) ##total number of voids
     ra,dec = L[1],L[2]
     K    = np.zeros((nk+1,NNN))
@@ -76,12 +77,12 @@ def lenscat_load(Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho
     ramin  = np.min(ra)
     cdec   = np.sin(np.deg2rad(dec))
     decmin = np.min(cdec)
-    dra    = ((np.max(ra)+1.e-5) - ramin)/10.
-    ddec   = ((np.max(cdec)+1.e-5) - decmin)/10.
+    dra    = ((np.max(ra)+1.e-5) - ramin)/sqrt_nk
+    ddec   = ((np.max(cdec)+1.e-5) - decmin)/sqrt_nk
 
     c = 1
-    for a in range(10): 
-        for d in range(10): 
+    for a in range(sqrt_nk): 
+        for d in range(sqrt_nk): 
             mra  = (ra  >= ramin + a*dra)&(ra < ramin + (a+1)*dra) 
             mdec = (cdec >= decmin + d*ddec)&(cdec < decmin + (d+1)*ddec) 
             K[c] = ~(mra&mdec)
@@ -193,7 +194,7 @@ def main(lcat, sample='pru', output_file=None,
          rho2_min=-1., rho2_max=100.,
          z_min = 0.1, z_max = 1.0,
          RIN = .05, ROUT =5.,
-         ndots= 40, ncores=10, 
+         ndots= 40, ncores=10, nk=100,
          addnoise = False, FLAG = 2.):
         
     tini = time.time()
@@ -215,9 +216,8 @@ def main(lcat, sample='pru', output_file=None,
     #reading Lens catalog
     L, K, nvoids = lenscat_load(
         Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max,
-        flag=FLAG, lensname=lcat, split=True, NSPLITS=ncores, octant=True,
+        flag=FLAG, lensname=lcat, split=True, NSPLITS=ncores, nk=nk, octant=True,
     )
-    nk = 100
 
     print(f'Nvoids {nvoids}')
     print(f'CORRIENDO EN {ncores} CORES')
@@ -367,7 +367,7 @@ def run_in_parts(RIN,ROUT, nslices,
         print(f'{np.round(np.mean(tslice[:j+1])*(nslices-(j+1)),2)} min')
 
 
-def test_mask(lRIN,ROUT, nslices,
+def test_mask(RIN,ROUT, nslices,
             lcat, sample='pru', output_file=None, Rv_min=0., Rv_max=50., rho1_min=-1., rho1_max=0., 
             rho2_min=-1., rho2_max=100., z_min = 0.1, z_max = 1.0, ndots= 40, ncores=10,
             addnoise=False, FLAG = 2.):
