@@ -135,8 +135,8 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     mask = (sep < delta)&(S.true_redshift_gal > (Z+0.1))
     
     if mask.sum() != 0:
-        return 1
-    return 0
+        return 0
+    return 1
     
     # catdata = S[mask]
     # sigma_c = SigmaCrit(Z, catdata.true_redshift_gal)
@@ -452,6 +452,8 @@ def test_mask(lRIN,ROUT, nslices,
             # DSIGMAwsum_T += np.tile(res[1],(nk+1,1))*km
             # DSIGMAwsum_X += np.tile(res[2],(nk+1,1))*km
             # Ninbin += np.tile(res[3],(nk+1,1))*km
+    return test_Res
+
 
 if __name__=='__main__':
 
@@ -475,20 +477,21 @@ if __name__=='__main__':
     #     ncores=args.ncores, 
     #     FLAG=args.FLAG
     # )
-    test_mask(
-        args.RIN, 
-        args.ROUT, 
-        args.nslices,
-        args.lens_cat, 
-        args.sample,
-        Rv_min=args.Rv_min, Rv_max=args.Rv_max, 
-        rho1_min=args.rho1_min, rho1_max=args.rho1_max, 
-        rho2_min=args.rho2_min, rho2_max=args.rho2_max, 
-        z_min=args.z_min, z_max=args.z_max, 
-        ndots=args.ndots, 
-        ncores=args.ncores, 
-        FLAG=args.FLAG
+    print(
+        test_mask(
+            args.RIN, 
+            args.ROUT, 
+            args.nslices,
+            args.lens_cat, 
+            args.sample,
+            Rv_min=args.Rv_min, Rv_max=args.Rv_max, 
+            rho1_min=args.rho1_min, rho1_max=args.rho1_max, 
+            rho2_min=args.rho2_min, rho2_max=args.rho2_max, 
+            z_min=args.z_min, z_max=args.z_max, 
+            ndots=args.ndots, 
+            ncores=args.ncores, 
+            FLAG=args.FLAG
+        )
     )
-
     tfin = time.time()
     print(f'TOTAL TIME: {np.round((tfin-tin)/60.,2)} min')
