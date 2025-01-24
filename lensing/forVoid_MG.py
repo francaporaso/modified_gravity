@@ -134,15 +134,17 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     sep = SkyCoord(S.ra_gal, S.dec_gal, unit='deg').separation(SkyCoord(RA0,DEC0,unit='deg')).value
     mask = (sep < delta)&(S.true_redshift_gal > (Z+0.1))
     
-    assert mask.sum() != 0
+    if mask.sum() != 0:
+        return 1
+    return 0
     
-    catdata = S[mask]
-    sigma_c = SigmaCrit(Z, catdata.true_redshift_gal)
+    # catdata = S[mask]
+    # sigma_c = SigmaCrit(Z, catdata.true_redshift_gal)
     
-    rads, theta, *_ = eq2p2(
-        np.deg2rad(catdata.ra_gal), np.deg2rad(catdata.dec_gal),
-        np.deg2rad(RA0), np.deg2rad(DEC0)
-    )
+    # rads, theta, *_ = eq2p2(
+    #     np.deg2rad(catdata.ra_gal), np.deg2rad(catdata.dec_gal),
+    #     np.deg2rad(RA0), np.deg2rad(DEC0)
+    # )
                            
     # e1 = catdata.gamma1
     # e2 = -1.*catdata.gamma2
@@ -158,27 +160,26 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     # #get cross ellipticities
     # ex = (-e1*np.sin(2*theta)+e2*np.cos(2*theta))*sigma_c/Rv.value
            
-    #get convergence
-    k  = catdata.kappa*sigma_c/Rv.value
-    r = (np.rad2deg(rads)/DEGxMPC.value)/(Rv.value)
-    #r = (np.rad2deg(rads)*3600*KPCSCALE)/(Rv*1000.)
-    # Ntot = len(catdata)        
-    bines = np.linspace(RIN,ROUT,num=ndots+1)
-    dig = np.digitize(r,bines)
+    # #get convergence
+    # k  = catdata.kappa*sigma_c/Rv.value
+    # r = (np.rad2deg(rads)/DEGxMPC.value)/(Rv.value)
+
+    # bines = np.linspace(RIN,ROUT,num=ndots+1)
+    # dig = np.digitize(r,bines)
             
-    SIGMAwsum    = np.empty(ndots)
-    DSIGMAwsum_T = np.empty(ndots)
-    DSIGMAwsum_X = np.empty(ndots)
-    N_inbin      = np.empty(ndots)
+    # SIGMAwsum    = np.empty(ndots)
+    # DSIGMAwsum_T = np.empty(ndots)
+    # DSIGMAwsum_X = np.empty(ndots)
+    # N_inbin      = np.empty(ndots)
                                          
-    for nbin in range(ndots):
-        mbin = dig == nbin+1              
-        SIGMAwsum[nbin]    = k[mbin].sum()
-        # DSIGMAwsum_T[nbin] = et[mbin].sum()
-        # DSIGMAwsum_X[nbin] = ex[mbin].sum()
-        N_inbin[nbin]      = np.count_nonzero(mbin)
+    # for nbin in range(ndots):
+    #     mbin = dig == nbin+1              
+    #     SIGMAwsum[nbin]    = k[mbin].sum()
+    #     DSIGMAwsum_T[nbin] = et[mbin].sum()
+    #     DSIGMAwsum_X[nbin] = ex[mbin].sum()
+    #     N_inbin[nbin]      = np.count_nonzero(mbin)
     
-    return SIGMAwsum, DSIGMAwsum_T, DSIGMAwsum_X, N_inbin
+    # return SIGMAwsum, DSIGMAwsum_T, DSIGMAwsum_X, N_inbin
 
 part_profile_func = partial(
     partial_profile, args.RIN, args.ROUT, args.ndots, args.addnoise, sourcecat_load(args.source_cat)
@@ -274,14 +275,6 @@ def main(lcat, sample='pru', output_file=None,
             DSIGMAwsum_X += np.tile(res[2],(nk+1,1))*km
             Ninbin += np.tile(res[3],(nk+1,1))*km
 
-        # t2 = time.time()
-        # ts = (t2-t1)/60.
-        # tslice = np.append(tslice, ts)
-        # print('TIME SLICE')
-        # print(f'{np.round(ts,4)} min')
-        # print('Estimated remaining time')
-        # print(f'{np.round(np.mean(tslice)*(LARGO-(l+1)), 3)} min')
-
     # COMPUTING PROFILE        
     Ninbin[DSIGMAwsum_T == 0] = 1.
             
@@ -374,6 +367,92 @@ def run_in_parts(RIN,ROUT, nslices,
         print(f'{np.round(np.mean(tslice[:j+1])*(nslices-(j+1)),2)} min')
 
 
+def test_mask(lRIN,ROUT, nslices,
+            lcat, sample='pru', output_file=None, Rv_min=0., Rv_max=50., rho1_min=-1., rho1_max=0., 
+            rho2_min=-1., rho2_max=100., z_min = 0.1, z_max = 1.0, ndots= 40, ncores=10,
+            addnoise=False, FLAG = 2.):
+        
+    tini = time.time()
+    
+    print(f'Voids catalog {lcat}')
+    print(f'Sample {sample}')
+    print(f'RIN : {RIN}')
+    print(f'ROUT: {ROUT}')
+    print(f'ndots: {ndots}')
+    print('Selecting voids with:')
+    print(f'{Rv_min}   <=  Rv  < {Rv_max}')
+    print(f'{z_min}    <=  Z   < {z_max}')
+    print(f'{rho1_min}  <= rho1 < {rho1_max}')
+    print(f'{rho2_min}  <= rho2 < {rho2_max}')
+        
+    if addnoise:
+        print('ADDING SHAPE NOISE')
+    
+    #reading Lens catalog
+    L, K, nvoids = lenscat_load(
+        Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max,
+        flag=FLAG, lensname=lcat, split=True, NSPLITS=ncores, octant=True,
+    )
+    nk = 100
+
+    print(f'Nvoids {nvoids}')
+    print(f'CORRIENDO EN {ncores} CORES')
+        
+    # zmean    = np.concatenate([L[i][:,3] for i in range(len(L))]).mean()
+    # rvmean   = np.concatenate([L[i][:,0] for i in range(len(L))]).mean()
+    # rho2mean = np.concatenate([L[i][:,8] for i in range(len(L))]).mean()
+
+    print(f'Profile has {ndots} bins')
+    print(f'from {RIN} Rv to {ROUT} Rv')
+    # try:
+    #     os.mkdir('results/')
+    # except FileExistsError:
+    #     pass
+    
+    # if not output_file:
+    #     output_file = f'results/'
+    # # Defining radial bins
+    # bines = np.linspace(RIN,ROUT,num=ndots+1)
+    # R = (bines[:-1] + np.diff(bines)*0.5)
+    # # WHERE THE SUMS ARE GOING TO BE SAVED
+    
+    # Ninbin = np.zeros((nk+1,ndots))    
+    # SIGMAwsum    = np.zeros((nk+1,ndots)) 
+    # DSIGMAwsum_T = np.zeros((nk+1,ndots)) 
+    # DSIGMAwsum_X = np.zeros((nk+1,ndots))
+                
+    # print(f'Saved in ../{output_file+sample}.fits')
+    # LARGO = len(L)
+    # tslice = np.array([])
+    test_Res = 0
+    
+    for i, Li in enumerate(tqdm(L)):
+                
+        t1 = time.time()
+        num = len(Li)
+        
+        if num == 1:
+            entrada = [Li[1], Li[2],
+                       Li[3], Li[0]]
+            
+            resmap = np.array([partial_profile(entrada)])
+
+        else:
+            entrada = np.array([Li.T[1],Li.T[2],Li.T[3],Li.T[0]]).T
+            with Pool(processes=num) as pool:
+                resmap = np.array(pool.map(partial_profile_unpack,entrada))
+                pool.close()
+                pool.join()
+        
+        for j, res in enumerate(resmap):
+            test_Res += resmap[0]
+            # km      = np.tile(K[i][j],(ndots,1)).T
+                                
+            # SIGMAwsum    += np.tile(res[0],(nk+1,1))*km
+            # DSIGMAwsum_T += np.tile(res[1],(nk+1,1))*km
+            # DSIGMAwsum_X += np.tile(res[2],(nk+1,1))*km
+            # Ninbin += np.tile(res[3],(nk+1,1))*km
+
 if __name__=='__main__':
 
     # folder = '/home/fcaporaso/cats/L768/'
@@ -382,7 +461,21 @@ if __name__=='__main__':
     #     S = f[1].data[g1_mask]
 
     tin = time.time()
-    run_in_parts(
+    # run_in_parts(
+    #     args.RIN, 
+    #     args.ROUT, 
+    #     args.nslices,
+    #     args.lens_cat, 
+    #     args.sample,
+    #     Rv_min=args.Rv_min, Rv_max=args.Rv_max, 
+    #     rho1_min=args.rho1_min, rho1_max=args.rho1_max, 
+    #     rho2_min=args.rho2_min, rho2_max=args.rho2_max, 
+    #     z_min=args.z_min, z_max=args.z_max, 
+    #     ndots=args.ndots, 
+    #     ncores=args.ncores, 
+    #     FLAG=args.FLAG
+    # )
+    test_mask(
         args.RIN, 
         args.ROUT, 
         args.nslices,
@@ -396,5 +489,6 @@ if __name__=='__main__':
         ncores=args.ncores, 
         FLAG=args.FLAG
     )
+
     tfin = time.time()
     print(f'TOTAL TIME: {np.round((tfin-tin)/60.,2)} min')
