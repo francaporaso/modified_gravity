@@ -49,7 +49,6 @@ pc   = pc.value    # 1 pc (m)
 Msun = M_sun.value # Solar mass (kg)
 
 ### TODO
-## testear que funcione
 ## añadir loop para q calcule ambos fR y LCDM
 
 def lenscat_load(Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max, 
