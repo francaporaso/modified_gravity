@@ -111,7 +111,8 @@ def sourcecat_load(sourcename):
         mask = np.abs(f[1].data.gamma1) < 10.0
         S = f[1].data[mask]
 
-    return S.ra_gal, S.dec_gal, S.true_redshift_gal, S.kappa, S.gamma1, S.gamma2
+    return S
+    # return S.ra_gal, S.dec_gal, S.true_redshift_gal, S.kappa, S.gamma1, S.gamma2
         
 def SigmaCrit(zl, zs):
     
@@ -125,7 +126,8 @@ def SigmaCrit(zl, zs):
     return (((cvel**2.0)/(4.0*np.pi*G*Dl))*(1./BETA_array))*(pc**2/Msun)
 
 def partial_profile(RIN, ROUT, ndots, addnoise,
-                    ra_gal, dec_gal, true_redshift_gal, kappa, gamma1, gamma2,
+                    # ra_gal, dec_gal, true_redshift_gal, kappa, gamma1, gamma2,
+                    S,
                     RA0, DEC0, Z, Rv):
     
     ndots = int(ndots)
@@ -149,19 +151,20 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     sep = np.rad2deg(
         ang_sep(
             np.deg2rad(RA0), np.deg2rad(DEC0),
-            np.deg2rad(ra_gal), np.deg2rad(dec_gal)
+            np.deg2rad(S.ra_gal), np.deg2rad(S.dec_gal)
         )
     )
-    mask = (sep < delta) & (true_redshift_gal > (Z+0.1))
+    mask = (sep < delta) & (S.true_redshift_gal > (Z+0.1))
 
     assert mask.sum() != 0
     
-    catdata_ra = ra_gal[mask]
-    catdata_dec = dec_gal[mask]
-    catdata_z = true_redshift_gal[mask]
-    catdata_kappa = kappa[mask]
-    catdata_gamma1 = gamma1[mask]
-    catdata_gamma2 = gamma2[mask]
+    catdata = S[mask]
+    # catdata_ra = ra_gal[mask]
+    # catdata_dec = dec_gal[mask]
+    # catdata_z = true_redshift_gal[mask]
+    # catdata_kappa = kappa[mask]
+    # catdata_gamma1 = gamma1[mask]
+    # catdata_gamma2 = gamma2[mask]
 
     sigma_c = SigmaCrit(Z, catdata_z)
     
