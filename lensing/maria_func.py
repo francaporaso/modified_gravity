@@ -62,7 +62,8 @@ def eq2p2(RA,Dec,RA_center,Dec_center):
     y = ang_sep(RAprime,Dec, RA_center,Dec)
     
     #Apply shperical cosine law
-    cosT = (np.cos(y) - np.cos(x)*np.cos(Sep))/(np.sin(x)*np.sin(Sep))
+    with np.errstate(divide='ignore',invalid='ignore'):
+        cosT = (np.cos(y) - np.cos(x)*np.cos(Sep))/(np.sin(x)*np.sin(Sep))
     #Round cosines that went over because of rounding errors
     roundinghigh = (cosT >  1)
     roundinglow  = (cosT < -1)
