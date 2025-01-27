@@ -153,15 +153,14 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     ## using in case the other mask fails
     if mask.sum() == 0:
         print('Fail for',RA0,DEC0)
-        m_z = (S.true_redshift_gal > (Z+0.1))
         sep = ang_sep(
                 np.deg2rad(RA0), np.deg2rad(DEC0),
-                np.deg2rad(S[m_z].ra_gal), np.deg2rad(S[m_z].dec_gal)
+                np.deg2rad(S.ra_gal), np.deg2rad(S.dec_gal)
         )
-        mask = (sep < np.deg2rad(delta))&(S[m_z].true_redshift_gal >(Z+0.1))
+        mask = (sep < np.deg2rad(delta))&(S.true_redshift_gal >(Z+0.1))
         assert mask.sum() != 0
 
-    catdata = S[m_z][mask]
+    catdata = S[mask]
     # catdata_ra = ra_gal[mask]
     # catdata_dec = dec_gal[mask]
     # catdata_z = true_redshift_gal[mask]
