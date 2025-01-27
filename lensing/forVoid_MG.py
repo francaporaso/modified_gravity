@@ -148,13 +148,14 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     # mask = (sep < delta)&(true_redshift_gal > (Z+0.1))
     
     ## solid angle sep with maria_func
+    mask = (S.true_redshift_gal > (Z+0.1))
     sep = np.rad2deg(
         ang_sep(
             np.deg2rad(RA0), np.deg2rad(DEC0),
-            np.deg2rad(S.ra_gal), np.deg2rad(S.dec_gal)
+            np.deg2rad(S[mask].ra_gal), np.deg2rad(S[mask].dec_gal)
         )
     )
-    mask = (sep < delta) & (S.true_redshift_gal > (Z+0.1))
+    mask = mask & (sep < delta)
 
     assert mask.sum() != 0
     
