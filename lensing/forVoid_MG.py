@@ -192,7 +192,7 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     ex = (-e1*np.sin(2*theta)+e2*np.cos(2*theta))*sigma_c/Rv
            
     #get convergence
-    k  = catdata_kappa*sigma_c/Rv
+    k  = catdata.kappa*sigma_c/Rv
     r = (np.rad2deg(rads)/DEGxMPC)/Rv
 
     bines = np.linspace(RIN,ROUT,num=ndots+1)
