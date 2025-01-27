@@ -209,7 +209,7 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     return SIGMAwsum, DSIGMAwsum_T, DSIGMAwsum_X, N_inbin
 
 part_profile_func = partial(
-    partial_profile, args.RIN, args.ROUT, args.ndots, args.addnoise, *sourcecat_load(args.source_cat),
+    partial_profile, args.RIN, args.ROUT, args.ndots, args.addnoise, sourcecat_load(args.source_cat),
 )
 def partial_profile_unpack(minput):
     return part_profile_func(*minput)
