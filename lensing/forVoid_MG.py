@@ -150,6 +150,7 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     
     ## solid angle sep with maria_func
     ## WARNING: memory leak, too many objects to calculate sep
+    ## using in case the other mask fails
     if mask.sum() == 0:
         mask = (S.true_redshift_gal > (Z+0.1))
         sep = np.rad2deg(
@@ -169,19 +170,19 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     # catdata_gamma1 = gamma1[mask]
     # catdata_gamma2 = gamma2[mask]
 
-    sigma_c = SigmaCrit(Z, catdata_z)
+    sigma_c = SigmaCrit(Z, catdata.true_redshift_gal)
     
     rads, theta, *_ = eq2p2(
-        np.deg2rad(catdata_ra), np.deg2rad(catdata_dec),
+        np.deg2rad(catdata.ra_gal), np.deg2rad(catdata.dec_gal),
         np.deg2rad(RA0), np.deg2rad(DEC0)
     )
                            
-    e1 = catdata_gamma1
-    e2 = -1.*catdata_gamma2
+    e1 = catdata.gamma1
+    e2 = -1.*catdata.gamma2
     # Add shape noise due to intrisic galaxy shapes        
     if addnoise:
-        es1 = -1.*catdata_defl1
-        es2 = catdata_defl2
+        es1 = -1.*catdata.defl1
+        es2 = catdata.defl2
         e1 += es1
         e2 += es2
     
@@ -192,7 +193,7 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
            
     #get convergence
     k  = catdata_kappa*sigma_c/Rv
-    r = (np.rad2deg(rads)/DEGxMPC)/(Rv)
+    r = (np.rad2deg(rads)/DEGxMPC)/Rv
 
     bines = np.linspace(RIN,ROUT,num=ndots+1)
     dig = np.digitize(r,bines)
