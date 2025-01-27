@@ -247,11 +247,6 @@ def main(lcat, sample='pru', output_file=None,
 
     print(f'Nvoids {nvoids}')
     print(f'CORRIENDO EN {ncores} CORES')
-        
-    zmean    = np.concatenate([L[i][:,3] for i in range(len(L))]).mean()
-    rvmean   = np.concatenate([L[i][:,0] for i in range(len(L))]).mean()
-    rho2mean = np.concatenate([L[i][:,8] for i in range(len(L))]).mean()
-
     print(f'Profile has {ndots} bins')
     print(f'from {RIN} Rv to {ROUT} Rv')
     try:
@@ -309,6 +304,10 @@ def main(lcat, sample='pru', output_file=None,
     DSigma_X  = (DSIGMAwsum_X/Ninbin)
 
     # AVERAGE VOID PARAMETERS AND SAVE IT IN HEADER
+    zmean    = np.concatenate([L[i][:,3] for i in range(len(L))]).mean()
+    rvmean   = np.concatenate([L[i][:,0] for i in range(len(L))]).mean()
+    rho2mean = np.concatenate([L[i][:,8] for i in range(len(L))]).mean()
+    
     head = fits.Header()
     head.append(('nvoids',int(nvoids)))
     head.append(('cat',lcat))
@@ -401,39 +400,39 @@ if __name__=='__main__':
     #     S = f[1].data[g1_mask]
 
     tin = time.time()
-    main(
-        lcat        = args.lens_cat, 
-        sample      = args.sample,
-        output_file = None,
-        Rv_min      = args.Rv_min, 
-        Rv_max      = args.Rv_max,
-        z_min       = args.z_min, 
-        z_max       = args.z_max,
-        rho1_min    = args.rho1_min, 
-        rho1_max    = args.rho1_max,
-        rho2_min    = args.rho2_min, 
-        rho2_max    = args.rho2_max,
-        FLAG        = args.FLAG,
-        RIN         = args.RIN, 
-        ROUT        = args.ROUT,
-        ndots       = args.ndots, 
-        ncores      = args.ncores, 
-        nk          = args.nk,
-        addnoise    = False, 
-    )
-    # run_in_parts(
-    #     args.RIN, 
-    #     args.ROUT, 
-    #     args.nslices,
-    #     args.lens_cat, 
-    #     args.sample,
-    #     Rv_min=args.Rv_min, Rv_max=args.Rv_max, 
-    #     rho1_min=args.rho1_min, rho1_max=args.rho1_max, 
-    #     rho2_min=args.rho2_min, rho2_max=args.rho2_max, 
-    #     z_min=args.z_min, z_max=args.z_max, 
-    #     ndots=args.ndots, 
-    #     ncores=args.ncores, 
-    #     FLAG=args.FLAG
+    # main(
+    #     lcat        = args.lens_cat, 
+    #     sample      = args.sample,
+    #     output_file = None,
+    #     Rv_min      = args.Rv_min, 
+    #     Rv_max      = args.Rv_max,
+    #     z_min       = args.z_min, 
+    #     z_max       = args.z_max,
+    #     rho1_min    = args.rho1_min, 
+    #     rho1_max    = args.rho1_max,
+    #     rho2_min    = args.rho2_min, 
+    #     rho2_max    = args.rho2_max,
+    #     FLAG        = args.FLAG,
+    #     RIN         = args.RIN, 
+    #     ROUT        = args.ROUT,
+    #     ndots       = args.ndots, 
+    #     ncores      = args.ncores, 
+    #     nk          = args.nk,
+    #     addnoise    = False, 
     # )
+    run_in_parts(
+        args.RIN, 
+        args.ROUT, 
+        args.nslices,
+        args.lens_cat, 
+        args.sample,
+        Rv_min=args.Rv_min, Rv_max=args.Rv_max, 
+        rho1_min=args.rho1_min, rho1_max=args.rho1_max, 
+        rho2_min=args.rho2_min, rho2_max=args.rho2_max, 
+        z_min=args.z_min, z_max=args.z_max, 
+        ndots=args.ndots, 
+        ncores=args.ncores, 
+        FLAG=args.FLAG
+    )
     tfin = time.time()
     print(f'TOTAL TIME: {np.round((tfin-tin)/60.,2)} min')
