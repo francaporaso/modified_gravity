@@ -196,10 +196,10 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     bines = np.linspace(RIN,ROUT,num=ndots+1)
     dig = np.digitize(r,bines)
             
-    SIGMAwsum    = np.empty(ndots)
-    DSIGMAwsum_T = np.empty(ndots)
-    DSIGMAwsum_X = np.empty(ndots)
-    N_inbin      = np.empty(ndots)
+    SIGMAwsum    = np.zeros(ndots)
+    DSIGMAwsum_T = np.zeros(ndots)
+    DSIGMAwsum_X = np.zeros(ndots)
+    N_inbin      = np.zeros(ndots)
                                          
     for nbin in range(ndots):
         mbin = dig == nbin+1              
@@ -403,41 +403,43 @@ if __name__=='__main__':
     # with fits.open(folder+'l768_mg_octant_19219.fits') as f:
     #     g1_mask = np.abs(f[1].data.gamma1) < 10.0
     #     S = f[1].data[g1_mask]
+    # sim = ['l768_gr_z04-07_for02-03_19304.fits','l768_mg_z04-07_for02-03_19260.fits']
+    # voidcat = ['void_LCDM_09.dat', 'void_fR_09.dat']
 
     tin = time.time()
-    # main(
-    #     lcat        = args.lens_cat, 
-    #     sample      = args.sample,
-    #     output_file = None,
-    #     Rv_min      = args.Rv_min, 
-    #     Rv_max      = args.Rv_max,
-    #     z_min       = args.z_min, 
-    #     z_max       = args.z_max,
-    #     rho1_min    = args.rho1_min, 
-    #     rho1_max    = args.rho1_max,
-    #     rho2_min    = args.rho2_min, 
-    #     rho2_max    = args.rho2_max,
-    #     FLAG        = args.FLAG,
-    #     RIN         = args.RIN, 
-    #     ROUT        = args.ROUT,
-    #     ndots       = args.ndots, 
-    #     ncores      = args.ncores, 
-    #     nk          = args.nk,
-    #     addnoise    = False, 
-    # )
-    run_in_parts(
-        args.RIN, 
-        args.ROUT, 
-        args.nslices,
-        args.lens_cat, 
-        args.sample,
-        Rv_min=args.Rv_min, Rv_max=args.Rv_max, 
-        rho1_min=args.rho1_min, rho1_max=args.rho1_max, 
-        rho2_min=args.rho2_min, rho2_max=args.rho2_max, 
-        z_min=args.z_min, z_max=args.z_max, 
-        ndots=args.ndots, 
-        ncores=args.ncores, 
-        FLAG=args.FLAG
+    main(
+        lcat        = args.lens_cat, 
+        sample      = args.sample,
+        output_file = None,
+        Rv_min      = args.Rv_min, 
+        Rv_max      = args.Rv_max,
+        z_min       = args.z_min, 
+        z_max       = args.z_max,
+        rho1_min    = args.rho1_min, 
+        rho1_max    = args.rho1_max,
+        rho2_min    = args.rho2_min, 
+        rho2_max    = args.rho2_max,
+        FLAG        = args.FLAG,
+        RIN         = args.RIN, 
+        ROUT        = args.ROUT,
+        ndots       = args.ndots, 
+        ncores      = args.ncores, 
+        nk          = args.nk,
+        addnoise    = False, 
     )
+    # run_in_parts(
+    #     args.RIN, 
+    #     args.ROUT, 
+    #     args.nslices,
+    #     args.lens_cat, 
+    #     args.sample,
+    #     Rv_min=args.Rv_min, Rv_max=args.Rv_max, 
+    #     rho1_min=args.rho1_min, rho1_max=args.rho1_max, 
+    #     rho2_min=args.rho2_min, rho2_max=args.rho2_max, 
+    #     z_min=args.z_min, z_max=args.z_max, 
+    #     ndots=args.ndots, 
+    #     ncores=args.ncores, 
+    #     FLAG=args.FLAG
+    # )
     tfin = time.time()
     print(f'TOTAL TIME: {np.round((tfin-tin)/60.,2)} min')
