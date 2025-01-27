@@ -152,14 +152,13 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     ## WARNING: memory leak, too many objects to calculate sep
     ## using in case the other mask fails
     if mask.sum() == 0:
-        mask = (S.true_redshift_gal > (Z+0.1))
-        sep = np.rad2deg(
-            ang_sep(
+        print('Fail for',RA0,DEC0)
+        m_z = (S.true_redshift_gal > (Z+0.1))
+        sep = ang_sep(
                 np.deg2rad(RA0), np.deg2rad(DEC0),
-                np.deg2rad(S[mask].ra_gal), np.deg2rad(S[mask].dec_gal)
-            )
+                np.deg2rad(S[m_z].ra_gal), np.deg2rad(S[m_z].dec_gal)
         )
-        mask = mask & (sep < delta)
+        mask = (sep < np.deg2rad(delta))&(S.true_redshift_gal >(Z+0.1))
         assert mask.sum() != 0
 
     catdata = S[mask]
