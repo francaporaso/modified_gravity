@@ -161,7 +161,7 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
         mask = (sep < np.deg2rad(delta))&(S[m_z].true_redshift_gal >(Z+0.1))
         assert mask.sum() != 0
 
-    catdata = S[mask]
+    catdata = S[m_z][mask]
     # catdata_ra = ra_gal[mask]
     # catdata_dec = dec_gal[mask]
     # catdata_z = true_redshift_gal[mask]
