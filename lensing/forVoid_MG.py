@@ -136,11 +136,12 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     delta = DEGxMPC*(ROUT*Rv)
     ## great-circle separation of sources from void centre
     ## WARNING: not stable near the poles
-    # pos_angles = np.arange(0,360,90)*u.deg
-    # c1 = SkyCoord(RA0, DEC0, unit='deg')
-    # c2 = c1.directional_offset_by(pos_angles, delta*u.deg)
-    # mask = (dec_gal < c2[0].dec.deg)&(dec_gal > c2[2].dec.deg)&(ra_gal < c2[1].ra.deg)&(
-    #         ra_gal > c2[3].ra.deg)&(true_redshift_gal > (Z+0.1))
+    pos_angles = np.arange(0,360,90)*u.deg
+    c1 = SkyCoord(RA0, DEC0, unit='deg')
+    c2 = c1.directional_offset_by(pos_angles, delta*u.deg)
+    mask = (S.true_redshift_gal > (Z+0.1))&(
+        S.dec_gal < c2[0].dec.deg)&(S.dec_gal > c2[2].dec.deg)&(
+        S.ra_gal < c2[1].ra.deg)&(S.ra_gal > c2[3].ra.deg)
 
     ## solid angle separation in sky from RA0,DEC0
     ## WARNING: memory leak... 
@@ -148,14 +149,15 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     # mask = (sep < delta)&(true_redshift_gal > (Z+0.1))
     
     ## solid angle sep with maria_func
-    mask = (S.true_redshift_gal > (Z+0.1))
-    sep = np.rad2deg(
-        ang_sep(
-            np.deg2rad(RA0), np.deg2rad(DEC0),
-            np.deg2rad(S[mask].ra_gal), np.deg2rad(S[mask].dec_gal)
-        )
-    )
-    mask = mask & (sep < delta)
+    ## WARNING: memory leak... 
+    # mask = (S.true_redshift_gal > (Z+0.1))
+    # sep = np.rad2deg(
+    #     ang_sep(
+    #         np.deg2rad(RA0), np.deg2rad(DEC0),
+    #         np.deg2rad(S[mask].ra_gal), np.deg2rad(S[mask].dec_gal)
+    #     )
+    # )
+    # mask = mask & (sep < delta)
 
     assert mask.sum() != 0
     
