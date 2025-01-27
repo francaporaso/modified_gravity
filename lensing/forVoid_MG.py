@@ -111,7 +111,7 @@ def sourcecat_load(sourcename):
         mask = np.abs(f[1].data.gamma1) < 10.0
         S = f[1].data[mask]
 
-    return SkyCoord(S.ra_gal, S.dec_gal, unit='deg'), S.true_redshift_gal, S.kappa, S.gamma1, S.gamma2
+    return S.ra_gal, S.dec_gal, S.true_redshift_gal, S.kappa, S.gamma1, S.gamma2
         
 def SigmaCrit(zl, zs):
     
@@ -125,21 +125,39 @@ def SigmaCrit(zl, zs):
     return (((cvel**2.0)/(4.0*np.pi*G*Dl))*(1./BETA_array))*(pc**2/Msun)
 
 def partial_profile(RIN, ROUT, ndots, addnoise,
-                    coords, true_redshift_gal, kappa, gamma1, gamma2,
+                    ra_gal, dec_gal, true_redshift_gal, kappa, gamma1, gamma2,
                     RA0, DEC0, Z, Rv):
     
     ndots = int(ndots)
     
     DEGxMPC = cosmo.arcsec_per_kpc_proper(Z).to('deg/Mpc').value
-    delta = (DEGxMPC*(ROUT*Rv))
-    # great-circle separation of sources from void centre
-    sep = coords.separation(SkyCoord(RA0,DEC0,unit='deg')).value
-    mask = (sep < delta)&(true_redshift_gal > (Z+0.1))
+    delta = DEGxMPC*(ROUT*Rv)
+    ## great-circle separation of sources from void centre
+    ## WARNING: not stable near the poles
+    # pos_angles = np.arange(0,360,90)*u.deg
+    # c1 = SkyCoord(RA0, DEC0, unit='deg')
+    # c2 = c1.directional_offset_by(pos_angles, delta*u.deg)
+    # mask = (dec_gal < c2[0].dec.deg)&(dec_gal > c2[2].dec.deg)&(ra_gal < c2[1].ra.deg)&(
+    #         ra_gal > c2[3].ra.deg)&(true_redshift_gal > (Z+0.1))
+
+    ## solid angle separation in sky from RA0,DEC0
+    ## WARNING: memory leak... 
+    # sep = coords.separation(SkyCoord(RA0,DEC0,unit='deg')).value
+    # mask = (sep < delta)&(true_redshift_gal > (Z+0.1))
     
+    ## solid angle sep with maria_func
+    sep = np.rad2deg(
+        ang_sep(
+            np.deg2rad(RA0), np.deg2rad(DEC0),
+            np.deg2rad(ra_gal), np.deg2rad(dec_gal)
+        )
+    )
+    mask = (sep < delta) & (true_redshift_gal > (Z+0.1))
+
     assert mask.sum() != 0
     
-    catdata_ra = coords[mask].ra.deg
-    catdata_dec = coords[mask].dec.deg
+    catdata_ra = ra_gal[mask]
+    catdata_dec = dec_gal[mask]
     catdata_z = true_redshift_gal[mask]
     catdata_kappa = kappa[mask]
     catdata_gamma1 = gamma1[mask]
