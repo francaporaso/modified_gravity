@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=vlensing
+#SBATCH --job-name=vlen-d
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=56
 #SBATCH --time=00:02:00
