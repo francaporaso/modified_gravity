@@ -247,7 +247,7 @@ def main(lcat, sample='pru', output_file=None,
     #reading Lens catalog
     L, K, nvoids = lenscat_load(
         Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max,
-        flag=FLAG, lensname=lcat, split=True, NSPLITS=ncores, nk=nk, octant=True,
+        flag=FLAG, lensname=lcat, split=True, NSPLITS=ncores, nk=nk, octant=False,
     )
 
     print(f'Nvoids {nvoids}')
