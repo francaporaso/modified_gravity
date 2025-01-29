@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=vlen-d
+#SBATCH --job-name=vlensing
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=56
-#SBATCH --time=00:02:00
-#SBATCH --partition=debug
+#SBATCH --time=3-00:00:00
+#SBATCH --partition=batch
 ## An email is sent when the job is canceled or finished
 ## Change "root" for your e-mail address
 #SBATCH --mail-type=FAIL,END
