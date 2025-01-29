@@ -229,31 +229,48 @@ def main(lcat, sample='pru', output_file=None,
          addnoise = False, FLAG = 2.):
         
     tini = time.time()
-    
-    print(f'Voids catalog {lcat}')
-    print(f'Sample {sample}')
-    print(f'RIN : {RIN}')
-    print(f'ROUT: {ROUT}')
-    print(f'ndots: {ndots}')
-    print('Selecting voids with:')
-    print(f'{Rv_min}   <=  Rv  < {Rv_max}')
-    print(f'{z_min}    <=  Z   < {z_max}')
-    print(f'{rho1_min}  <= rho1 < {rho1_max}')
-    print(f'{rho2_min}  <= rho2 < {rho2_max}')
-        
-    if addnoise:
-        print('ADDING SHAPE NOISE')
-    
     #reading Lens catalog
     L, K, nvoids = lenscat_load(
         Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max,
         flag=FLAG, lensname=lcat, split=True, NSPLITS=ncores, nk=nk, octant=False,
     )
+    
+    # program arguments
+    print(' Program arguments '.center(30,"="))
+    print('Lens catalog: '.ljust(15,'.'), f' {lcat}'.rjust(15,'.'), sep='')
+    # print('Sources catalog: '.ljust(15,'.'), f' {source_cat}'.rjust(15,'.'),sep='')
+    print('Output name: '.ljust(15,'.'), f' {sample}'.rjust(15,'.'),sep='')
+    print('N of cores: '.ljust(15,'.'), f' {ncores}'.rjust(15,'.'),sep='')
+    # print('N of slices: '.ljust(15,'.'), f' {n_runslices}'.rjust(15,'.'),sep='')
 
-    print(f'Nvoids {nvoids}')
-    print(f'CORRIENDO EN {ncores} CORES')
-    print(f'Profile has {ndots} bins')
-    print(f'from {RIN} Rv to {ROUT} Rv')
+    # cosmology
+    # print(' Cosmo params '.center(30,"="))
+    # print('h: '.ljust(15,'.'), f' {h}'.rjust(15,'.'), sep='')
+    # print('Om0: '.ljust(15,'.'), f' {Om0}'.rjust(15,'.'),sep='')
+    # print('Ode0: '.ljust(15,'.'), f' {Ode0}'.rjust(15,'.'),sep='')
+    
+    if rho2_max<=0:
+        tipo = 'R'
+    elif rho2_min>=0:
+        tipo = 'S'
+    else:
+        tipo = 'all'
+    
+    # lens arguments
+    print(' Void sample '.center(30,"="))
+    print('Radii: '.ljust(15,'.'), f' [{Rv_min}, {Rv_max})'.rjust(15,'.'), sep='')
+    print('Redshift: '.ljust(15,'.'), f' [{z_min}, {z_max})'.rjust(15,'.'),sep='')
+    print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='')
+    print('Octante: '.ljust(15,'.'), f' {False}'.rjust(15,'.'),sep='')
+    
+    # profile arguments
+    print(' Profile arguments '.center(30,"="))
+    print('RMIN: '.ljust(15,'.'), f' {RIN}'.rjust(15,'.'), sep='')
+    print('RMAX: '.ljust(15,'.'), f' {ROUT}'.rjust(15,'.'),sep='')
+    print('N: '.ljust(15,'.'), f' {ndots}'.rjust(15,'.'),sep='')
+    print('N jackknife: '.ljust(15,'.'), f' {nk}'.rjust(15,'.'),sep='')
+    print('Shape Noise: '.ljust(15,'.'), f' {addnoise}'.rjust(15,'.'),sep='')
+
     try:
         os.mkdir('results/')
     except FileExistsError:
