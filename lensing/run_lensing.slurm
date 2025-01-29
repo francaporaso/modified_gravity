@@ -2,13 +2,8 @@
 #SBATCH --job-name=vlen-d
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=56
-<<<<<<< HEAD
-#SBATCH --time=3-00:00:00
-#SBATCH --partition=batch
-=======
 #SBATCH --time=00:02:00
 #SBATCH --partition=debug
->>>>>>> a2012b91436c65c5811f1719ea6cc4cc61c461e8
 ## An email is sent when the job is canceled or finished
 ## Change "root" for your e-mail address
 #SBATCH --mail-type=FAIL,END
