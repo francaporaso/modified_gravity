@@ -21,19 +21,27 @@ Msun = M_sun.value # Solar mass (kg)
 
 class VoidLensing:
 
-    def __init__(self):
+    def __init__(self,
+                lens_cat = '', source_cat = '', sample = '',
+                ncores = 2, n_runslices = 1,
+                h = 1.0, Om0 = 0.3089, Ode0 = 0.6911,                
+                Rv_min = 0.0, Rv_max = 50.0, z_min = 0.0, z_max = 10.0,
+                rho1_min = -1.0, rho1_max = 0.0, rho2_min = -1.0, rho2_max = 100.0,
+                flag = 2, octant = False,
+                RIN = 0.01, ROUT = 5.0, ndots = 20, nk = 100, addnoise = False):
         
         # program arguments
-        self.sample: str = ''
-        self.lens_cat: str = ''
-        self.source_cat: str = ''
-        self.ncores: int = 2
+        self.lens_cat: str = lens_cat
+        self.source_cat: str = source_cat
+        self.sample: str = sample
+        self.ncores: int = ncores
+        self.n_runslices: int = n_runslices
 
         # cosmology
-        self.h: int = 1.0
-        self.Om0: int = 0.3089
-        self.OdeO: int = 0.6911
-        self.cosmo : LambdaCDM = LambdaCDM(H0=100*self.h, Om0=self.Om0, Ode0=self.Ode0)
+        # self.h: float = h
+        # self.Om0: float = Om0
+        # self.Ode0: float = Ode0
+        self.cosmo : LambdaCDM = LambdaCDM(H0=100*h, Om0=Om0, Ode0=Ode0)
         
         # lens arguments
         self.Rv_min: float = 0.0
@@ -44,9 +52,7 @@ class VoidLensing:
         self.rho1_max: float = 0.0
         self.rho2_min: float = -1.0
         self.rho2_max: float = 100.0
-        self.flag: int = 2
-        # self.split: bool = bool(self.ncores-1)
-        self.nslices: int = 1
+        self.flag: float = 2.0
         self.octant: bool = False
         
         # profile arguments
@@ -62,15 +68,16 @@ class VoidLensing:
         self.L, self.K, self.nvoids = lenscat_load(
             self.lens_cat,
             self.Rv_min, self.Rv_max, self.z_min, self.z_max, self.rho1_min, self.rho1_max, self.rho2_min, self.rho2_max, self.flag,
-            self.split, self.ncores, self.octant, self.nk
+            self.ncores, self.octant, self.nk
         )
+    
 
     def SigmaCrit(self, zl, zs):
         
-        dl  = self.cosmo.angular_diameter_distance(zl).value
-        Dl = dl*1.e6*pc #en m
-        ds  = self.cosmo.angular_diameter_distance(zs).value           # dist ang diam de la fuente
-        dls = self.cosmo.angular_diameter_distance_z1z2(zl, zs).value  # dist ang diam entre fuente y lente
+        dl  = self.cosmo.angular_diameter_distance(zl).value           # observer-lens dist
+        Dl = dl*1.e6*pc                                                # in m
+        ds  = self.cosmo.angular_diameter_distance(zs).value           # observer-source dist
+        dls = self.cosmo.angular_diameter_distance_z1z2(zl, zs).value  # lens-source dist
                     
         BETA_array = dls / ds
 
@@ -140,17 +147,22 @@ class VoidLensing:
         N_inbin      = np.zeros(self.ndots)
                                             
         for nbin in range(self.ndots):
-            mbin = dig == nbin+1              
+            mbin = (dig == nbin+1)
             SIGMAwsum[nbin]    = k[mbin].sum()
             DSIGMAwsum_T[nbin] = et[mbin].sum()
             DSIGMAwsum_X[nbin] = ex[mbin].sum()
-            N_inbin[nbin]      = np.count_nonzero(mbin) ## hace lo mismo q mbin.sum() pero más rápido
+            N_inbin[nbin] = np.count_nonzero(mbin) ## hace lo mismo q mbin.sum() pero más rápido
         
         return SIGMAwsum, DSIGMAwsum_T, DSIGMAwsum_X, N_inbin
     
     def stack(self):
-        
-        bines = np.linspace(self.RIN,self.ROUT,num=self.ndots+1)
+        print(''.center(14,"="))
+        print('RMIN: '.ljust(7,'.'), f' {self.RIN}'.rjust(7,'.'), sep='')
+        print('RMAX: '.ljust(7,'.'), f' {self.ROUT}'.rjust(7,'.'),sep='')
+        print('N: '.ljust(7,'.'), f' {self.ndots}'.rjust(7,'.'),sep='')
+        print(''.center(14,"="))
+
+        bines = np.linspace(self.RIN, self.ROUT, self.ndots+1)
         R = (bines[:-1] + np.diff(bines)*0.5)
         # WHERE THE SUMS ARE GOING TO BE SAVED
         
@@ -158,9 +170,7 @@ class VoidLensing:
         SIGMAwsum    = np.zeros((self.nk+1,self.ndots)) 
         DSIGMAwsum_T = np.zeros((self.nk+1,self.ndots)) 
         DSIGMAwsum_X = np.zeros((self.nk+1,self.ndots))
-                    
-        print(f'Saved in {self.sample}.fits')
-        
+                            
         for i, Li in enumerate(tqdm(self.L)):
             num = len(Li)
             
@@ -197,6 +207,7 @@ class VoidLensing:
         return R, Sigma, DSigma_T, DSigma_X, Ninbin
 
 
+# ============================================================================== FUNCTIONS ===
 
 def lenscat_load(lens_cat,
                  Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max, flag,
@@ -249,7 +260,7 @@ def lenscat_load(lens_cat,
 
     return L, K, nvoids
 
-def sourcecat_load(source_cat):
+def sourcecat_load(source_cat: str) -> fits.HDUList:
     folder = '/home/fcaporaso/cats/L768/'
     with fits.open(folder+source_cat) as f:
         mask = np.abs(f[1].data.gamma1) < 10.0
@@ -257,41 +268,133 @@ def sourcecat_load(source_cat):
 
     return S
 
-def main(lcat, sample='pru', output_file=None,
-         Rv_min=0., Rv_max=50.,
-         rho1_min=-1., rho1_max=0.,
-         rho2_min=-1., rho2_max=100.,
-         z_min = 0.1, z_max = 1.0,
-         RIN = .05, ROUT =5.,
-         ndots= 40, ncores=10, nk=100,
-         addnoise = False, FLAG = 2.):
+def cov_matrix(array):
         
+    K = len(array)
+    Kmean = np.average(array,axis=0)
+    bins = array.shape[1]
+    
+    COV = np.zeros((bins,bins))
+    
+    for k in range(K):
+        dif = (array[k]- Kmean)
+        COV += np.outer(dif,dif)        
+    
+    COV *= (K-1)/K
+    return COV
+
+# ==============================================================================  MAIN ===
+def main(lens_cat = '',
+        source_cat = '',
+        sample = '',
+        ncores = 2,
+        n_runslices= 1,
+        h = 1.0, Om0 = 0.3089, Ode0 = 0.6911,
+        Rv_min = 15.0, Rv_max = 20.0,
+        z_min = 0.2, z_max = 0.3,
+        rho1_min = -1.0, rho1_max = 0.0,
+        rho2_min = -1.0, rho2_max = 100.0,
+        flag = 2.0,
+        octant = False,
+        RIN = 0.5, ROUT = 5.0,
+        ndots= 22,
+        nk= 100,
+        addnoise = False):
+
+    # program arguments
+    print(' Program arguments '.center(30,"="))
+    print('Lens catalog: '.ljust(15,'.'), f' {lens_cat}'.rjust(15,'.'), sep='')
+    print('Sources catalog: '.ljust(15,'.'), f' {source_cat}'.rjust(15,'.'),sep='')
+    print('Output name: '.ljust(15,'.'), f' {sample}'.rjust(15,'.'),sep='')
+    print('N of cores: '.ljust(15,'.'), f' {ncores}'.rjust(15,'.'),sep='')
+    print('N of slices: '.ljust(15,'.'), f' {n_runslices}'.rjust(15,'.'),sep='')
+
+    # cosmology
+    print(' Cosmo params '.center(30,"="))
+    print('h: '.ljust(15,'.'), f' {h}'.rjust(15,'.'), sep='')
+    print('Om0: '.ljust(15,'.'), f' {Om0}'.rjust(15,'.'),sep='')
+    print('Ode0: '.ljust(15,'.'), f' {Ode0}'.rjust(15,'.'),sep='')
+    
+    if rho2_max<=0:
+        tipo = 'R'
+    elif rho2_min>=0:
+        tipo = 'S'
+    else:
+        tipo = 'all'
+    
+    # lens arguments
+    print(' Void sample '.center(30,"="))
+    print('Radii: '.ljust(15,'.'), f' [{Rv_min}, {Rv_max})'.rjust(15,'.'), sep='')
+    print('Redshift: '.ljust(15,'.'), f' [{z_min}, {z_max})'.rjust(15,'.'),sep='')
+    print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='')
+    print('Octante: '.ljust(15,'.'), f' {octant}'.rjust(15,'.'),sep='')
+    
+    # profile arguments
+    print(' Profile arguments '.center(30,"="))
+    print('RMIN: '.ljust(15,'.'), f' {RIN}'.rjust(15,'.'), sep='')
+    print('RMAX: '.ljust(15,'.'), f' {ROUT}'.rjust(15,'.'),sep='')
+    print('N: '.ljust(15,'.'), f' {ndots}'.rjust(15,'.'),sep='')
+    print('N jackknife: '.ljust(15,'.'), f' {nk}'.rjust(15,'.'),sep='')
+    print('Shape Noise: '.ljust(15,'.'), f' {addnoise}'.rjust(15,'.'),sep='')
+    
+    ## Runing program
     tini = time.time()
     
-    print(f'Voids catalog {lcat}')
-    print(f'Sample {sample}')
-    print(f'RIN : {RIN}')
-    print(f'ROUT: {ROUT}')
-    print(f'ndots: {ndots}')
-    print('Selecting voids with:')
-    print(f'{Rv_min}   <=  Rv  < {Rv_max}')
-    print(f'{z_min}    <=  Z   < {z_max}')
-    print(f'{rho1_min}  <= rho1 < {rho1_max}')
-    print(f'{rho2_min}  <= rho2 < {rho2_max}')
-        
-    if addnoise:
-        print('ADDING SHAPE NOISE')
-    
-    #reading Lens catalog
-    L, K, nvoids = lenscat_load(
-        Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max,
-        flag=FLAG, lensname=lcat, split=True, NSPLITS=ncores, nk=nk, octant=True,
+    v = VoidLensing(
+        lens_cat = lens_cat,
+        source_cat = source_cat,
+        sample = sample,
+        ncores = ncores,
+        n_runslices= n_runslices,
+        h = h, Om0 = Om0, Ode0 = Ode0,
+        Rv_min = Rv_min, Rv_max = Rv_max,
+        z_min = z_min, z_max = z_max,
+        rho1_min = rho1_min, rho1_max = rho1_max,
+        rho2_min = rho2_min, rho2_max = rho2_max,
+        flag = flag,
+        octant = octant,
+        RIN = RIN, ROUT = ROUT,
+        ndots= ndots,
+        nk= nk,
+        addnoise = addnoise,
     )
 
-    print(f'Nvoids {nvoids}')
-    print(f'CORRIENDO EN {ncores} CORES')
-    print(f'Profile has {ndots} bins')
-    print(f'from {RIN} Rv to {ROUT} Rv')
+    if bool(n_runslices-1):
+        R, Sigma, DSigma_T, DSigma_X, Ninbin = v.stack()
+
+        covS = cov_matrix(Sigma[1:,:])
+        covDSt = cov_matrix(DSigma_T[1:,:])
+        covDSx = cov_matrix(DSigma_X[1:,:])
+
+    else:
+        cuts = np.round(np.linspace(RIN, ROUT, n_runslices+1),2)
+        R = np.array([])
+        Sigma = np.array([])
+        DSigma_T = np.array([])
+        DSigma_X = np.array([])
+        Ninbin = np.array([])
+
+        for j in np.arange(n_runslices):
+            print(f'RUN {j+1} out of {n_runslices} slices')
+            
+            v.RIN, v.ROUT = cuts[j], cuts[j+1]
+            v.ndots = ndots//n_runslices
+            res_parcial = v.stack()
+            R = np.append(R, res_parcial[0])
+            Sigma = np.append(Sigma, res_parcial[1])
+            DSigma_T = np.append(DSigma_T, res_parcial[2])
+            DSigma_X = np.append(DSigma_X, res_parcial[3])
+            Ninbin = np.append(Ninbin, res_parcial[4])
+        
+        Sigma = Sigma.rehsape(nk+1,ndots)
+        DSigma_T = DSigma_T.rehsape(nk+1,ndots)
+        DSigma_X = DSigma_X.rehsape(nk+1,ndots)
+        Ninbin = Ninbin.rehsape(nk+1,ndots)
+
+        covS = cov_matrix(Sigma[1:,:])
+        covDSt = cov_matrix(DSigma_T[1:,:])
+        covDSx = cov_matrix(DSigma_X[1:,:])
+
     try:
         os.mkdir('results/')
     except FileExistsError:
@@ -302,13 +405,13 @@ def main(lcat, sample='pru', output_file=None,
     # Defining radial bins
     
     # AVERAGE VOID PARAMETERS AND SAVE IT IN HEADER
-    zmean    = np.concatenate([L[i][:,3] for i in range(len(L))]).mean()
-    rvmean   = np.concatenate([L[i][:,0] for i in range(len(L))]).mean()
-    rho2mean = np.concatenate([L[i][:,8] for i in range(len(L))]).mean()
+    zmean    = np.concatenate([v.L[i][:,3] for i in range(len(v.L))]).mean()
+    rvmean   = np.concatenate([v.L[i][:,0] for i in range(len(v.L))]).mean()
+    rho2mean = np.concatenate([v.L[i][:,8] for i in range(len(v.L))]).mean()
     
     head = fits.Header()
-    head.append(('nvoids',int(nvoids)))
-    head.append(('cat',lcat))
+    head.append(('nvoids',int(v.nvoids)))
+    head.append(('cat',lens_cat))
     head.append(('Rv_min',np.round(Rv_min,2)))
     head.append(('Rv_max',np.round(Rv_max,2)))
     head.append(('Rv_mean',np.round(rvmean,4)))
@@ -339,128 +442,58 @@ def main(lcat, sample='pru', output_file=None,
     
     hdul.writeto(f'{output_file+sample}.fits',overwrite=True)
     print(f'File saved... {output_file+sample}.fits')
-            
-    tfin = time.time()
-    
-    print(f'Partial time: {np.round((tfin-tini)/60. , 3)} mins')
-        
-
-def run_in_parts(RIN,ROUT, nslices,
-                lcat, sample='pru', output_file=None, Rv_min=0., Rv_max=50., rho1_min=-1., rho1_max=0., 
-                rho2_min=-1., rho2_max=100., z_min = 0.1, z_max = 1.0, ndots= 40, ncores=10,
-                addnoise=False, FLAG = 2.):
-
-    cuts = np.round(np.linspace(RIN,ROUT,num=nslices+1),2)
-    
-    try:
-        os.mkdir(f'/home/fcaporaso/modified_gravity/lensing/profiles/Rv{round(Rv_min)}-{round(Rv_max)}/')
-    except FileExistsError:
-        pass
-    if not output_file:
-        output_file = f'/home/fcaporaso/modified_gravity/lensing/profiles/Rv{round(Rv_min)}-{round(Rv_max)}/'
-    
-    tslice = np.zeros(nslices)
-    #orden inverso: calcula del corte mas externo al mas interno
-    #cuts = cuts[::-1]
-    for j in np.arange(nslices):
-        RIN, ROUT = cuts[j], cuts[j+1]
-        #ROUT, RIN = cuts[j], cuts[j+1]
-        t1 = time.time()
-        print(f'RUN {j+1} out of {nslices} slices')
-        #print(f'RUNNING FOR RIN={RIN}, ROUT={ROUT}')
-        main(
-            lcat, 
-            sample+f'rbin_{j}',
-            output_file=output_file,
-            Rv_min=Rv_min, Rv_max=Rv_max, 
-            z_min=z_min, z_max=z_max,
-            rho1_min=rho1_min, rho1_max=rho1_max, 
-            rho2_min=rho2_min, rho2_max=rho2_max, 
-            RIN=RIN, ROUT=ROUT, 
-            ndots=ndots//nslices, 
-            ncores=ncores, 
-            addnoise=addnoise, 
-            FLAG=FLAG
-        )
-        t2 = time.time()
-        tslice[j] = (t2-t1)/60.     
-        #print('TIME SLICE')
-        #print(f'{np.round(tslice[j],2)} min')
-        print('Estimated remaining time for run in parts')
-        print(f'{np.round(np.mean(tslice[:j+1])*(nslices-(j+1)),2)} min')
+                
+    print(f'Partial time: {np.round((time.time()-tini)/60. , 3)} mins')
 
 
 if __name__=='__main__':
 
-    # folder = '/home/fcaporaso/cats/L768/'
-    # with fits.open(folder+'l768_mg_octant_19219.fits') as f:
-    #     g1_mask = np.abs(f[1].data.gamma1) < 10.0
-    #     S = f[1].data[g1_mask]
-    # sim = ['l768_gr_z04-07_for02-03_19304.fits','l768_mg_z04-07_for02-03_19260.fits']
-    # voidcat = ['void_LCDM_09.dat', 'void_fR_09.dat']
-
+    parser = ArgumentParser()
+    parser.add_argument('--lens_cat', type=str, default='voids_LCDM_09.dat', action='store')
+    parser.add_argument('--source_cat', type=str, default='l768_gr_04-07_for02-03_19304.fits', action='store')
+    parser.add_argument('--sample', type=str, default='TEST_LCDM_', action='store')
+    parser.add_argument('-c','--ncores', type=int, default=2, action='store')
+    parser.add_argument('-r','--n_runslices', type=int, default=1, action='store')
+    parser.add_argument('--h_cosmo', type=float, default=1.0, action='store')
+    parser.add_argument('--Om0', type=float, default=0.3089, action='store')
+    parser.add_argument('--Ode0', type=float, default=0.6911, action='store')
+    parser.add_argument('--Rv_min', type=float, default=15.0, action='store', required=True)
+    parser.add_argument('--Rv_max', type=float, default=20.0, action='store', required=True)
+    parser.add_argument('--z_min', type=float, default=0.2, action='store', required=True)
+    parser.add_argument('--z_max', type=float, default=0.3, action='store', required=True)
+    parser.add_argument('--rho1_min', type=float, default=-1.0, action='store', required=True)
+    parser.add_argument('--rho1_max', type=float, default=0.0, action='store', required=True)
+    parser.add_argument('--rho2_min', type=float, default=-1.0, action='store', required=True)
+    parser.add_argument('--rho2_max', type=float, default=100.0, action='store', required=True)
+    parser.add_argument('--flag', type=float, default=2.0, action='store')
+    parser.add_argument('--octant', action='store_false')
+    parser.add_argument('--RIN', type=float, default=0.05, action='store', required=True)
+    parser.add_argument('--ROUT', type=float, default=5.0, action='store', required=True)    
+    parser.add_argument('-N','--ndots', type=int, default=22, action='store', required=True)    
+    parser.add_argument('-K','--nk', type=int, default=100, action='store', required=True)    
+    parser.add_argument('--addnoise', action='store_false')
+    args = parser.parse_args()
+    
     tin = time.time()
+    
     main(
-        lcat        = args.lens_cat, 
-        sample      = args.sample,
-        output_file = None,
-        Rv_min      = args.Rv_min, 
-        Rv_max      = args.Rv_max,
-        z_min       = args.z_min, 
-        z_max       = args.z_max,
-        rho1_min    = args.rho1_min, 
-        rho1_max    = args.rho1_max,
-        rho2_min    = args.rho2_min, 
-        rho2_max    = args.rho2_max,
-        FLAG        = args.FLAG,
-        RIN         = args.RIN, 
-        ROUT        = args.ROUT,
-        ndots       = args.ndots, 
-        ncores      = args.ncores, 
-        nk          = args.nk,
-        addnoise    = False, 
+        lens_cat = args.lens_cat,
+        source_cat = args.source_cat,
+        sample = args.sample,
+        ncores = args.ncores,
+        n_runslices= args.n_runslices,
+        h = args.h_cosmo, Om0 = args.Om0, Ode0 = args.Ode0,
+        Rv_min = args.Rv_min, Rv_max = args.Rv_max,
+        z_min = args.z_min, z_max = args.z_max,
+        rho1_min = args.rho1_min, rho1_max = args.rho1_max,
+        rho2_min = args.rho2_min, rho2_max = args.rho2_max,
+        flag = args.flag,
+        octant = args.octant,
+        RIN = args.RIN, ROUT = args.ROUT,
+        ndots= args.ndots,
+        nk= args.nk,
+        addnoise = args.addnoise,
     )
-    # run_in_parts(
-    #     args.RIN, 
-    #     args.ROUT, 
-    #     args.nslices,
-    #     args.lens_cat, 
-    #     args.sample,
-    #     Rv_min=args.Rv_min, Rv_max=args.Rv_max, 
-    #     rho1_min=args.rho1_min, rho1_max=args.rho1_max, 
-    #     rho2_min=args.rho2_min, rho2_max=args.rho2_max, 
-    #     z_min=args.z_min, z_max=args.z_max, 
-    #     ndots=args.ndots, 
-    #     ncores=args.ncores, 
-    #     FLAG=args.FLAG
-    # )
+
     tfin = time.time()
     print(f'TOTAL TIME: {np.round((tfin-tin)/60.,2)} min')
-
-    # args = {
-    #     '-sample':'pru',
-    #     '-lens_cat':'voids_LCDM_09.dat',
-    #     '-source_cat':'l768_gr_octant_19218.fits',
-    #     '-Rv_min':0.,
-    #     '-Rv_max':50.,
-    #     '-rho1_min':-1.,
-    #     '-rho1_max':1.,
-    #     '-rho2_min':-1.,
-    #     '-rho2_max':100.,
-    #     '-FLAG':2.,
-    #     '-z_min':0.1,
-    #     '-z_max':0.5,
-    #     '-addnoise':False,
-    #     '-RIN':0.05,
-    #     '-ROUT':5.,
-    #     '-ndots':40,
-    #     '-ncores':10,
-    #     '-nk':100,
-    #     '-nslices':1,
-    # }
-
-    # parser = ArgumentParser()
-    # for key,val in args.items():
-    #     parser.add_argument(key, action='store',dest=key[1:],default=val,type=type(val))
-    # args = parser.parse_args()
-
