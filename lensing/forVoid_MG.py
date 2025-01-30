@@ -287,15 +287,18 @@ def main(args=args):
     R = (bines[:-1] + np.diff(bines)*0.5)
 
     if bool(args.n_runslices-1):
-        R, Sigma, DSigma_T, DSigma_X, Ninbin = stacking(args.RIN, args.ROUT, args.ndots, args.nk, L, K)
+        print('Running single slice')
+        Sigma, DSigma_T, DSigma_X, Ninbin = stacking(args.RIN, args.ROUT, args.ndots, args.nk, L, K)
 
         covS = cov_matrix(Sigma[1:,:])
         covDSt = cov_matrix(DSigma_T[1:,:])
         covDSx = cov_matrix(DSigma_X[1:,:])
 
     else:
+        print('Running multiple slice')
+
         cuts = np.round(np.linspace(args.RIN, args.ROUT, args.n_runslices+1),2)
-        R = np.array([])
+        # R = np.array([])
         Sigma = np.array([])
         DSigma_T = np.array([])
         DSigma_X = np.array([])
@@ -308,11 +311,11 @@ def main(args=args):
             
             rmin, rmax = cuts[j], cuts[j+1]
             res_parcial = stacking(rmin, rmax, n, args.nk, L, K)
-            R = np.append(R, res_parcial[0])
-            Sigma = np.append(Sigma, res_parcial[1])
-            DSigma_T = np.append(DSigma_T, res_parcial[2])
-            DSigma_X = np.append(DSigma_X, res_parcial[3])
-            Ninbin = np.append(Ninbin, res_parcial[4])
+            # R = np.append(R, res_parcial[0])
+            Sigma = np.append(Sigma, res_parcial[0])
+            DSigma_T = np.append(DSigma_T, res_parcial[1])
+            DSigma_X = np.append(DSigma_X, res_parcial[2])
+            Ninbin = np.append(Ninbin, res_parcial[3])
         
         Sigma = Sigma.rehsape(args.nk+1,args.ndots)
         DSigma_T = DSigma_T.rehsape(args.nk+1,args.ndots)

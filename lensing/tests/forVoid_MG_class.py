@@ -5,7 +5,7 @@ from astropy.constants import G,c,M_sun,pc
 from astropy.io import fits
 import astropy.units as u
 from functools import partial
-from maria_func import *
+from funcs import *
 from multiprocessing import Pool
 import numpy as np
 import os
@@ -139,8 +139,8 @@ class VoidLensing:
             
         #get convergence
         k  = catdata.kappa*sigma_c/Rv
+        
         r = (np.rad2deg(rads)/DEGxMPC)/Rv
-
         bines = np.linspace(self.RIN,self.ROUT,num=self.ndots+1)
         dig = np.digitize(r,bines)
                 
@@ -159,7 +159,7 @@ class VoidLensing:
         return SIGMAwsum, DSIGMAwsum_T, DSIGMAwsum_X, N_inbin
     
     def stack(self):
-        
+
         print(''.center(14,"="))
         print('RMIN: '.ljust(7,'.'), f' {self.RIN}'.rjust(7,'.'), sep='')
         print('RMAX: '.ljust(7,'.'), f' {self.ROUT}'.rjust(7,'.'),sep='')
@@ -271,21 +271,6 @@ def sourcecat_load(source_cat: str) -> fits.HDUList:
         S = f[1].data[mask]
 
     return S
-
-def cov_matrix(array):
-        
-    K = len(array)
-    Kmean = np.average(array,axis=0)
-    bins = array.shape[1]
-    
-    COV = np.zeros((bins,bins))
-    
-    for k in range(K):
-        dif = (array[k]- Kmean)
-        COV += np.outer(dif,dif)        
-    
-    COV *= (K-1)/K
-    return COV
 
 # ==============================================================================  MAIN ===
 def main(lens_cat = '',
