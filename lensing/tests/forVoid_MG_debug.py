@@ -64,7 +64,7 @@ def lenscat_load(lens_cat,
 
     sqrt_nk = int(np.sqrt(nk))
     NNN = len(L[0]) ##total number of voids
-    ra,dec = L[1],L[2]
+    ra,dec = L[1]+180.0, L[2]
     K    = np.zeros((nk+1,NNN))
     K[0] = np.ones(NNN).astype(bool)
 
@@ -87,6 +87,7 @@ def lenscat_load(lens_cat,
 
     nvoids = mask.sum()
     L = L[:,mask]
+    L[1] = L[1] + 180.0
 
     if bool(ncores-1):
         if ncores > nvoids:
