@@ -63,14 +63,17 @@ class VoidLensing:
         self.addnoise: bool = False
 
         # catalogs
-        self.__S: fits.HDUList = sourcecat_load(self.source_cat)
+        self.S: fits.HDUList|None = None
 
-        self.L, self.K, self.nvoids = lenscat_load(
-            self.lens_cat,
-            self.Rv_min, self.Rv_max, self.z_min, self.z_max, self.rho1_min, self.rho1_max, self.rho2_min, self.rho2_max, self.flag,
-            self.ncores, self.octant, self.nk
-        )
+        self.L = None
+        self.K = None
+        self.nvoids: int = 0
     
+    def load_cats(self):
+        self.S = sourcecat_load(self.source_cat)
+        self.L, self.K, self.nvoids = lenscat_load(self.lens_cat,
+            self.Rv_min, self.Rv_max, self.z_min, self.z_max, self.rho1_min, self.rho1_max, self.rho2_min, self.rho2_max, self.flag,
+            self.ncores, self.octant, self.nk)
 
     def SigmaCrit(self, zl, zs):
         
@@ -322,7 +325,9 @@ def main(lens_cat = '',
         nk= nk,
         addnoise = addnoise,
     )
-    
+
+    v.load_cats()
+
     # program arguments
     print(' Program arguments '.center(30,"="))
     print('Lens catalog: '.ljust(15,'.'), f' {lens_cat}'.rjust(15,'.'), sep='')
@@ -452,7 +457,7 @@ if __name__=='__main__':
 
     parser = ArgumentParser()
     parser.add_argument('--lens_cat', type=str, default='voids_LCDM_09.dat', action='store')
-    parser.add_argument('--source_cat', type=str, default='l768_gr_04-07_for02-03_19304.fits', action='store')
+    parser.add_argument('--source_cat', type=str, default='l768_gr_z04-07_for02-03_19304.fits', action='store')
     parser.add_argument('--sample', type=str, default='TEST_LCDM_', action='store')
     parser.add_argument('-c','--ncores', type=int, default=2, action='store')
     parser.add_argument('-r','--n_runslices', type=int, default=1, action='store')
@@ -468,12 +473,12 @@ if __name__=='__main__':
     parser.add_argument('--rho2_min', type=float, default=-1.0, action='store')
     parser.add_argument('--rho2_max', type=float, default=100.0, action='store')
     parser.add_argument('--flag', type=float, default=2.0, action='store')
-    parser.add_argument('--octant', action='store_false')
+    parser.add_argument('--octant', action='store_true') ## 'store_true' guarda True SOLO cuando se da --octant
     parser.add_argument('--RIN', type=float, default=0.05, action='store')
     parser.add_argument('--ROUT', type=float, default=5.0, action='store')    
     parser.add_argument('-N','--ndots', type=int, default=22, action='store')    
     parser.add_argument('-K','--nk', type=int, default=100, action='store')    
-    parser.add_argument('--addnoise', action='store_false')
+    parser.add_argument('--addnoise', action='store_true')
     args = parser.parse_args()
     
     tin = time.time()
