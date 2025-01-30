@@ -5,6 +5,8 @@ from astropy.constants import G,c,M_sun,pc
 from astropy.io import fits
 import astropy.units as u
 from functools import partial
+import sys
+sys.path.append('/home/fcaporaso/modified_gravity/lensing')
 from funcs import ang_sep, eq2p2, cov_matrix
 from multiprocessing import Pool
 import numpy as np
