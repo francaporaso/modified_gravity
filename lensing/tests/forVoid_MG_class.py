@@ -44,23 +44,23 @@ class VoidLensing:
         self.cosmo : LambdaCDM = LambdaCDM(H0=100*h, Om0=Om0, Ode0=Ode0)
         
         # lens arguments
-        self.Rv_min: float = 0.0
-        self.Rv_max: float = 50.0
-        self.z_min: float = 0.0
-        self.z_max: float = 10.0
-        self.rho1_min: float = -1.0
-        self.rho1_max: float = 0.0
-        self.rho2_min: float = -1.0
-        self.rho2_max: float = 100.0
-        self.flag: float = 2.0
-        self.octant: bool = False
+        self.Rv_min: float = Rv_min
+        self.Rv_max: float = Rv_max
+        self.z_min: float = z_min
+        self.z_max: float = z_max
+        self.rho1_min: float = rho1_min
+        self.rho1_max: float = rho1_max
+        self.rho2_min: float = rho2_min
+        self.rho2_max: float = rho2_max
+        self.flag: float = flag
+        self.octant: bool = octant
         
         # profile arguments
-        self.RIN: float = 0.01
-        self.ROUT: float = 5.0
-        self.ndots: int = 20
-        self.nk: int = 100
-        self.addnoise: bool = False
+        self.RIN: float = RIN
+        self.ROUT: float = ROUT
+        self.ndots: int = ndots
+        self.nk: int = nk
+        self.addnoise: bool = addnoise
 
         # catalogs
         self.S: fits.HDUList|None = None
