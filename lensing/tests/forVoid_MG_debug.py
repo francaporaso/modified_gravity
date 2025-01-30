@@ -152,7 +152,7 @@ def partial_profile(addnoise, S,
 
     sigma_c = SigmaCrit(Z, catdata.true_redshift_gal)
     
-    rads, *_ = eq2p2(
+    rads, theta, *_ = eq2p2(
         np.deg2rad(catdata.ra_gal), np.deg2rad(catdata.dec_gal),
         np.deg2rad(RA0), np.deg2rad(DEC0)
     )
