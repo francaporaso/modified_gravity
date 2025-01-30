@@ -63,14 +63,14 @@ class VoidLensing:
         self.addnoise: bool = addnoise
 
         # catalogs
-        self.S: fits.HDUList|None = None
+        self.__S: fits.HDUList|None = None
 
         self.L = None
         self.K = None
         self.nvoids: int = 0
     
     def load_cats(self):
-        self.S = sourcecat_load(self.source_cat)
+        self.__S = sourcecat_load(self.source_cat)
         self.L, self.K, self.nvoids = lenscat_load(self.lens_cat,
             self.Rv_min, self.Rv_max, self.z_min, self.z_max, self.rho1_min, self.rho1_max, self.rho2_min, self.rho2_max, self.flag,
             self.ncores, self.octant, self.nk)
@@ -159,6 +159,7 @@ class VoidLensing:
         return SIGMAwsum, DSIGMAwsum_T, DSIGMAwsum_X, N_inbin
     
     def stack(self):
+        
         print(''.center(14,"="))
         print('RMIN: '.ljust(7,'.'), f' {self.RIN}'.rjust(7,'.'), sep='')
         print('RMAX: '.ljust(7,'.'), f' {self.ROUT}'.rjust(7,'.'),sep='')
