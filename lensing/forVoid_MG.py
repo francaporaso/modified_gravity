@@ -86,11 +86,11 @@ def lenscat_load(lens_cat,
     nvoids = mask.sum()
     L = L[:,mask]
 
-    if split:
-        if NSPLITS > nvoids:
-            NSPLITS = nvoids
-        lbins = int(round(nvoids/float(NSPLITS), 0))
-        slices = ((np.arange(lbins)+1)*NSPLITS).astype(int)
+    if bool(ncores-1):
+        if ncores > nvoids:
+            ncores = nvoids
+        lbins = int(round(nvoids/float(ncores), 0))
+        slices = ((np.arange(lbins)+1)*ncores).astype(int)
         slices = slices[(slices < nvoids)]
         L = np.split(L.T, slices)
         K = np.split(K.T, slices)
