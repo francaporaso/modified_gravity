@@ -156,42 +156,47 @@ def partial_profile(addnoise, S,
         np.deg2rad(catdata.ra_gal), np.deg2rad(catdata.dec_gal),
         np.deg2rad(RA0), np.deg2rad(DEC0)
     )
-                           
-    e1 = catdata.gamma1
-    e2 = -1.*catdata.gamma2
-    # Add shape noise due to intrisic galaxy shapes        
-    if addnoise:
-        es1 = -1.*catdata.defl1
-        es2 = catdata.defl2
-        e1 += es1
-        e2 += es2
-    
-    #get tangential ellipticities 
-    cos2t = np.cos(2*theta)
-    sin2t = np.sin(2*theta)
-    et = (-e1*cos2t-e2*sin2t)*sigma_c/Rv
-    ex = (-e1*sin2t+e2*cos2t)*sigma_c/Rv
-           
-    #get convergence
-    k  = catdata.kappa*sigma_c/Rv
 
-    r = (np.rad2deg(rads)/DEGxMPC)/Rv
-    bines = np.linspace(RIN,ROUT,num=ndots+1)
-    dig = np.digitize(r,bines)
-            
-    SIGMAwsum    = np.zeros(ndots)
-    DSIGMAwsum_T = np.zeros(ndots)
-    DSIGMAwsum_X = np.zeros(ndots)
-    N_inbin      = np.zeros(ndots)
-                                         
-    for nbin in range(ndots):
-        mbin = dig == nbin+1              
-        SIGMAwsum[nbin]    = k[mbin].sum()
-        DSIGMAwsum_T[nbin] = et[mbin].sum()
-        DSIGMAwsum_X[nbin] = ex[mbin].sum()
-        N_inbin[nbin]      = np.count_nonzero(mbin) ## hace lo mismo q mbin.sum() pero más rápido
+    try:
+        assert np.isnan(theta)
+    except:
+        print(RA0, DEC0)
+        assert False                       
+    # e1 = catdata.gamma1
+    # e2 = -1.*catdata.gamma2
+    # # Add shape noise due to intrisic galaxy shapes        
+    # if addnoise:
+    #     es1 = -1.*catdata.defl1
+    #     es2 = catdata.defl2
+    #     e1 += es1
+    #     e2 += es2
     
-    return SIGMAwsum, DSIGMAwsum_T, DSIGMAwsum_X, N_inbin
+    # #get tangential ellipticities 
+    # cos2t = np.cos(2*theta)
+    # sin2t = np.sin(2*theta)
+    # et = (-e1*cos2t-e2*sin2t)*sigma_c/Rv
+    # ex = (-e1*sin2t+e2*cos2t)*sigma_c/Rv
+           
+    # #get convergence
+    # k  = catdata.kappa*sigma_c/Rv
+
+    # r = (np.rad2deg(rads)/DEGxMPC)/Rv
+    # bines = np.linspace(RIN,ROUT,num=ndots+1)
+    # dig = np.digitize(r,bines)
+            
+    # SIGMAwsum    = np.zeros(ndots)
+    # DSIGMAwsum_T = np.zeros(ndots)
+    # DSIGMAwsum_X = np.zeros(ndots)
+    # N_inbin      = np.zeros(ndots)
+                                         
+    # for nbin in range(ndots):
+    #     mbin = dig == nbin+1              
+    #     SIGMAwsum[nbin]    = k[mbin].sum()
+    #     DSIGMAwsum_T[nbin] = et[mbin].sum()
+    #     DSIGMAwsum_X[nbin] = ex[mbin].sum()
+    #     N_inbin[nbin]      = np.count_nonzero(mbin) ## hace lo mismo q mbin.sum() pero más rápido
+    
+    # return SIGMAwsum, DSIGMAwsum_T, DSIGMAwsum_X, N_inbin
 
 part_profile_func = partial(partial_profile, args.addnoise, sourcecat_load(args.source_cat))
 def partial_profile_unpack(minput):
@@ -289,7 +294,8 @@ def main(args=args):
     R = (bines[:-1] + np.diff(bines)*0.5)
 
     if not bool(args.n_runslices-1):
-        Sigma, DSigma_T, DSigma_X, Ninbin = stacking(args.RIN, args.ROUT, args.ndots, args.nk, L, K)
+        # Sigma, DSigma_T, DSigma_X, Ninbin = stacking(args.RIN, args.ROUT, args.ndots, args.nk, L, K)
+        theta = stacking(args.RIN, args.ROUT, args.ndots, args.nk, L, K)
 
         covS = cov_matrix(Sigma[1:,:])
         covDSt = cov_matrix(DSigma_T[1:,:])
