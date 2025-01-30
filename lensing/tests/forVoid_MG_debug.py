@@ -149,7 +149,7 @@ def partial_profile(addnoise, S,
 
     sigma_c = SigmaCrit(Z, catdata.true_redshift_gal)
     
-    rads, theta, *_ = eq2p2(
+    rads, *_ = eq2p2(
         np.deg2rad(catdata.ra_gal), np.deg2rad(catdata.dec_gal),
         np.deg2rad(RA0), np.deg2rad(DEC0)
     )
@@ -164,10 +164,10 @@ def partial_profile(addnoise, S,
         e2 += es2
     
     #get tangential ellipticities 
-    cos2t = np.cos(2*theta)
-    sin2t = np.sin(2*theta)
-    et = (-e1*cos2t-e2*sin2t)*sigma_c/Rv
-    ex = (-e1*sin2t+e2*cos2t)*sigma_c/Rv
+    # cos2t = np.cos(2*theta)
+    # sin2t = np.sin(2*theta)
+    # et = (-e1*cos2t-e2*sin2t)*sigma_c/Rv
+    # ex = (-e1*sin2t+e2*cos2t)*sigma_c/Rv
            
     #get convergence
     k  = catdata.kappa*sigma_c/Rv
@@ -184,8 +184,8 @@ def partial_profile(addnoise, S,
     for nbin in range(ndots):
         mbin = dig == nbin+1              
         SIGMAwsum[nbin]    = k[mbin].sum()
-        DSIGMAwsum_T[nbin] = et[mbin].sum()
-        DSIGMAwsum_X[nbin] = ex[mbin].sum()
+        DSIGMAwsum_T[nbin] = e1[mbin].sum()
+        DSIGMAwsum_X[nbin] = e2[mbin].sum()
         N_inbin[nbin]      = np.count_nonzero(mbin) ## hace lo mismo q mbin.sum() pero más rápido
     
     return SIGMAwsum, DSIGMAwsum_T, DSIGMAwsum_X, N_inbin
