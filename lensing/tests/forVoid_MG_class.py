@@ -301,6 +301,28 @@ def main(lens_cat = '',
         nk= 100,
         addnoise = False):
 
+    ## Runing program
+    tini = time.time()
+    
+    v = VoidLensing(
+        lens_cat = lens_cat,
+        source_cat = source_cat,
+        sample = sample,
+        ncores = ncores,
+        n_runslices= n_runslices,
+        h = h, Om0 = Om0, Ode0 = Ode0,
+        Rv_min = Rv_min, Rv_max = Rv_max,
+        z_min = z_min, z_max = z_max,
+        rho1_min = rho1_min, rho1_max = rho1_max,
+        rho2_min = rho2_min, rho2_max = rho2_max,
+        flag = flag,
+        octant = octant,
+        RIN = RIN, ROUT = ROUT,
+        ndots= ndots,
+        nk= nk,
+        addnoise = addnoise,
+    )
+    
     # program arguments
     print(' Program arguments '.center(30,"="))
     print('Lens catalog: '.ljust(15,'.'), f' {lens_cat}'.rjust(15,'.'), sep='')
@@ -328,6 +350,7 @@ def main(lens_cat = '',
     print('Redshift: '.ljust(15,'.'), f' [{z_min}, {z_max})'.rjust(15,'.'),sep='')
     print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='')
     print('Octante: '.ljust(15,'.'), f' {octant}'.rjust(15,'.'),sep='')
+    print('N voids: '.ljust(15,'.'), f' {v.nvoids}'.rjust(15,'.'),sep='')
     
     # profile arguments
     print(' Profile arguments '.center(30,"="))
@@ -337,27 +360,6 @@ def main(lens_cat = '',
     print('N jackknife: '.ljust(15,'.'), f' {nk}'.rjust(15,'.'),sep='')
     print('Shape Noise: '.ljust(15,'.'), f' {addnoise}'.rjust(15,'.'),sep='')
     
-    ## Runing program
-    tini = time.time()
-    
-    v = VoidLensing(
-        lens_cat = lens_cat,
-        source_cat = source_cat,
-        sample = sample,
-        ncores = ncores,
-        n_runslices= n_runslices,
-        h = h, Om0 = Om0, Ode0 = Ode0,
-        Rv_min = Rv_min, Rv_max = Rv_max,
-        z_min = z_min, z_max = z_max,
-        rho1_min = rho1_min, rho1_max = rho1_max,
-        rho2_min = rho2_min, rho2_max = rho2_max,
-        flag = flag,
-        octant = octant,
-        RIN = RIN, ROUT = ROUT,
-        ndots= ndots,
-        nk= nk,
-        addnoise = addnoise,
-    )
 
     if bool(n_runslices-1):
         R, Sigma, DSigma_T, DSigma_X, Ninbin = v.stack()
@@ -457,20 +459,20 @@ if __name__=='__main__':
     parser.add_argument('--h_cosmo', type=float, default=1.0, action='store')
     parser.add_argument('--Om0', type=float, default=0.3089, action='store')
     parser.add_argument('--Ode0', type=float, default=0.6911, action='store')
-    parser.add_argument('--Rv_min', type=float, default=15.0, action='store', required=True)
-    parser.add_argument('--Rv_max', type=float, default=20.0, action='store', required=True)
-    parser.add_argument('--z_min', type=float, default=0.2, action='store', required=True)
-    parser.add_argument('--z_max', type=float, default=0.3, action='store', required=True)
-    parser.add_argument('--rho1_min', type=float, default=-1.0, action='store', required=True)
-    parser.add_argument('--rho1_max', type=float, default=0.0, action='store', required=True)
-    parser.add_argument('--rho2_min', type=float, default=-1.0, action='store', required=True)
-    parser.add_argument('--rho2_max', type=float, default=100.0, action='store', required=True)
+    parser.add_argument('--Rv_min', type=float, default=15.0, action='store')
+    parser.add_argument('--Rv_max', type=float, default=20.0, action='store')
+    parser.add_argument('--z_min', type=float, default=0.2, action='store')
+    parser.add_argument('--z_max', type=float, default=0.3, action='store')
+    parser.add_argument('--rho1_min', type=float, default=-1.0, action='store')
+    parser.add_argument('--rho1_max', type=float, default=0.0, action='store')
+    parser.add_argument('--rho2_min', type=float, default=-1.0, action='store')
+    parser.add_argument('--rho2_max', type=float, default=100.0, action='store')
     parser.add_argument('--flag', type=float, default=2.0, action='store')
     parser.add_argument('--octant', action='store_false')
-    parser.add_argument('--RIN', type=float, default=0.05, action='store', required=True)
-    parser.add_argument('--ROUT', type=float, default=5.0, action='store', required=True)    
-    parser.add_argument('-N','--ndots', type=int, default=22, action='store', required=True)    
-    parser.add_argument('-K','--nk', type=int, default=100, action='store', required=True)    
+    parser.add_argument('--RIN', type=float, default=0.05, action='store')
+    parser.add_argument('--ROUT', type=float, default=5.0, action='store')    
+    parser.add_argument('-N','--ndots', type=int, default=22, action='store')    
+    parser.add_argument('-K','--nk', type=int, default=100, action='store')    
     parser.add_argument('--addnoise', action='store_false')
     args = parser.parse_args()
     
