@@ -85,6 +85,7 @@ def lenscat_load(lens_cat,
 
     nvoids = mask.sum()
     L = L[:,mask]
+    L[1] = L[1] + 180.0 # correction to match ra with sources
 
     if bool(ncores-1):
         if ncores > nvoids:
