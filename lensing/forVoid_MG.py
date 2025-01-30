@@ -263,7 +263,8 @@ def main(args=args):
     print('Radii: '.ljust(15,'.'), f' [{args.Rv_min}, {args.Rv_max})'.rjust(15,'.'), sep='')
     print('Redshift: '.ljust(15,'.'), f' [{args.z_min}, {args.z_max})'.rjust(15,'.'),sep='')
     print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='')
-    print('Octante: '.ljust(15,'.'), f' {False}'.rjust(15,'.'),sep='')
+    print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
+    print('N voids: '.ljust(15,'.'), f' {nvoids}'.rjust(15,'.'),sep='')
     
     # profile arguments
     print(' Profile arguments '.center(30,"="))
