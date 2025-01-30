@@ -80,3 +80,18 @@ def eq2p2(RA,Dec,RA_center,Dec_center):
     Theta[Qd4] = 2*np.pi-uTheta[Qd4]
    
     return Sep, Theta, cosT,uTheta
+
+def cov_matrix(array):
+        
+    K = len(array)
+    Kmean = np.average(array,axis=0)
+    bins = array.shape[1]
+    
+    COV = np.zeros((bins,bins))
+    
+    for k in range(K):
+        dif = (array[k]- Kmean)
+        COV += np.outer(dif,dif)        
+    
+    COV *= (K-1)/K
+    return COV

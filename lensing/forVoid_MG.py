@@ -1,11 +1,11 @@
-import argparse
+from argparse import ArgumentParser
 from astropy.cosmology import LambdaCDM
 from astropy.coordinates import SkyCoord
 from astropy.constants import G,c,M_sun,pc
 from astropy.io import fits
 import astropy.units as u
 from functools import partial
-from maria_func import *
+from funcs import ang_sep, eq2p2, cov_matrix
 from multiprocessing import Pool
 import numpy as np
 import os
@@ -13,35 +13,32 @@ import sys
 import time
 from tqdm import tqdm
 
-options = {
-	'-sample':'pru',
-	'-lens_cat':'voids_LCDM_09.dat',
-	'-source_cat':'l768_gr_octant_19218.fits',
-	'-Rv_min':0.,
-	'-Rv_max':50.,
-	'-rho1_min':-1.,
-	'-rho1_max':1.,
-	'-rho2_min':-1.,
-	'-rho2_max':100.,
-	'-FLAG':2.,
-	'-z_min':0.1,
-	'-z_max':0.5,
-	'-addnoise':False,
-	'-RIN':0.05,
-	'-ROUT':5.,
-	'-ndots':40,
-	'-ncores':10,
-	'-nk':100,
-	'-nslices':1,
-}
-
-parser = argparse.ArgumentParser()
-for key,val in options.items():
-    parser.add_argument(key, action='store',dest=key[1:],default=val,type=type(val))
+parser = ArgumentParser()
+parser.add_argument('--lens_cat', type=str, default='voids_LCDM_09.dat', action='store')
+parser.add_argument('--source_cat', type=str, default='l768_gr_z04-07_for02-03_19304.fits', action='store')
+parser.add_argument('--sample', type=str, default='TEST_LCDM_', action='store')
+parser.add_argument('-c','--ncores', type=int, default=2, action='store')
+parser.add_argument('-r','--n_runslices', type=int, default=1, action='store')
+parser.add_argument('--h_cosmo', type=float, default=1.0, action='store')
+parser.add_argument('--Om0', type=float, default=0.3089, action='store')
+parser.add_argument('--Ode0', type=float, default=0.6911, action='store')
+parser.add_argument('--Rv_min', type=float, default=15.0, action='store')
+parser.add_argument('--Rv_max', type=float, default=20.0, action='store')
+parser.add_argument('--z_min', type=float, default=0.2, action='store')
+parser.add_argument('--z_max', type=float, default=0.3, action='store')
+parser.add_argument('--rho1_min', type=float, default=-1.0, action='store')
+parser.add_argument('--rho1_max', type=float, default=0.0, action='store')
+parser.add_argument('--rho2_min', type=float, default=-1.0, action='store')
+parser.add_argument('--rho2_max', type=float, default=100.0, action='store')
+parser.add_argument('--flag', type=float, default=2.0, action='store')
+parser.add_argument('--octant', action='store_true') ## 'store_true' guarda True SOLO cuando se da --octant
+parser.add_argument('--RIN', type=float, default=0.05, action='store')
+parser.add_argument('--ROUT', type=float, default=5.0, action='store')    
+parser.add_argument('-N','--ndots', type=int, default=22, action='store')    
+parser.add_argument('-K','--nk', type=int, default=100, action='store')    
+parser.add_argument('--addnoise', action='store_true')
 args = parser.parse_args()
-
-h, Om0, Ode0 = 1.0, 0.3089, 0.6911 #Planck15
-cosmo = LambdaCDM(H0=100*h, Om0=Om0, Ode0=Ode0)
+cosmo = LambdaCDM(H0=100*args.h_cosmo, Om0=args.Om0, Ode0=args.Ode0)
 
 #parameters
 cvel = c.value;    # Speed of light (m.s-1)
@@ -49,19 +46,14 @@ G    = G.value;    # Gravitational constant (m3.kg-1.s-2)
 pc   = pc.value    # 1 pc (m)
 Msun = M_sun.value # Solar mass (kg)
 
-### TODO
-## añadir loop para q calcule ambos fR y LCDM
-
-def lenscat_load(Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max, 
-                 flag=2.0, lensname="voids_LCDM_09.dat",
-                 split=False, NSPLITS=1,
-                 nk = 100, 
-                 octant=True):
+def lenscat_load(lens_cat,
+                 Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max, flag,
+                 ncores:int, octant:bool, nk:int):
 
     ## 0:Rv, 1:ra, 2:dec, 3:z, 4:xv, 5:yv, 6:zv, 7:rho1, 8:rho2, 9:logp, 10:diff CdM y CdV, 11:flag
     ## CdM: centro de masa
     ## CdV: centro del void
-    L = np.loadtxt("/home/fcaporaso/cats/L768/"+lensname).T
+    L = np.loadtxt("/home/fcaporaso/cats/L768/"+lens_cat).T
 
     if octant:
         # selecciono los void en un octante
@@ -125,10 +117,9 @@ def SigmaCrit(zl, zs):
 
     return (((cvel**2.0)/(4.0*np.pi*G*Dl))*(1./BETA_array))*(pc**2/Msun)
 
-def partial_profile(RIN, ROUT, ndots, addnoise,
-                    # ra_gal, dec_gal, true_redshift_gal, kappa, gamma1, gamma2,
-                    S,
-                    RA0, DEC0, Z, Rv):
+def partial_profile(addnoise, S,
+                    RA0, DEC0, Z, Rv,
+                    RIN, ROUT, ndots):
     
     ndots = int(ndots)
     
@@ -142,14 +133,8 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     mask = (S.true_redshift_gal > (Z+0.1))&(
         S.dec_gal < c2[0].dec.deg)&(S.dec_gal > c2[2].dec.deg)&(
         S.ra_gal < c2[1].ra.deg)&(S.ra_gal > c2[3].ra.deg)
-
-    ## solid angle separation in sky from RA0,DEC0
-    ## WARNING: memory leak, too many objects to calculate sep
-    # sep = coords.separation(SkyCoord(RA0,DEC0,unit='deg')).value
-    # mask = (sep < delta)&(true_redshift_gal > (Z+0.1))
     
     ## solid angle sep with maria_func
-    ## WARNING: memory leak, too many objects to calculate sep
     ## using in case the other mask fails
     if mask.sum() == 0:
         print('Fail for',RA0,DEC0)
@@ -161,12 +146,6 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
         assert mask.sum() != 0
 
     catdata = S[mask]
-    # catdata_ra = ra_gal[mask]
-    # catdata_dec = dec_gal[mask]
-    # catdata_z = true_redshift_gal[mask]
-    # catdata_kappa = kappa[mask]
-    # catdata_gamma1 = gamma1[mask]
-    # catdata_gamma2 = gamma2[mask]
 
     sigma_c = SigmaCrit(Z, catdata.true_redshift_gal)
     
@@ -210,101 +189,29 @@ def partial_profile(RIN, ROUT, ndots, addnoise,
     
     return SIGMAwsum, DSIGMAwsum_T, DSIGMAwsum_X, N_inbin
 
-part_profile_func = partial(
-    partial_profile, args.RIN, args.ROUT, args.ndots, args.addnoise, sourcecat_load(args.source_cat),
-)
+part_profile_func = partial(partial_profile, args.addnoise, sourcecat_load(args.source_cat))
 def partial_profile_unpack(minput):
     return part_profile_func(*minput)
 
-## TODO
-# para q funcione import, se puede agregar el llamado de los args acá adentro!
-# lo unico, hay q repensar la definición de part_profile_func !!
-def main(lcat, sample='pru', output_file=None,
-         Rv_min=0., Rv_max=50.,
-         rho1_min=-1., rho1_max=0.,
-         rho2_min=-1., rho2_max=100.,
-         z_min = 0.1, z_max = 1.0,
-         RIN = .05, ROUT =5.,
-         ndots= 40, ncores=10, nk=100,
-         addnoise = False, FLAG = 2.):
-        
-    tini = time.time()
-    #reading Lens catalog
-    L, K, nvoids = lenscat_load(
-        Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max,
-        flag=FLAG, lensname=lcat, split=True, NSPLITS=ncores, nk=nk, octant=False,
-    )
-    
-    # program arguments
-    print(' Program arguments '.center(30,"="))
-    print('Lens catalog: '.ljust(15,'.'), f' {lcat}'.rjust(15,'.'), sep='')
-    # print('Sources catalog: '.ljust(15,'.'), f' {source_cat}'.rjust(15,'.'),sep='')
-    print('Output name: '.ljust(15,'.'), f' {sample}'.rjust(15,'.'),sep='')
-    print('N of cores: '.ljust(15,'.'), f' {ncores}'.rjust(15,'.'),sep='')
-    # print('N of slices: '.ljust(15,'.'), f' {n_runslices}'.rjust(15,'.'),sep='')
+def stacking(RIN, ROUT, ndots, nk,
+             L, K):
 
-    # cosmology
-    # print(' Cosmo params '.center(30,"="))
-    # print('h: '.ljust(15,'.'), f' {h}'.rjust(15,'.'), sep='')
-    # print('Om0: '.ljust(15,'.'), f' {Om0}'.rjust(15,'.'),sep='')
-    # print('Ode0: '.ljust(15,'.'), f' {Ode0}'.rjust(15,'.'),sep='')
-    
-    if rho2_max<=0:
-        tipo = 'R'
-    elif rho2_min>=0:
-        tipo = 'S'
-    else:
-        tipo = 'all'
-    
-    # lens arguments
-    print(' Void sample '.center(30,"="))
-    print('Radii: '.ljust(15,'.'), f' [{Rv_min}, {Rv_max})'.rjust(15,'.'), sep='')
-    print('Redshift: '.ljust(15,'.'), f' [{z_min}, {z_max})'.rjust(15,'.'),sep='')
-    print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='')
-    print('Octante: '.ljust(15,'.'), f' {False}'.rjust(15,'.'),sep='')
-    
-    # profile arguments
-    print(' Profile arguments '.center(30,"="))
-    print('RMIN: '.ljust(15,'.'), f' {RIN}'.rjust(15,'.'), sep='')
-    print('RMAX: '.ljust(15,'.'), f' {ROUT}'.rjust(15,'.'),sep='')
-    print('N: '.ljust(15,'.'), f' {ndots}'.rjust(15,'.'),sep='')
-    print('N jackknife: '.ljust(15,'.'), f' {nk}'.rjust(15,'.'),sep='')
-    print('Shape Noise: '.ljust(15,'.'), f' {addnoise}'.rjust(15,'.'),sep='')
-
-    try:
-        os.mkdir('results/')
-    except FileExistsError:
-        pass
-    
-    if not output_file:
-        output_file = f'results/'
-    # Defining radial bins
-    bines = np.linspace(RIN,ROUT,num=ndots+1)
-    R = (bines[:-1] + np.diff(bines)*0.5)
-    # WHERE THE SUMS ARE GOING TO BE SAVED
-    
+    # WHERE THE SUMS ARE GOING TO BE SAVED    
     Ninbin = np.zeros((nk+1,ndots))    
     SIGMAwsum    = np.zeros((nk+1,ndots)) 
     DSIGMAwsum_T = np.zeros((nk+1,ndots)) 
     DSIGMAwsum_X = np.zeros((nk+1,ndots))
                 
-    print(f'Saved in ../{output_file+sample}.fits')
-    LARGO = len(L)
-    tslice = np.array([])
-    
     for i, Li in enumerate(tqdm(L)):
-                
-        t1 = time.time()
         num = len(Li)
-        
         if num == 1:
-            entrada = [Li[1], Li[2],
-                       Li[3], Li[0]]
-            
-            resmap = np.array([partial_profile(entrada)])
+            entrada = [Li[1], Li[2], Li[3], Li[0],
+                       RIN, ROUT, ndots]
+            resmap = np.array([part_profile_func(entrada)])
 
         else:
-            entrada = np.array([Li.T[1],Li.T[2],Li.T[3],Li.T[0]]).T
+            entrada = np.array([Li.T[1],Li.T[2],Li.T[3],Li.T[0],
+                                np.full(num,RIN), np.full(num,ROUT), np.full(num,ndots)]).T
             with Pool(processes=num) as pool:
                 resmap = np.array(pool.map(partial_profile_unpack,entrada))
                 pool.close()
@@ -325,6 +232,94 @@ def main(lcat, sample='pru', output_file=None,
     DSigma_T  = (DSIGMAwsum_T/Ninbin)
     DSigma_X  = (DSIGMAwsum_X/Ninbin)
 
+    return Sigma, DSigma_T, DSigma_X, Ninbin
+
+
+def main(args=args):
+        
+    tini = time.time()
+    #reading Lens catalog
+    L, K, nvoids = lenscat_load(args.lens_cat,
+        args.Rv_min, args.Rv_max, args.z_min, args.z_max, args.rho1_min, args.rho1_max, args.rho2_min, args.rho2_max, args.flag,
+        args.ncores, args.octant, args.nk)
+    
+    # program arguments
+    print(' Program arguments '.center(30,"="))
+    print('Lens catalog: '.ljust(15,'.'), f' {args.lens_cat}'.rjust(15,'.'), sep='')
+    # print('Sources catalog: '.ljust(15,'.'), f' {source_cat}'.rjust(15,'.'),sep='')
+    print('Output name: '.ljust(15,'.'), f' {args.sample}'.rjust(15,'.'),sep='')
+    print('N of cores: '.ljust(15,'.'), f' {args.ncores}'.rjust(15,'.'),sep='')
+    print('N of slices: '.ljust(15,'.'), f' {args.n_runslices}'.rjust(15,'.'),sep='')
+    
+    if args.rho2_max<=0:
+        tipo = 'R'
+    elif args.rho2_min>=0:
+        tipo = 'S'
+    else:
+        tipo = 'all'
+    
+    # lens arguments
+    print(' Void sample '.center(30,"="))
+    print('Radii: '.ljust(15,'.'), f' [{args.Rv_min}, {args.Rv_max})'.rjust(15,'.'), sep='')
+    print('Redshift: '.ljust(15,'.'), f' [{args.z_min}, {args.z_max})'.rjust(15,'.'),sep='')
+    print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='')
+    print('Octante: '.ljust(15,'.'), f' {False}'.rjust(15,'.'),sep='')
+    
+    # profile arguments
+    print(' Profile arguments '.center(30,"="))
+    print('RMIN: '.ljust(15,'.'), f' {args.RIN}'.rjust(15,'.'), sep='')
+    print('RMAX: '.ljust(15,'.'), f' {args.ROUT}'.rjust(15,'.'),sep='')
+    print('N: '.ljust(15,'.'), f' {args.ndots}'.rjust(15,'.'),sep='')
+    print('N jackknife: '.ljust(15,'.'), f' {args.nk}'.rjust(15,'.'),sep='')
+    print('Shape Noise: '.ljust(15,'.'), f' {args.addnoise}'.rjust(15,'.'),sep='')
+
+    try:
+        os.mkdir('results/')
+    except FileExistsError:
+        pass
+    
+    output_file = f'results/'
+    # Defining radial bins
+    bines = np.linspace(args.RIN,args.ROUT,num=args.ndots+1)
+    R = (bines[:-1] + np.diff(bines)*0.5)
+
+    if bool(args.n_runslices-1):
+        R, Sigma, DSigma_T, DSigma_X, Ninbin = stacking(args.RIN, args.ROUT, args.ndots, args.nk, L, K)
+
+        covS = cov_matrix(Sigma[1:,:])
+        covDSt = cov_matrix(DSigma_T[1:,:])
+        covDSx = cov_matrix(DSigma_X[1:,:])
+
+    else:
+        cuts = np.round(np.linspace(args.RIN, args.ROUT, args.n_runslices+1),2)
+        R = np.array([])
+        Sigma = np.array([])
+        DSigma_T = np.array([])
+        DSigma_X = np.array([])
+        Ninbin = np.array([])
+        
+        n = args.ndots//args.n_runslices
+
+        for j in np.arange(args.n_runslices):
+            print(f'RUN {j+1} out of {args.n_runslices} slices')
+            
+            rmin, rmax = cuts[j], cuts[j+1]
+            res_parcial = stacking(rmin, rmax, n, args.nk, L, K)
+            R = np.append(R, res_parcial[0])
+            Sigma = np.append(Sigma, res_parcial[1])
+            DSigma_T = np.append(DSigma_T, res_parcial[2])
+            DSigma_X = np.append(DSigma_X, res_parcial[3])
+            Ninbin = np.append(Ninbin, res_parcial[4])
+        
+        Sigma = Sigma.rehsape(args.nk+1,args.ndots)
+        DSigma_T = DSigma_T.rehsape(args.nk+1,args.ndots)
+        DSigma_X = DSigma_X.rehsape(args.nk+1,args.ndots)
+        Ninbin = Ninbin.rehsape(args.nk+1,args.ndots)
+
+        covS = cov_matrix(Sigma[1:,:])
+        covDSt = cov_matrix(DSigma_T[1:,:])
+        covDSx = cov_matrix(DSigma_X[1:,:])
+
     # AVERAGE VOID PARAMETERS AND SAVE IT IN HEADER
     zmean    = np.concatenate([L[i][:,3] for i in range(len(L))]).mean()
     rvmean   = np.concatenate([L[i][:,0] for i in range(len(L))]).mean()
@@ -332,131 +327,48 @@ def main(lcat, sample='pru', output_file=None,
     
     head = fits.Header()
     head.append(('nvoids',int(nvoids)))
-    head.append(('cat',lcat))
-    head.append(('Rv_min',np.round(Rv_min,2)))
-    head.append(('Rv_max',np.round(Rv_max,2)))
+    head.append(('cat',args.lens_cat))
+    head.append(('Rv_min',np.round(args.Rv_min,2)))
+    head.append(('Rv_max',np.round(args.Rv_max,2)))
     head.append(('Rv_mean',np.round(rvmean,4)))
-    head.append(('r1_min',np.round(rho1_min,2)))
-    head.append(('r1_max',np.round(rho1_max,2)))
-    head.append(('r2_min',np.round(rho2_min,2)))
-    head.append(('r2_max',np.round(rho2_max,2)))
+    head.append(('r1_min',np.round(args.rho1_min,2)))
+    head.append(('r1_max',np.round(args.rho1_max,2)))
+    head.append(('r2_min',np.round(args.rho2_min,2)))
+    head.append(('r2_max',np.round(args.rho2_max,2)))
     head.append(('r2_mean',np.round(rho2mean,4)))
-    head.append(('z_min',np.round(z_min,2)))
-    head.append(('z_max',np.round(z_max,2)))
+    head.append(('z_min',np.round(args.z_min,2)))
+    head.append(('z_max',np.round(args.z_max,2)))
     head.append(('z_mean',np.round(zmean,4)))
     head.append(('SLCS_INFO'))
-    head.append(('RMIN',np.round(RIN,4)))
-    head.append(('RMAX',np.round(ROUT,4)))
-    head.append(('ndots',np.round(ndots,4)))
+    head.append(('RMIN',np.round(args.RIN,4)))
+    head.append(('RMAX',np.round(args.ROUT,4)))
+    head.append(('ndots',np.round(args.ndots,4)))
 
     table_p = [fits.Column(name='Rp', format='E', array=R),
-               fits.Column(name='Sigma',    format='E', array=Sigma.flatten()),
+               fits.Column(name='Sigma', format='E', array=Sigma.flatten()),
                fits.Column(name='DSigma_T', format='E', array=DSigma_T.flatten()),
                fits.Column(name='DSigma_X', format='E', array=DSigma_X.flatten()),
                fits.Column(name='Ninbin', format='E', array=Ninbin.flatten())]
 
+    table_c = [fits.Column(name='Sigma', format='E', array=covS.flatten()),
+               fits.Column(name='DSigma_T', format='E', array=covDSt.flatten()),
+               fits.Column(name='DSigma_X', format='E', array=covDSx.flatten())]
+
     tbhdu_p = fits.BinTableHDU.from_columns(fits.ColDefs(table_p))
+    tbhdu_c = fits.BinTableHDU.from_columns(fits.ColDefs(table_c))
     
     primary_hdu = fits.PrimaryHDU(header=head)
     
-    hdul = fits.HDUList([primary_hdu, tbhdu_p])
+    hdul = fits.HDUList([primary_hdu, tbhdu_p, tbhdu_c])
     
-    hdul.writeto(f'{output_file+sample}.fits',overwrite=True)
-    print(f'File saved... {output_file+sample}.fits')
+    hdul.writeto(f'{output_file+args.sample}.fits',overwrite=True)
+    print(f'File saved... {output_file+args.sample}.fits')
             
-    tfin = time.time()
-    
-    print(f'Partial time: {np.round((tfin-tini)/60. , 3)} mins')
-        
-
-def run_in_parts(RIN,ROUT, nslices,
-                lcat, sample='pru', output_file=None, Rv_min=0., Rv_max=50., rho1_min=-1., rho1_max=0., 
-                rho2_min=-1., rho2_max=100., z_min = 0.1, z_max = 1.0, ndots= 40, ncores=10,
-                addnoise=False, FLAG = 2.):
-
-    cuts = np.round(np.linspace(RIN,ROUT,num=nslices+1),2)
-    
-    try:
-        os.mkdir(f'/home/fcaporaso/modified_gravity/lensing/profiles/Rv{round(Rv_min)}-{round(Rv_max)}/')
-    except FileExistsError:
-        pass
-    if not output_file:
-        output_file = f'/home/fcaporaso/modified_gravity/lensing/profiles/Rv{round(Rv_min)}-{round(Rv_max)}/'
-    
-    tslice = np.zeros(nslices)
-    #orden inverso: calcula del corte mas externo al mas interno
-    #cuts = cuts[::-1]
-    for j in np.arange(nslices):
-        RIN, ROUT = cuts[j], cuts[j+1]
-        #ROUT, RIN = cuts[j], cuts[j+1]
-        t1 = time.time()
-        print(f'RUN {j+1} out of {nslices} slices')
-        #print(f'RUNNING FOR RIN={RIN}, ROUT={ROUT}')
-        main(
-            lcat, 
-            sample+f'rbin_{j}',
-            output_file=output_file,
-            Rv_min=Rv_min, Rv_max=Rv_max, 
-            z_min=z_min, z_max=z_max,
-            rho1_min=rho1_min, rho1_max=rho1_max, 
-            rho2_min=rho2_min, rho2_max=rho2_max, 
-            RIN=RIN, ROUT=ROUT, 
-            ndots=ndots//nslices, 
-            ncores=ncores, 
-            addnoise=addnoise, 
-            FLAG=FLAG
-        )
-        t2 = time.time()
-        tslice[j] = (t2-t1)/60.     
-        #print('TIME SLICE')
-        #print(f'{np.round(tslice[j],2)} min')
-        print('Estimated remaining time for run in parts')
-        print(f'{np.round(np.mean(tslice[:j+1])*(nslices-(j+1)),2)} min')
+    print(f'Partial time: {np.round((time.time()-tini)/60. , 3)} mins')
 
 
 if __name__=='__main__':
 
-    # folder = '/home/fcaporaso/cats/L768/'
-    # with fits.open(folder+'l768_mg_octant_19219.fits') as f:
-    #     g1_mask = np.abs(f[1].data.gamma1) < 10.0
-    #     S = f[1].data[g1_mask]
-    # sim = ['l768_gr_z04-07_for02-03_19304.fits','l768_mg_z04-07_for02-03_19260.fits']
-    # voidcat = ['void_LCDM_09.dat', 'void_fR_09.dat']
-
     tin = time.time()
-    main(
-        lcat        = args.lens_cat, 
-        sample      = args.sample,
-        output_file = None,
-        Rv_min      = args.Rv_min, 
-        Rv_max      = args.Rv_max,
-        z_min       = args.z_min, 
-        z_max       = args.z_max,
-        rho1_min    = args.rho1_min, 
-        rho1_max    = args.rho1_max,
-        rho2_min    = args.rho2_min, 
-        rho2_max    = args.rho2_max,
-        FLAG        = args.FLAG,
-        RIN         = args.RIN, 
-        ROUT        = args.ROUT,
-        ndots       = args.ndots, 
-        ncores      = args.ncores, 
-        nk          = args.nk,
-        addnoise    = False, 
-    )
-    # run_in_parts(
-    #     args.RIN, 
-    #     args.ROUT, 
-    #     args.nslices,
-    #     args.lens_cat, 
-    #     args.sample,
-    #     Rv_min=args.Rv_min, Rv_max=args.Rv_max, 
-    #     rho1_min=args.rho1_min, rho1_max=args.rho1_max, 
-    #     rho2_min=args.rho2_min, rho2_max=args.rho2_max, 
-    #     z_min=args.z_min, z_max=args.z_max, 
-    #     ndots=args.ndots, 
-    #     ncores=args.ncores, 
-    #     FLAG=args.FLAG
-    # )
-    tfin = time.time()
-    print(f'TOTAL TIME: {np.round((tfin-tin)/60.,2)} min')
+    main()
+    print(f'TOTAL TIME: {np.round((time.time()-tin)/60.,2)} min')
