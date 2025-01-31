@@ -157,13 +157,12 @@ def partial_profile(addnoise, S,
         np.deg2rad(RA0), np.deg2rad(DEC0)
     )
 
-    i = 0
     try:
         assert np.isnan(theta).sum() == 0
+        return 0
     except:
         print('Fail for',RA0,DEC0)
-        np.savetxt(f'errs{i}.csv', np.stack([Rv,RA0,DEC0,Z]), delimiter=',')
-        i += 1
+        return (Rv,RA0,DEC0,Z)
     # e1 = catdata.gamma1
     # e2 = -1.*catdata.gamma2
     # # Add shape noise due to intrisic galaxy shapes        
@@ -208,11 +207,12 @@ def stacking(RIN, ROUT, ndots, nk,
              L, K):
 
     # WHERE THE SUMS ARE GOING TO BE SAVED    
-    Ninbin = np.zeros((nk+1,ndots))    
-    SIGMAwsum    = np.zeros((nk+1,ndots)) 
-    DSIGMAwsum_T = np.zeros((nk+1,ndots)) 
-    DSIGMAwsum_X = np.zeros((nk+1,ndots))
-                
+    # Ninbin = np.zeros((nk+1,ndots))    
+    # SIGMAwsum    = np.zeros((nk+1,ndots)) 
+    # DSIGMAwsum_T = np.zeros((nk+1,ndots)) 
+    # DSIGMAwsum_X = np.zeros((nk+1,ndots))
+    aaa = np.array([])
+
     for i, Li in enumerate(tqdm(L)):
         num = len(Li)
         if num == 1:
@@ -229,21 +229,24 @@ def stacking(RIN, ROUT, ndots, nk,
                 pool.join()
         
         for j, res in enumerate(resmap):
-            km      = np.tile(K[i][j],(ndots,1)).T
+            aaa = np.append(aaa, res)
+
+            # km      = np.tile(K[i][j],(ndots,1)).T
                                 
-            SIGMAwsum    += np.tile(res[0],(nk+1,1))*km
-            DSIGMAwsum_T += np.tile(res[1],(nk+1,1))*km
-            DSIGMAwsum_X += np.tile(res[2],(nk+1,1))*km
-            Ninbin += np.tile(res[3],(nk+1,1))*km
+            # SIGMAwsum    += np.tile(res[0],(nk+1,1))*km
+            # DSIGMAwsum_T += np.tile(res[1],(nk+1,1))*km
+            # DSIGMAwsum_X += np.tile(res[2],(nk+1,1))*km
+            # Ninbin += np.tile(res[3],(nk+1,1))*km
 
+    return aaa.reshape(4,len(L[0])*len(L) - (len(L[0])-len(L[-1])))
     # COMPUTING PROFILE        
-    Ninbin[DSIGMAwsum_T == 0] = 1.
+    # Ninbin[DSIGMAwsum_T == 0] = 1.
             
-    Sigma     = (SIGMAwsum/Ninbin)
-    DSigma_T  = (DSIGMAwsum_T/Ninbin)
-    DSigma_X  = (DSIGMAwsum_X/Ninbin)
+    # Sigma     = (SIGMAwsum/Ninbin)
+    # DSigma_T  = (DSIGMAwsum_T/Ninbin)
+    # DSigma_X  = (DSIGMAwsum_X/Ninbin)
 
-    return Sigma, DSigma_T, DSigma_X, Ninbin
+    # return Sigma, DSigma_T, DSigma_X, Ninbin
 
 
 def main(args=args):
@@ -297,11 +300,13 @@ def main(args=args):
 
     if not bool(args.n_runslices-1):
         # Sigma, DSigma_T, DSigma_X, Ninbin = stacking(args.RIN, args.ROUT, args.ndots, args.nk, L, K)
-        theta = stacking(args.RIN, args.ROUT, args.ndots, args.nk, L, K)
+        aaa = stacking(args.RIN, args.ROUT, args.ndots, args.nk, L, K)
+        np.savetxt('errs.csv',aaa, delimiter=',')
+        return 0
 
-        covS = cov_matrix(Sigma[1:,:])
-        covDSt = cov_matrix(DSigma_T[1:,:])
-        covDSx = cov_matrix(DSigma_X[1:,:])
+        # covS = cov_matrix(Sigma[1:,:])
+        # covDSt = cov_matrix(DSigma_T[1:,:])
+        # covDSx = cov_matrix(DSigma_X[1:,:])
 
     else:
         cuts = np.round(np.linspace(args.RIN, args.ROUT, args.n_runslices+1),2)
