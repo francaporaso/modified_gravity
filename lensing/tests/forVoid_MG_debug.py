@@ -238,7 +238,7 @@ def stacking(RIN, ROUT, ndots, nk,
             # DSIGMAwsum_X += np.tile(res[2],(nk+1,1))*km
             # Ninbin += np.tile(res[3],(nk+1,1))*km
 
-    return aaa.reshape(4,len(L[0])*len(L) - (len(L[0])-len(L[-1])))
+    return aaa.reshape(4,len(L[0])*len(L))
     # COMPUTING PROFILE        
     # Ninbin[DSIGMAwsum_T == 0] = 1.
             
