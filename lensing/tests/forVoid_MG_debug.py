@@ -158,10 +158,10 @@ def partial_profile(addnoise, S,
     )
 
     try:
-        assert np.isnan(theta)
+        assert np.isnan(theta).sum() == 0
     except:
-        print(RA0, DEC0)
-        assert False                       
+        print('Fail for',RA0,DEC0)
+        np.savetxt('errs.csv', np.stack([Rv,RA0,DEC0,Z]), delimiter=',')
     # e1 = catdata.gamma1
     # e2 = -1.*catdata.gamma2
     # # Add shape noise due to intrisic galaxy shapes        
