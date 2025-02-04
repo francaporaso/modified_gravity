@@ -301,7 +301,7 @@ def main(args=args):
     if not bool(args.n_runslices-1):
         # Sigma, DSigma_T, DSigma_X, Ninbin = stacking(args.RIN, args.ROUT, args.ndots, args.nk, L, K)
         aaa = stacking(args.RIN, args.ROUT, args.ndots, args.nk, L, K)
-        np.savetxt('errs.csv',aaa, delimiter=',')
+        np.savetxt('errs.csv', np.nonzero(aaa), delimiter=',')
         return 0
 
         # covS = cov_matrix(Sigma[1:,:])
