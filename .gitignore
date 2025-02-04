@@ -16,3 +16,6 @@ tests.ipynb
 
 # ignorando resultados
 **/profiles/
+
+# ignorando plotting
+**/plotting.py
