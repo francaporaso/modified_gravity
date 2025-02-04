@@ -85,7 +85,7 @@ def lenscat_load(lens_cat,
 
     nvoids = mask.sum()
     L = L[:,mask]
-    L[1] = L[1] + 180.0 # correction to match ra with sources
+    L[1] = L[1] + np.float32(180.0) # correction to match ra with sources
 
     if bool(ncores-1):
         if ncores > nvoids:
@@ -118,6 +118,10 @@ def SigmaCrit(zl, zs):
 
     return (((cvel**2.0)/(4.0*np.pi*G*Dl))*(1./BETA_array))*(pc**2/Msun)
 
+## TODO
+## se puede probar definir mask dentro del for loop, 
+## y q cargue en memoria solo los q caen en cada anillo
+## eso debería ser más eficiente en memoria
 def partial_profile(addnoise, S,
                     RA0, DEC0, Z, Rv,
                     RIN, ROUT, ndots):
@@ -138,7 +142,7 @@ def partial_profile(addnoise, S,
     ## solid angle sep with astropy
     ## using in case the other mask fails
     if mask.sum() == 0:
-        print('Fail for',RA0,DEC0)
+        print('Failed mask for',RA0,DEC0)
         sep = angular_separation(
                 np.deg2rad(RA0), np.deg2rad(DEC0),
                 np.deg2rad(S.ra_gal), np.deg2rad(S.dec_gal)
@@ -150,7 +154,7 @@ def partial_profile(addnoise, S,
 
     sigma_c = SigmaCrit(Z, catdata.true_redshift_gal)
     
-    rads, theta, *_ = eq2p2(
+    rads, theta = eq2p2(
         np.deg2rad(catdata.ra_gal), np.deg2rad(catdata.dec_gal),
         np.deg2rad(RA0), np.deg2rad(DEC0)
     )
@@ -176,12 +180,12 @@ def partial_profile(addnoise, S,
     r = (np.rad2deg(rads)/DEGxMPC)/Rv
     bines = np.linspace(RIN,ROUT,num=ndots+1)
     dig = np.digitize(r,bines)
-            
+
     SIGMAwsum    = np.zeros(ndots)
     DSIGMAwsum_T = np.zeros(ndots)
     DSIGMAwsum_X = np.zeros(ndots)
     N_inbin      = np.zeros(ndots)
-                                         
+
     for nbin in range(ndots):
         mbin = dig == nbin+1              
         SIGMAwsum[nbin]    = k[mbin].sum()
