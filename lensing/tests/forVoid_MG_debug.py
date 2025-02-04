@@ -87,7 +87,7 @@ def lenscat_load(lens_cat,
 
     nvoids = mask.sum()
     L = L[:,mask]
-    L[1] = L[1] + 180.0
+    L[1] = L[1] + np.float32(180.0)
 
     if bool(ncores-1):
         if ncores > nvoids:
@@ -140,7 +140,7 @@ def partial_profile(addnoise, S,
     ## solid angle sep with maria_func
     ## using in case the other mask fails
     if mask.sum() == 0:
-        print('Fail for',RA0,DEC0)
+        print('Failed mask for',RA0,DEC0)
         sep = angular_separation(
                 np.deg2rad(RA0), np.deg2rad(DEC0),
                 np.deg2rad(S.ra_gal), np.deg2rad(S.dec_gal)
@@ -161,7 +161,7 @@ def partial_profile(addnoise, S,
         assert np.isnan(theta).sum() == 0
         return 0
     except:
-        print('Fail for',RA0,DEC0)
+        print('Failed theta for',RA0,DEC0)
         return (Rv,RA0,DEC0,Z)
     # e1 = catdata.gamma1
     # e2 = -1.*catdata.gamma2
