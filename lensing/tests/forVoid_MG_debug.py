@@ -1,13 +1,13 @@
 from argparse import ArgumentParser
 from astropy.cosmology import LambdaCDM
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, angular_separation
 from astropy.constants import G,c,M_sun,pc
 from astropy.io import fits
 import astropy.units as u
 from functools import partial
 import sys
 sys.path.append('/home/fcaporaso/modified_gravity/lensing')
-from funcs import ang_sep, eq2p2, cov_matrix
+from funcs import eq2p2, cov_matrix
 from multiprocessing import Pool
 import numpy as np
 import os
@@ -141,7 +141,7 @@ def partial_profile(addnoise, S,
     ## using in case the other mask fails
     if mask.sum() == 0:
         print('Fail for',RA0,DEC0)
-        sep = ang_sep(
+        sep = angular_separation(
                 np.deg2rad(RA0), np.deg2rad(DEC0),
                 np.deg2rad(S.ra_gal), np.deg2rad(S.dec_gal)
         )
@@ -152,7 +152,7 @@ def partial_profile(addnoise, S,
 
     sigma_c = SigmaCrit(Z, catdata.true_redshift_gal)
     
-    rads, theta, *_ = eq2p2(
+    rads, theta = eq2p2(
         np.deg2rad(catdata.ra_gal), np.deg2rad(catdata.dec_gal),
         np.deg2rad(RA0), np.deg2rad(DEC0)
     )

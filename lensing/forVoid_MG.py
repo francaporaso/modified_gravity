@@ -1,11 +1,11 @@
 from argparse import ArgumentParser
 from astropy.cosmology import LambdaCDM
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, angular_separation
 from astropy.constants import G,c,M_sun,pc
 from astropy.io import fits
 import astropy.units as u
 from functools import partial
-from funcs import ang_sep, eq2p2, cov_matrix
+from funcs import eq2p2, cov_matrix
 from multiprocessing import Pool
 import numpy as np
 import os
@@ -135,11 +135,11 @@ def partial_profile(addnoise, S,
         S.dec_gal < c2[0].dec.deg)&(S.dec_gal > c2[2].dec.deg)&(
         S.ra_gal < c2[1].ra.deg)&(S.ra_gal > c2[3].ra.deg)
     
-    ## solid angle sep with maria_func
+    ## solid angle sep with astropy
     ## using in case the other mask fails
     if mask.sum() == 0:
         print('Fail for',RA0,DEC0)
-        sep = ang_sep(
+        sep = angular_separation(
                 np.deg2rad(RA0), np.deg2rad(DEC0),
                 np.deg2rad(S.ra_gal), np.deg2rad(S.dec_gal)
         )
