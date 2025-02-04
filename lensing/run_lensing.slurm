@@ -22,8 +22,8 @@ source ~/miniconda3/etc/profile.d/conda.sh
 conda activate env_py39
 
 ## LCDM
-srun python forVoid_MG.py -sample 'lcdm_z02-03_rvbig_fullsky_' -lens_cat 'voids_LCDM_09.dat' -source_cat 'l768_gr_z04-07_for02-03_19304.fits' -Rv_min 18.0 -z_min 0.2 -z_max 0.3 -ndots 22 -ncores 56
+srun python forVoid_MG.py --sample 'lcdm_z02-03_rvbig' --lens_cat 'voids_LCDM_09.dat' --source_cat 'l768_gr_z04-07_for02-03_19304.fits' --Rv_min 22.0 --z_min 0.2 --z_max 0.3 --ndots 22 --ncores 56
 
 ## fR
-srun python forVoid_MG.py -sample 'fR_z02-03_rvbig_fullsky_' -lens_cat 'voids_fR_09.dat' -source_cat 'l768_mg_z04-07_for02-03_19260.fits' -Rv_min 18.0 -z_min 0.2 -z_max 0.3 -ndots 22 -ncores 56
+srun python forVoid_MG.py --sample 'fR_z02-03_rvbig' --lens_cat 'voids_fR_09.dat' --source_cat 'l768_mg_z04-07_for02-03_19260.fits' --Rv_min 22.0 --z_min 0.2 --z_max 0.3 --ndots 22 --ncores 56
 
