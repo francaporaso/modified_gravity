@@ -3,6 +3,7 @@
 *.dat
 *.png
 *.fits
+*.out
 
 # ignorando test.ipynb
 **/test.ipynb
