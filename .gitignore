@@ -2,6 +2,7 @@
 *.csv
 *.dat
 *.png
+*.fits
 
 # ignorando test.ipynb
 **/test.ipynb
