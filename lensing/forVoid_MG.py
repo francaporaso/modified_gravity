@@ -143,7 +143,7 @@ def partial_profile(addnoise, S,
     ## using in case the other mask fails
     if mask.sum() == 0:
         print('Failed mask for',RA0,DEC0)
-        return np.full(4,-np.inf)
+        return [-np.inf]
         # sep = angular_separation(
         #         np.deg2rad(RA0), np.deg2rad(DEC0),
         #         np.deg2rad(S.ra_gal), np.deg2rad(S.dec_gal)
@@ -227,7 +227,7 @@ def stacking(RIN, ROUT, ndots, nk,
         
         for j, res in enumerate(resmap):
             km      = np.tile(K[i][j],(ndots,1)).T
-            if np.isfinite(res):
+            if np.isfinite(res[0]):
                 SIGMAwsum    += np.tile(res[0],(nk+1,1))*km
                 DSIGMAwsum_T += np.tile(res[1],(nk+1,1))*km
                 DSIGMAwsum_X += np.tile(res[2],(nk+1,1))*km
