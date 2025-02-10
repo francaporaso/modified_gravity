@@ -143,7 +143,7 @@ def partial_profile(addnoise, S,
     ## using in case the other mask fails
     if mask.sum() == 0:
         print('Failed mask for',RA0,DEC0)
-        return -np.inf
+        return np.full(4,-np.inf)
         # sep = angular_separation(
         #         np.deg2rad(RA0), np.deg2rad(DEC0),
         #         np.deg2rad(S.ra_gal), np.deg2rad(S.dec_gal)
