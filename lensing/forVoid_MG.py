@@ -142,8 +142,8 @@ def partial_profile(addnoise, S,
     ## solid angle sep with astropy
     ## using in case the other mask fails
     if mask.sum() == 0:
+        print('Failed mask for',RA0,DEC0)
         return -np.inf
-        # print('Failed mask for',RA0,DEC0)
         # sep = angular_separation(
         #         np.deg2rad(RA0), np.deg2rad(DEC0),
         #         np.deg2rad(S.ra_gal), np.deg2rad(S.dec_gal)
@@ -209,6 +209,7 @@ def stacking(RIN, ROUT, ndots, nk,
     DSIGMAwsum_T = np.zeros((nk+1,ndots)) 
     DSIGMAwsum_X = np.zeros((nk+1,ndots))
                 
+    discarded = 0
     for i, Li in enumerate(tqdm(L)):
         num = len(Li)
         if num == 1:
@@ -231,6 +232,8 @@ def stacking(RIN, ROUT, ndots, nk,
                 DSIGMAwsum_T += np.tile(res[1],(nk+1,1))*km
                 DSIGMAwsum_X += np.tile(res[2],(nk+1,1))*km
                 Ninbin += np.tile(res[3],(nk+1,1))*km
+            else:
+                discarded += 1 
 
     # COMPUTING PROFILE        
     Ninbin[DSIGMAwsum_T == 0] = 1.
@@ -238,6 +241,8 @@ def stacking(RIN, ROUT, ndots, nk,
     Sigma     = (SIGMAwsum/Ninbin)
     DSigma_T  = (DSIGMAwsum_T/Ninbin)
     DSigma_X  = (DSIGMAwsum_X/Ninbin)
+
+    print(f'Voids discarded: {discarded}')
 
     return Sigma, DSigma_T, DSigma_X, Ninbin
 
