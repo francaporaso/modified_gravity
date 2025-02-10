@@ -142,13 +142,14 @@ def partial_profile(addnoise, S,
     ## solid angle sep with astropy
     ## using in case the other mask fails
     if mask.sum() == 0:
-        print('Failed mask for',RA0,DEC0)
-        sep = angular_separation(
-                np.deg2rad(RA0), np.deg2rad(DEC0),
-                np.deg2rad(S.ra_gal), np.deg2rad(S.dec_gal)
-        )
-        mask = (sep < np.deg2rad(delta))&(S.true_redshift_gal >(Z+0.1))
-        assert mask.sum() != 0
+        return -np.inf
+        # print('Failed mask for',RA0,DEC0)
+        # sep = angular_separation(
+        #         np.deg2rad(RA0), np.deg2rad(DEC0),
+        #         np.deg2rad(S.ra_gal), np.deg2rad(S.dec_gal)
+        # )
+        # mask = (sep < np.deg2rad(delta))&(S.true_redshift_gal >(Z+0.1))
+        # assert mask.sum() != 0
 
     catdata = S[mask]
 
@@ -225,11 +226,11 @@ def stacking(RIN, ROUT, ndots, nk,
         
         for j, res in enumerate(resmap):
             km      = np.tile(K[i][j],(ndots,1)).T
-                                
-            SIGMAwsum    += np.tile(res[0],(nk+1,1))*km
-            DSIGMAwsum_T += np.tile(res[1],(nk+1,1))*km
-            DSIGMAwsum_X += np.tile(res[2],(nk+1,1))*km
-            Ninbin += np.tile(res[3],(nk+1,1))*km
+            if np.isfinite(res):
+                SIGMAwsum    += np.tile(res[0],(nk+1,1))*km
+                DSIGMAwsum_T += np.tile(res[1],(nk+1,1))*km
+                DSIGMAwsum_X += np.tile(res[2],(nk+1,1))*km
+                Ninbin += np.tile(res[3],(nk+1,1))*km
 
     # COMPUTING PROFILE        
     Ninbin[DSIGMAwsum_T == 0] = 1.
