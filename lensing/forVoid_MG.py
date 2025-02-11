@@ -31,7 +31,7 @@ parser.add_argument('--rho1_max', type=float, default=0.0, action='store')
 parser.add_argument('--rho2_min', type=float, default=-1.0, action='store')
 parser.add_argument('--rho2_max', type=float, default=100.0, action='store')
 parser.add_argument('--flag', type=float, default=2.0, action='store')
-parser.add_argument('--octant', action='store_true') ## 'store_true' guarda True SOLO cuando se da --octant
+# parser.add_argument('--octant', action='store_true') ## 'store_true' guarda True SOLO cuando se da --octant
 parser.add_argument('--RIN', type=float, default=0.05, action='store')
 parser.add_argument('--ROUT', type=float, default=5.0, action='store')    
 parser.add_argument('-N','--ndots', type=int, default=22, action='store')    
@@ -48,17 +48,17 @@ Msun = M_sun.value # Solar mass (kg)
 
 def lenscat_load(lens_cat,
                  Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max, flag,
-                 ncores:int, octant:bool, nk:int):
+                 ncores:int, nk:int):
 
     ## 0:Rv, 1:ra, 2:dec, 3:z, 4:xv, 5:yv, 6:zv, 7:rho1, 8:rho2, 9:logp, 10:diff CdM y CdV, 11:flag
     ## CdM: centro de masa
     ## CdV: centro del void
     L = np.loadtxt("/home/fcaporaso/cats/L768/"+lens_cat).T
 
-    if octant:
-        # selecciono los void en un octante
-        eps = 1.0
-        L = L[:, (L[1] >= 0.0+eps) & (L[1] <= 90.0-eps) & (L[2]>= 0.0+eps) & (L[2] <= 90.0-eps)]
+    # if octant: ## octant deprecated
+    #     # selecciono los void en un octante
+    #     eps = 1.0
+    #     L = L[:, (L[1] >= 0.0+eps) & (L[1] <= 90.0-eps) & (L[2]>= 0.0+eps) & (L[2] <= 90.0-eps)]
 
     sqrt_nk = int(np.sqrt(nk))
     NNN = len(L[0]) ##total number of voids
@@ -109,6 +109,7 @@ def sourcecat_load(sourcename):
         
 def SigmaCrit(zl, zs):
     
+    global cosmo
     dl  = cosmo.angular_diameter_distance(zl).value
     Dl = dl*1.e6*pc #en m
     ds  = cosmo.angular_diameter_distance(zs).value              #dist ang diam de la fuente
@@ -142,7 +143,7 @@ def partial_profile(addnoise, S,
     ## solid angle sep with astropy
     ## using in case the other mask fails
     if mask.sum() == 0:
-        print('Failed mask for',RA0,DEC0)
+        # print('Failed mask for',RA0,DEC0)
         return [[-np.inf]]
         # sep = angular_separation(
         #         np.deg2rad(RA0), np.deg2rad(DEC0),
@@ -242,9 +243,9 @@ def stacking(RIN, ROUT, ndots, nk,
     DSigma_T  = (DSIGMAwsum_T/Ninbin)
     DSigma_X  = (DSIGMAwsum_X/Ninbin)
 
-    print(f'Voids discarded: {discarded}')
+    print('Voids discarded: '.ljust(15,'.'), f' {discarded}'.rjust(15,'.'),sep='')
 
-    return Sigma, DSigma_T, DSigma_X, Ninbin
+    return Sigma, DSigma_T, DSigma_X, Ninbin, discarded
 
 
 def main(args=args):
@@ -253,7 +254,7 @@ def main(args=args):
     #reading Lens catalog
     L, K, nvoids = lenscat_load(args.lens_cat,
         args.Rv_min, args.Rv_max, args.z_min, args.z_max, args.rho1_min, args.rho1_max, args.rho2_min, args.rho2_max, args.flag,
-        args.ncores, args.octant, args.nk)
+        args.ncores, args.nk)
     
     # program arguments
     print(' Program arguments '.center(30,"="))
@@ -275,7 +276,7 @@ def main(args=args):
     print('Radii: '.ljust(15,'.'), f' [{args.Rv_min}, {args.Rv_max})'.rjust(15,'.'), sep='')
     print('Redshift: '.ljust(15,'.'), f' [{args.z_min}, {args.z_max})'.rjust(15,'.'),sep='')
     print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='')
-    print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
+    # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
     print('N voids: '.ljust(15,'.'), f' {nvoids}'.rjust(15,'.'),sep='')
     
     # profile arguments
@@ -298,7 +299,7 @@ def main(args=args):
 
     if not bool(args.n_runslices-1):
         print('Running single slice')
-        Sigma, DSigma_T, DSigma_X, Ninbin = stacking(args.RIN, args.ROUT, args.ndots, args.nk, L, K)
+        Sigma, DSigma_T, DSigma_X, Ninbin, discarded = stacking(args.RIN, args.ROUT, args.ndots, args.nk, L, K)
 
         covS = cov_matrix(Sigma[1:,:])
         covDSt = cov_matrix(DSigma_T[1:,:])
@@ -326,7 +327,8 @@ def main(args=args):
             DSigma_T = np.append(DSigma_T, res_parcial[1])
             DSigma_X = np.append(DSigma_X, res_parcial[2])
             Ninbin = np.append(Ninbin, res_parcial[3])
-        
+            discarded = res_parcial[-1]
+
         Sigma = Sigma.reshape(args.nk+1,args.ndots)
         DSigma_T = DSigma_T.reshape(args.nk+1,args.ndots)
         DSigma_X = DSigma_X.reshape(args.nk+1,args.ndots)
@@ -342,8 +344,9 @@ def main(args=args):
     rho2mean = np.concatenate([L[i][:,8] for i in range(len(L))]).mean()
     
     head = fits.Header()
-    head.append(('nvoids',int(nvoids)))
-    head.append(('cat',args.lens_cat))
+    head.append(('nvoids',int(nvoids-discarded)))
+    head.append(('lens',args.lens_cat))
+    head.append(('sour',args.source_cat[-10:-5])) ## considerando q los numeros de cosmohub son simepre 5...
     head.append(('Rv_min',np.round(args.Rv_min,2)))
     head.append(('Rv_max',np.round(args.Rv_max,2)))
     head.append(('Rv_mean',np.round(rvmean,4)))
@@ -366,9 +369,9 @@ def main(args=args):
                fits.Column(name='DSigma_X', format='E', array=DSigma_X.flatten()),
                fits.Column(name='Ninbin', format='E', array=Ninbin.flatten())]
 
-    table_c = [fits.Column(name='Sigma', format='E', array=covS.flatten()),
-               fits.Column(name='DSigma_T', format='E', array=covDSt.flatten()),
-               fits.Column(name='DSigma_X', format='E', array=covDSx.flatten())]
+    table_c = [fits.Column(name='covS', format='E', array=covS.flatten()),
+               fits.Column(name='covDSt', format='E', array=covDSt.flatten()),
+               fits.Column(name='covDSx', format='E', array=covDSx.flatten())]
 
     tbhdu_p = fits.BinTableHDU.from_columns(fits.ColDefs(table_p))
     tbhdu_c = fits.BinTableHDU.from_columns(fits.ColDefs(table_c))
