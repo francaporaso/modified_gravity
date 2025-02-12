@@ -85,7 +85,7 @@ def lenscat_load(lens_cat,
 
     nvoids = mask.sum()
     L = L[:,mask]
-    L[1] = L[1] + np.float32(180.0) # correction to match ra with sources
+    L[1] = L[1] ### + np.float32(180.0) # puede q sea un error este paso....
 
     if bool(ncores-1):
         if ncores > nvoids:
@@ -108,7 +108,7 @@ def sourcecat_load(sourcename):
     # return S.ra_gal, S.dec_gal, S.true_redshift_gal, S.kappa, S.gamma1, S.gamma2
         
 def SigmaCrit(zl, zs):
-    
+
     global cosmo
     dl  = cosmo.angular_diameter_distance(zl).value
     Dl = dl*1.e6*pc #en m
