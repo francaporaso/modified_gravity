@@ -85,7 +85,7 @@ def lenscat_load(lens_cat,
 
     nvoids = mask.sum()
     L = L[:,mask]
-    L[1] = L[1] ### + np.float32(180.0) # puede q sea un error este paso....
+    L[1] = L[1] + np.float32(180.0) # puede q sea un error este paso....
 
     if bool(ncores-1):
         if ncores > nvoids:
@@ -286,13 +286,7 @@ def main(args=args):
     print('N: '.ljust(15,'.'), f' {args.ndots}'.rjust(15,'.'),sep='')
     print('N jackknife: '.ljust(15,'.'), f' {args.nk}'.rjust(15,'.'),sep='')
     print('Shape Noise: '.ljust(15,'.'), f' {args.addnoise}'.rjust(15,'.'),sep='')
-
-    try:
-        os.mkdir('results/')
-    except FileExistsError:
-        pass
     
-    output_file = f'results/'
     # Defining radial bins
     bines = np.linspace(args.RIN,args.ROUT,num=args.ndots+1)
     R = (bines[:-1] + np.diff(bines)*0.5)
@@ -346,7 +340,7 @@ def main(args=args):
     head = fits.Header()
     head.append(('nvoids',int(nvoids-discarded)))
     head.append(('lens',args.lens_cat))
-    head.append(('sour',args.source_cat[-10:-5])) ## considerando q los numeros de cosmohub son simepre 5...
+    head.append(('sour',args.source_cat[-10:-5],'cosmohub stamp')) ## considerando q los numeros de cosmohub son simepre 5...
     head.append(('Rv_min',np.round(args.Rv_min,2)))
     head.append(('Rv_max',np.round(args.Rv_max,2)))
     head.append(('Rv_mean',np.round(rvmean,4)))
@@ -358,10 +352,12 @@ def main(args=args):
     head.append(('z_min',np.round(args.z_min,2)))
     head.append(('z_max',np.round(args.z_max,2)))
     head.append(('z_mean',np.round(zmean,4)))
-    head.append(('SLCS_INFO'))
+    # head.append(('SLCS_INFO'))
     head.append(('RMIN',np.round(args.RIN,4)))
     head.append(('RMAX',np.round(args.ROUT,4)))
     head.append(('ndots',np.round(args.ndots,4)))
+    head.append(('nk',np.round(args.nk,4),'jackknife slices'))
+    head['HISTORY'] = f'{time.asctime()}'
 
     table_p = [fits.Column(name='Rp', format='E', array=R),
                fits.Column(name='Sigma', format='E', array=Sigma.flatten()),
@@ -379,15 +375,16 @@ def main(args=args):
     primary_hdu = fits.PrimaryHDU(header=head)
     
     hdul = fits.HDUList([primary_hdu, tbhdu_p, tbhdu_c])
-    
-    hdul.writeto(f'{output_file+args.sample}.fits',overwrite=True)
-    print(f'File saved... {output_file+args.sample}.fits')
-            
-    print(f'Partial time: {np.round((time.time()-tini)/60. , 3)} mins')
 
+    output_file = f'results/{args.sample}_{args.lens_cat[6:-4]}_{np.ceil(args.Rv_min)}-{np.ceil(args.Rv_max)}_z{int(10.0*args.z_min)}-{int(10.0*args.z_max)}_type{tipo}.fits'
+
+    hdul.writeto(f'{output_file}.fits',overwrite=True)
+    print(f'File saved in: {output_file}.fits')
+    
 
 if __name__=='__main__':
 
     tin = time.time()
     main()
-    print(f'TOTAL TIME: {np.round((time.time()-tin)/60.,2)} min')
+    print(' TOTAL TIME '.ljust(15,'.'), f' {np.round((time.time()-tin)/60.,2)} min'.rjust(15,'.'),sep='')
+    print(' END :) '.center(30,"="))
