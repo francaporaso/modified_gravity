@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=vlensing
+#SBATCH --job-name=vlentest
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=56
 #SBATCH --time=3-00:00:00
@@ -22,8 +22,4 @@ source ~/miniconda3/etc/profile.d/conda.sh
 conda activate env_py39
 
 ## LCDM
-srun python forVoid_MG.py --sample 'lcdm_z02-03_rv10-15' --lens_cat 'voids_LCDM_09.dat' --source_cat 'l768_gr_z04-07_for02-03_19304.fits' --Rv_min 10.0 --Rv_max 15.0 --z_min 0.2 --z_max 0.3 --ndots 30 --nk 169 --ncores 56
-
-## fR
-srun python forVoid_MG.py --sample 'fR_z02-03_rv10-15' --lens_cat 'voids_fR_09.dat' --source_cat 'l768_mg_z04-07_for02-03_19260.fits' --Rv_min 10.0 --Rv_max 15.0 --z_min 0.2 --z_max 0.3 --ndots 30 --nk 169 --ncores 56
-
+srun python forVoid_MG.py --sample 'test_RAvoid_mismo0' --lens_cat 'voids_LCDM_09.dat' --source_cat 'l768_gr_z04-07_for02-03_19304.fits' --Rv_min 22.0 --Rv_max 50.0 --z_min 0.2 --z_max 0.3 --ndots 22 --nk 100 --ncores 56
