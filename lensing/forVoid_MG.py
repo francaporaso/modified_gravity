@@ -85,7 +85,7 @@ def lenscat_load(lens_cat,
 
     nvoids = mask.sum()
     L = L[:,mask]
-    L[1] = L[1] + np.float32(180.0) # puede q sea un error este paso....
+    L[1] = L[1] #+ np.float32(180.0) # puede q sea un error este paso....
 
     if bool(ncores-1):
         if ncores > nvoids:
