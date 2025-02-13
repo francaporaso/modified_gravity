@@ -377,7 +377,7 @@ def main(args=args):
     
     hdul = fits.HDUList([primary_hdu, tbhdu_p, tbhdu_c])
 
-    output_file = f'results/{args.sample}_{args.lens_cat[6:-4]}_{np.ceil(args.Rv_min)}-{np.ceil(args.Rv_max)}_z{int(10.0*args.z_min)}-{int(10.0*args.z_max)}_type{tipo}.fits'
+    output_file = f'results/{args.sample}_{args.lens_cat[6:-4]}_{np.ceil(args.Rv_min).astype(int)}-{np.ceil(args.Rv_max).astype(int)}_z0{int(10.0*args.z_min)}-0{int(10.0*args.z_max)}_type{tipo}.fits'
 
     hdul.writeto(output_file,overwrite=True)
     print(f'File saved in: {output_file}')
