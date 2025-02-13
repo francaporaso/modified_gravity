@@ -85,7 +85,8 @@ def lenscat_load(lens_cat,
 
     nvoids = mask.sum()
     L = L[:,mask]
-    L[1][L[1]<0.0] = L[1][L[1]<0.0] + np.float32(360.0) # corrección ra sources in (0,360)
+    ## no hace falta con nuevos voids
+    # L[1][L[1]<0.0] = L[1][L[1]<0.0] + np.float32(360.0) # corrección ra sources in (0,360)
 
     if bool(ncores-1):
         if ncores > nvoids:
