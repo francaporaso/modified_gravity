@@ -163,7 +163,7 @@ def partial_profile(addnoise, S,
     )
                            
     e1 = catdata.gamma1
-    e2 = -1.*catdata.gamma2
+    e2 = catdata.gamma2
     # Add shape noise due to intrisic galaxy shapes        
     if addnoise:
         es1 = -1.*catdata.defl1
