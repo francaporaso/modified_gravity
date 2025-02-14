@@ -163,7 +163,7 @@ def partial_profile(addnoise, S,
     )
                            
     e1 = -1.0*catdata.gamma1
-    e2 = catdata.gamma2
+    e2 = -1.0*catdata.gamma2
     # Add shape noise due to intrisic galaxy shapes        
     if addnoise:
         es1 = -1.*catdata.defl1
@@ -174,7 +174,7 @@ def partial_profile(addnoise, S,
     #get tangential ellipticities 
     cos2t = np.cos(2*theta)
     sin2t = np.sin(2*theta)
-    et = 1.0*(e1*cos2t+e2*sin2t)*sigma_c/Rv
+    et = -1.0*(e1*cos2t+e2*sin2t)*sigma_c/Rv
     ex = (-e1*sin2t+e2*cos2t)*sigma_c/Rv
            
     #get convergence
