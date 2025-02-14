@@ -23,10 +23,8 @@ conda activate env_py39
 
 
 ## LCDM
-srun python forVoid_MG.py --sample 'cut1' --lens_cat 'voids_LCDM_09.dat'
---source_cat 'l768_gr_z04-07_for02-03_19304.fits' --Rv_min 20.0 --Rv_max 50.0 --z_min 0.2 --z_max 0.3 --ndots 25 --nk 169 --ncores 56 
+srun python forVoid_MG.py --sample 'cut1' --lens_cat 'voids_LCDM_09.dat' --source_cat 'l768_gr_z04-07_for02-03_19304.fits' --Rv_min 20.0 --Rv_max 50.0 --z_min 0.2 --z_max 0.3 --ndots 25 --nk 169 --ncores 56 
 
 ## fR
-srun python forVoid_MG.py --sample 'cut1' --lens_cat 'voids_fR_09.dat'
---source_cat 'l768_mg_z04-07_for02-03_19260.fits'  --Rv_min 20.0 --Rv_max 50.0 --z_min 0.2 --z_max 0.3 --ndots 25 --nk 169 --ncores 56
+srun python forVoid_MG.py --sample 'cut1' --lens_cat 'voids_fR_09.dat' --source_cat 'l768_mg_z04-07_for02-03_19260.fits'  --Rv_min 20.0 --Rv_max 50.0 --z_min 0.2 --z_max 0.3 --ndots 25 --nk 169 --ncores 56
 
