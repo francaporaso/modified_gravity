@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=vlen_4
+#SBATCH --job-name=vlen_1R
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=56
 #SBATCH --time=3-00:00:00
@@ -23,8 +23,8 @@ conda activate env_py39
 
 
 ## LCDM
-srun python forVoid_MG.py --sample 'cut5' --lens_cat 'voids_LCDM_09.dat' --source_cat 'l768_gr_z08-13_for04-05_19513.fits' --Rv_min 5.0 --Rv_max 10.0 --z_min 0.4 --z_max 0.5 --ndots 25 --nk 169 --ncores 56 -r 2 
+
+srun python forVoid_MG.py --sample 'cut5' --lens_cat 'voids_LCDM_09.dat' --source_cat 'l768_gr_z08-13_for04-05_19513.fits' --Rv_min 5.0 --Rv_max 10.0 --z_min 0.4 --z_max 0.5 --ndots 25 --nk 169 --ncores 56
 
 ## fR
-srun python forVoid_MG.py --sample 'cut5' --lens_cat 'voids_fR_09.dat' --source_cat 'l768_mg_z08-13_for04-05_19514.fits'  --Rv_min 5.0 --Rv_max 10.0 --z_min 0.4 --z_max 0.5 --ndots 25 --nk 169 --ncores 56 -r 2
-
+srun python forVoid_MG.py --sample 'cut5' --lens_cat 'voids_fR_09.dat' --source_cat 'l768_mg_z08-13_for04-05_19514.fits'  --Rv_min 5.0 --Rv_max 10.0 --z_min 0.4 --z_max 0.5 --ndots 25 --nk 169 --ncores 56
