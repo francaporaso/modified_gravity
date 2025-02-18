@@ -38,6 +38,7 @@ parser.add_argument('-N','--ndots', type=int, default=22, action='store')
 parser.add_argument('-K','--nk', type=int, default=100, action='store')    
 parser.add_argument('--addnoise', action='store_true')
 args = parser.parse_args()
+
 cosmo = LambdaCDM(H0=100.0*args.h_cosmo, Om0=args.Om0, Ode0=args.Ode0)
 
 #parameters
