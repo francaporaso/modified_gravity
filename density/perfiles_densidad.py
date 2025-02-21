@@ -1,79 +1,47 @@
-import numpy as np
-import matplotlib.pyplot as plt
+from argparse import ArgumentParser
 from astropy.cosmology import LambdaCDM
 from astropy.io import fits
-import sys
-# sys.path.append('/home/fcaporaso/FlagShip/profiles/')
-sys.path.append('/home/fcaporaso/FlagShip/vgcf/')
-# from perfiles import lenscat_load
-from vgcf import ang2xyz
-from tqdm import tqdm
-from multiprocessing import Pool
 from functools import partial
+import matplotlib.pyplot as plt
+from multiprocessing import Pool
+import numpy as np
+import sys
+from tqdm import tqdm
 import time
 
-cosmo = LambdaCDM(H0=100, Om0=0.3089, Ode0=0.6911) ## Planck15
+sys.path.append('/home/fcaporaso/modified_gravity/lensing/')
+from funcs import lenscat_load, cov_matrix
+sys.path.append('/home/fcaporaso/FlagShip/vgcf/')
+from vgcf import ang2xyz
 
-tin = time.time()
+parser = ArgumentParser()
+parser.add_argument('--lens_cat', type=str, default='voids_LCDM_09.dat', action='store')
+parser.add_argument('--tracer_cat', type=str, default='l768_gr_z04-07_for02-03_19304.fits', action='store')
+parser.add_argument('--sample', type=str, default='TEST_LCDM_', action='store')
+parser.add_argument('-c','--ncores', type=int, default=2, action='store')
+parser.add_argument('-r','--n_runslices', type=int, default=1, action='store')
+parser.add_argument('--h_cosmo', type=float, default=1.0, action='store')
+parser.add_argument('--Om0', type=float, default=0.3089, action='store')
+parser.add_argument('--Ode0', type=float, default=0.6911, action='store')
+parser.add_argument('--Rv_min', type=float, default=1.0, action='store')
+parser.add_argument('--Rv_max', type=float, default=50.0, action='store')
+parser.add_argument('--z_min', type=float, default=0.0, action='store')
+parser.add_argument('--z_max', type=float, default=0.6, action='store')
+parser.add_argument('--rho1_min', type=float, default=-1.0, action='store')
+parser.add_argument('--rho1_max', type=float, default=0.0, action='store')
+parser.add_argument('--rho2_min', type=float, default=-1.0, action='store')
+parser.add_argument('--rho2_max', type=float, default=100.0, action='store')
+parser.add_argument('--flag', type=float, default=2.0, action='store')
+parser.add_argument('--RIN', type=float, default=0.05, action='store')
+parser.add_argument('--ROUT', type=float, default=5.0, action='store')    
+parser.add_argument('-N','--ndots', type=int, default=22, action='store')    
+parser.add_argument('-K','--nk', type=int, default=100, action='store')    
+# parser.add_argument('--addnoise', action='store_true')
+args = parser.parse_args()
 
-## ------ PARAMS
-N = 22 ## Num de puntos del perfil
-m = 5 ## dist maxima en R_v del perfil
+cosmo = LambdaCDM(H0=100*args.h_cosmo, Om0=args.Om0, Ode0=args.Ode0) ## Planck15
 
-def lenscat_load(Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max, 
-                 flag=2.0, lensname="voids_LCDM_09.dat",
-                 split=False, NSPLITS=1,
-                 nk = 100, 
-                 octant=True):
-
-    ## 0:Rv, 1:ra, 2:dec, 3:z, 4:xv, 5:yv, 6:zv, 7:rho1, 8:rho2, 9:logp, 10:diff CdM y CdV, 11:flag
-    ## CdM: centro de masa
-    ## CdV: centro del void
-    L = np.loadtxt("/home/fcaporaso/cats/L768/"+lensname).T
-
-    if octant:
-        # selecciono los void en un octante
-        eps = 1.0
-        L = L[:, (L[1] >= 0.0+eps) & (L[1] <= 90.0-eps) & (L[2]>= 0.0+eps) & (L[2] <= 90.0-eps)]
-
-    sqrt_nk = int(np.sqrt(nk))
-    NNN = len(L[0]) ##total number of voids
-    ra,dec = L[1],L[2]
-    K    = np.zeros((nk+1,NNN))
-    K[0] = np.ones(NNN).astype(bool)
-
-    ramin  = np.min(ra)
-    cdec   = np.sin(np.deg2rad(dec))
-    decmin = np.min(cdec)
-    dra    = ((np.max(ra)+1.e-5) - ramin)/sqrt_nk
-    ddec   = ((np.max(cdec)+1.e-5) - decmin)/sqrt_nk
-
-    c = 1
-    for a in range(sqrt_nk): 
-        for d in range(sqrt_nk): 
-            mra  = (ra  >= ramin + a*dra)&(ra < ramin + (a+1)*dra) 
-            mdec = (cdec >= decmin + d*ddec)&(cdec < decmin + (d+1)*ddec) 
-            K[c] = ~(mra&mdec)
-            c += 1
-
-    mask = (L[0] >= Rv_min) & (L[0] < Rv_max) & (L[3] >= z_min) & (L[3] < z_max) & (
-            L[7] >= rho1_min) & (L[7] < rho1_max) & (L[8] >= rho2_min) & (L[8] < rho2_max) & (L[11] >= flag)
-
-    nvoids = mask.sum()
-    L = L[:,mask]
-
-    if split:
-        if NSPLITS > nvoids:
-            NSPLITS = nvoids
-        lbins = int(round(nvoids/float(NSPLITS), 0))
-        slices = ((np.arange(lbins)+1)*NSPLITS).astype(int)
-        slices = slices[(slices < nvoids)]
-        L = np.split(L.T, slices)
-        K = np.split(K.T, slices)
-
-    return L, K, nvoids
-
-def tracercat_load(catname='/home/fcaporaso/cats/L768/l768_gr_halos_{}.fits', ## descargar catalogo
+def tracercat_load(catname=args.tracer_cat, ## descargar catalogo
                    if_centrals=True, cosmo=cosmo):
     
     if if_centrals:    
@@ -97,22 +65,7 @@ def tracercat_load(catname='/home/fcaporaso/cats/L768/l768_gr_halos_{}.fits', ##
         
         xh,yh,zh = ang2xyz(ra_gal, dec_gal, z_gal, cosmo=cosmo)
         return xh, yh , zh
-
-def cov_matrix(array):
-        
-    K = len(array)
-    Kmean = np.average(array,axis=0)
-    bins = array.shape[1]
     
-    COV = np.zeros((bins,bins))
-    
-    for k in range(K):
-        dif = (array[k]- Kmean)
-        COV += np.outer(dif,dif)        
-    
-    COV *= (K-1)/K
-    return COV
-
 def mean_density_comovingshell(xh, yh, zh, logmh,
                                m, rv, xv, yv, zv):
 
@@ -157,60 +110,14 @@ def number_density_v2(N, m, xh, yh, zh, lmhalo, rv, xv, yv, zv):
     
     return number_gx, mass_bin, vol, np.full_like(vol, mean_gx_com), np.full_like(vol, mean_den_com)
 
-partial_func = partial(number_density_v2, N, m, *tracercat_load())
+partial_func = partial(number_density_v2, args.ndots, args.ROUT, *tracercat_load())
 def partial_func_unpack(A):
     return partial_func(*A)
 
-def saveresults(args,nvoids,sample,
-               *results):
-    h = fits.Header()
-    
-    h.append(('Nvoids', int(nvoids)))
-    h.append(('Rv_min', args[0]))
-    h.append(('Rv_max', args[1]))
-    h.append(('z_min', args[2]))
-    h.append(('z_max', args[3]))
-    h.append(('rho1_min', args[4]))
-    h.append(('rho1_max', args[5]))
-    h.append(('rho2_min', args[6]))
-    h.append(('rho2_max', args[7]))
-    h.append(('rmax', m))
-
-    primary_hdu = fits.PrimaryHDU(header=h)
-    hdul = fits.HDUList([primary_hdu])
-    
-    rrr = np.linspace(0,m,N+1)
-    rrr = rrr[:-1] + np.diff(rrr)*0.5
-    
-    table_delta = np.array([fits.Column(name='r', format='E', array=rrr),
-                      fits.Column(name='delta', format='E', array=results[0]),
-                      fits.Column(name='deltagx', format='E', array=results[1]),
-                     ])
-    table_cov = np.array([fits.Column(name='cov_delta', format='E', array=results[2].flatten()),
-                          fits.Column(name='cov_deltagx', format='E', array=results[3].flatten()),
-                     ])
-
-    hdul.append(fits.BinTableHDU.from_columns(table_delta))
-    hdul.append(fits.BinTableHDU.from_columns(table_cov))
-    
-    if args[7]<=0:
-        t = 'R'
-    elif args[6]>=0:
-        t = 'S'
-    else:
-        t = 'all'
-    
-    hdul.writeto(f'density_l768_{simu}_Rv{int(args[0])}-{int(args[1])}_{t}_z0{int(10*args[2])}-0{int(10*args[3])}_{sample}.fits',
-                 overwrite=True)
-
 def stacking(N, m, 
-             lensargs,
-             sample,
-             L, K, nvoids,
-             nk = 100):
+             L, K,
+             nk):
     
-    print(f"nvoids: {nvoids}")
-
     # COVARIANZA JACKKNIFE
     numbergx = np.zeros((nk+1,N))
     massbin = np.zeros((nk+1,N))
@@ -254,7 +161,7 @@ def stacking(N, m,
     deltagx = numbergx/mu_gx - 1
     cov_delta = cov_matrix(delta[1:,:])
     cov_deltagx = cov_matrix(deltagx[1:,:])
-    saveresults(lensargs, nvoids, sample, delta[0], deltagx[0], cov_delta, cov_deltagx)
+    return delta[0], deltagx[0], cov_delta, cov_deltagx
     
     # POISSON
     # Ngx = np.sum(numbergx,axis=0)
@@ -279,32 +186,89 @@ def stacking(N, m,
     #         delimiter=','
     # )
 
+def main(args=args):
+
+    L,K,nvoids = lenscat_load(args.lens_cat,
+            args.Rv_min, args.Rv_max, args.z_min, args.z_max, args.rho1_min, args.rho1_max, args.rho2_min, args.rho2_max, args.flag,
+            args.ncores, args.nk)
+
+    if args.rho2_min<=0:
+        t = 'R'
+    elif args.rho2_max>=0:
+        t = 'S'
+    else:
+        t = 'all'
+        
+    # program arguments
+    print(' Program arguments '.center(30,"="))
+    print('Lens catalog: '.ljust(15,'.'), f' {args.lens_cat}'.rjust(15,'.'), sep='')
+    # print('Sources catalog: '.ljust(15,'.'), f' {source_cat}'.rjust(15,'.'),sep='')
+    print('Output name: '.ljust(15,'.'), f' {args.sample}'.rjust(15,'.'),sep='')
+    print('N of cores: '.ljust(15,'.'), f' {args.ncores}'.rjust(15,'.'),sep='')
+    print('N of slices: '.ljust(15,'.'), f' {args.n_runslices}'.rjust(15,'.'),sep='')
+
+    # lens arguments
+    print(' Void sample '.center(30,"="))
+    print('Radii: '.ljust(15,'.'), f' [{args.Rv_min}, {args.Rv_max})'.rjust(15,'.'), sep='')
+    print('Redshift: '.ljust(15,'.'), f' [{args.z_min}, {args.z_max})'.rjust(15,'.'),sep='')
+    print('Tipo: '.ljust(15,'.'), f' {t}'.rjust(15,'.'),sep='')
+    # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
+    print('N voids: '.ljust(15,'.'), f' {nvoids}'.rjust(15,'.'),sep='')
+    
+    # profile arguments
+    print(' Profile arguments '.center(30,"="))
+    print('RMIN: '.ljust(15,'.'), f' {args.RIN}'.rjust(15,'.'), sep='')
+    print('RMAX: '.ljust(15,'.'), f' {args.ROUT}'.rjust(15,'.'),sep='')
+    print('N: '.ljust(15,'.'), f' {args.ndots}'.rjust(15,'.'),sep='')
+    print('N jackknife: '.ljust(15,'.'), f' {args.nk}'.rjust(15,'.'),sep='')
+    # print('Shape Noise: '.ljust(15,'.'), f' {args.addnoise}'.rjust(15,'.'),sep='')
+    
+    delta, deltagx, covdelta, covdeltagx = stacking(N=args.ndots, m=args.ROUT, L=L, K=K, nk=args.nk)
+    
+    Lrv = np.concatenate([Li[:,0] for Li in L])
+    Lz = np.concatenate([Li[:,3] for Li in L])
+    
+    head = fits.Header()
+    head.append(('Nvoids', int(nvoids))) ### TODO cuidado, no son los mismos q lensing xq no hay discarding
+    head.append(('lens',args.lens_cat))
+    head.append(('sour',args.source_cat[-10:-5],'cosmohub stamp')) ## considerando q los numeros de cosmohub son simepre 5...
+    head.append(('Rv_min', Lrv.min()))
+    head.append(('Rv_max', Lrv.max()))
+    head.append(('z_min', Lz.min()))
+    head.append(('z_max', Lz.max()))
+    head.append(('rho1_min', args.rho1_min))
+    head.append(('rho1_max', args.rho1_max))
+    head.append(('rho2_min', args.rho2_min))
+    head.append(('rho2_max', args.rho2_max))
+    head.append(('rmax', args.ROUT))
+    head.append(('ndots',np.round(args.ndots,4)))
+    head.append(('nk',np.round(args.nk,4),'jackknife slices'))
+    head['HISTORY'] = f'{time.asctime()}'
+
+    primary_hdu = fits.PrimaryHDU(header=head)
+    hdul = fits.HDUList([primary_hdu])
+    
+    rrr = np.linspace(0,args.ROUT,args.ndots+1)
+    rrr = rrr[:-1] + np.diff(rrr)*0.5
+    
+    table_delta = np.array([fits.Column(name='r', format='E', array=rrr),
+                      fits.Column(name='delta', format='E', array=delta),
+                      fits.Column(name='deltagx', format='E', array=deltagx),
+                     ])
+    table_cov = np.array([fits.Column(name='cov_delta', format='E', array=covdelta.flatten()),
+                          fits.Column(name='cov_deltagx', format='E', array=covdeltagx.flatten()),
+                     ])
+
+    hdul.append(fits.BinTableHDU.from_columns(table_delta))
+    hdul.append(fits.BinTableHDU.from_columns(table_cov))
+    
+    output_file = f'results/density_{args.sample}_{args.lens_cat[6:-4]}_{np.ceil(args.Rv_min).astype(int)}-{np.ceil(args.Rv_max).astype(int)}_z0{int(10.0*args.z_min)}-0{int(10.0*args.z_max)}_type{t}.fits'
+    hdul.writeto(output_file, overwrite=True)
 
 ### -------- RUN
-ncores = 64
-args_list = [ ## select samples
-    # (6.0,9.622,0.2,0.4,-1.0,-0.8,-1.0,100.0),
-    # (6.0,9.622,0.2,0.4,-1.0,-0.8,0.0,100.0),
-    # (6.0,9.622,0.2,0.4,-1.0,-0.8,-1.0,0.0),
-    # (9.622,50.0,0.2,0.4,-1.0,-0.8,-1.0,100.0),
-    # (9.622,50.0,0.2,0.4,-1.0,-0.8,0.0,100.0),
-    # (9.622,50.0,0.2,0.4,-1.0,-0.8,-1.0,0.0),
-]
-sample = 'N25'
-for lensargs in args_list:
+if __name__ == '__main__':
 
-    stacking(
-        N,
-        m,
-        lensargs,
-        sample,
-        *lenscat_load(
-            *lensargs, 
-            flag=2.0, 
-            lensname="/mnt/simulations/MICE/voids_MICE.dat",
-            split=True, 
-            NSPLITS=ncores
-        )
-    )
-
-print(f'Ended in: {np.round((time.time()-tin)/60.0, 2)} min')
+    tin = time.time()
+    main()
+    print(' TOTAL TIME '.ljust(15,'.'), f' {np.round((time.time()-tin)/60.,2)} min'.rjust(15,'.'),sep='')
+    print(' END :) '.center(30,"="))
