@@ -3,6 +3,7 @@
 import numpy as np
 from astropy.coordinates import angular_separation, position_angle
 from astropy.constants import G,c,M_sun,pc
+from astropy.io import fits
 
 #parameters
 cvel = c.value;    # Speed of light (m.s-1)
