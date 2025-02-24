@@ -41,6 +41,18 @@ args = parser.parse_args()
 
 cosmo = LambdaCDM(H0=100.0*args.h_cosmo, Om0=args.Om0, Ode0=args.Ode0)
 
+def SigmaCrit(zl, zs):
+
+    global cosmo
+    dl  = cosmo.angular_diameter_distance(zl).value
+    Dl = dl*1.e6*pc #en m
+    ds  = cosmo.angular_diameter_distance(zs).value              #dist ang diam de la fuente
+    dls = cosmo.angular_diameter_distance_z1z2(zl, zs).value      #dist ang diam entre fuente y lente
+                
+    BETA_array = dls / ds
+
+    return (((cvel**2.0)/(4.0*np.pi*G*Dl))*(1./BETA_array))*(pc**2/Msun)
+
 ## TODO
 ## se puede probar definir mask dentro del for loop, 
 ## y q cargue en memoria solo los q caen en cada anillo
