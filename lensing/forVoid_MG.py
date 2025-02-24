@@ -4,7 +4,7 @@ from astropy.coordinates import SkyCoord, angular_separation
 from astropy.io import fits
 import astropy.units as u
 from functools import partial
-from funcs import eq2p2, cov_matrix, SigmaCrit, lenscat_load, sourcecat_load
+from funcs import eq2p2, cov_matrix, lenscat_load, sourcecat_load
 from funcs import cvel,G,pc,Msun
 from multiprocessing import Pool
 import numpy as np
