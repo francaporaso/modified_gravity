@@ -194,9 +194,9 @@ def main(args=args):
             args.Rv_min, args.Rv_max, args.z_min, args.z_max, args.rho1_min, args.rho1_max, args.rho2_min, args.rho2_max, args.flag,
             args.ncores, args.nk)
 
-    if args.rho2_min<=0:
+    if args.rho2_max<=0:
         t = 'R'
-    elif args.rho2_max>=0:
+    elif args.rho2_min>=0:
         t = 'S'
     else:
         t = 'all'
