@@ -16,7 +16,7 @@ from vgcf import ang2xyz
 
 parser = ArgumentParser()
 parser.add_argument('--lens_cat', type=str, default='voids_LCDM_09.dat', action='store')
-parser.add_argument('--tracer_cat', type=str, default='l768_gr_z04-07_for02-03_19304.fits', action='store')
+parser.add_argument('--tracer_cat', type=str, default='l768_gr_centrals_19602.fits', action='store')
 parser.add_argument('--sample', type=str, default='TEST_LCDM_', action='store')
 parser.add_argument('-c','--ncores', type=int, default=2, action='store')
 parser.add_argument('-r','--n_runslices', type=int, default=1, action='store')
@@ -44,6 +44,7 @@ cosmo = LambdaCDM(H0=100*args.h_cosmo, Om0=args.Om0, Ode0=args.Ode0) ## Planck15
 def tracercat_load(catname=args.tracer_cat, ## descargar catalogo
                    if_centrals=True, cosmo=cosmo):
     
+    folder = '/home/fcaporaso/cats/L768/'
     if if_centrals:    
         with fits.open(catname) as f:
             centrals = f[1].data.kind == 0 ## chequear q sean los centrales!
