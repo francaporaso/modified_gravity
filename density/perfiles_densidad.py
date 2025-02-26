@@ -47,10 +47,11 @@ def tracercat_load(catname=args.tracer_cat, ## descargar catalogo
     folder = '/home/fcaporaso/cats/L768/'
     if if_centrals:    
         with fits.open(folder+catname, memmap=True, mode='denywrite') as f:
-            centrals = f[1].data.kind == 0 ## chequear q sean los centrales!
+            # centrals = f[1].data.kind == 0 ## chequear q sean los centrales!
             z_gal   = f[1].data.true_redshift_gal
             mask_z  = (z_gal >= 0.1) & (z_gal <= 0.5)
-            mmm = centrals&mask_z
+            # mmm = centrals&mask_z
+            mmm = mask_z
             ra_gal  = f[1].data.ra_gal[mmm]
             dec_gal = f[1].data.dec_gal[mmm]
             z_gal   = z_gal[mmm]
