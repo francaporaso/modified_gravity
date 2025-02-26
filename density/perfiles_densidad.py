@@ -54,7 +54,7 @@ def tracercat_load(catname=args.tracer_cat, ## descargar catalogo
             ra_gal  = f[1].data.ra_gal[mmm]
             dec_gal = f[1].data.dec_gal[mmm]
             z_gal   = z_gal[mmm]
-            lmhalo  = f[1].data.lmhalo[mmm] ## chequear
+            lmhalo  = f[1].data.halo_lm[mmm] ## chequear
         
         xh,yh,zh = ang2xyz(ra_gal, dec_gal, z_gal, cosmo=cosmo)
         return xh, yh, zh, lmhalo
