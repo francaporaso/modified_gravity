@@ -264,7 +264,7 @@ def main(args=args):
     hdul.append(fits.BinTableHDU.from_columns(table_delta))
     hdul.append(fits.BinTableHDU.from_columns(table_cov))
     
-    output_file = f'../results/density_{args.sample}_{args.lens_cat[6:-4]}_{np.ceil(args.Rv_min).astype(int)}-{np.ceil(args.Rv_max).astype(int)}_z0{int(10.0*args.z_min)}-0{int(10.0*args.z_max)}_type{t}.fits'
+    output_file = f'/home/fcaporaso/modified_gravity/density/results/density_{args.sample}_{args.lens_cat[6:-4]}_{np.ceil(args.Rv_min).astype(int)}-{np.ceil(args.Rv_max).astype(int)}_z0{int(10.0*args.z_min)}-0{int(10.0*args.z_max)}_type{t}.fits'
     hdul.writeto(output_file, overwrite=True)
 
 ### -------- RUN
