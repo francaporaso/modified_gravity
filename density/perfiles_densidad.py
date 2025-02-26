@@ -233,7 +233,7 @@ def main(args=args):
     head = fits.Header()
     head.append(('Nvoids', int(nvoids))) ### TODO cuidado, no son los mismos q lensing xq no hay discarding
     head.append(('lens',args.lens_cat))
-    head.append(('sour',args.source_cat[-10:-5],'cosmohub stamp')) ## considerando q los numeros de cosmohub son simepre 5...
+    head.append(('sour',args.tracer_cat[-10:-5],'cosmohub stamp')) ## considerando q los numeros de cosmohub son simepre 5...
     head.append(('Rv_min', Lrv.min()))
     head.append(('Rv_max', Lrv.max()))
     head.append(('z_min', Lz.min()))
