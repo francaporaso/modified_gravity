@@ -22,7 +22,8 @@ source ~/miniconda3/etc/profile.d/conda.sh
 conda activate env_py39
 
 ## LCDM
-srun python perfiles_densidad.py --sample 'aaa' --lens_cat 'voids_LCDM_09.dat' --tracer_cat 'l768_gr_centrals_z04-07_19624.fits' --Rv_min 20.0 --Rv_max 50.0 --z_min 0.5 --z_max 0.55 --ndots 25 --nk 100 --ncores 28
+srun python perfiles_densidad.py --sample 'aaa' --lens_cat 'voids_LCDM_09.dat' --tracer_cat 'l768_gr_centrals_z04-07_19624.fits' --Rv_min 20.0 --Rv_max 50.0 --z_min 0.5 --z_max 0.6 --ndots 25 --nk 100 --ncores 28
 
 ## fR
-srun python perfiles_densidad.py --sample 'aaa' --lens_cat 'voids_fR_09.dat' --tracer_cat 'l768_mg_centrals_z04-07_19625.fits' --Rv_min 20.0 --Rv_max 50.0 --z_min 0.5 --z_max 0.55 --ndots 25 --nk 100 --ncores 28
+srun python perfiles_densidad.py --sample 'aaa' --lens_cat 'voids_fR_09.dat' --tracer_cat 'l768_mg_centrals_z04-07_19625.fits' --Rv_min 20.0 --Rv_max 50.0 --z_min 0.5 --z_max 0.6 --ndots 25 --nk 100 --ncores 28
+
