@@ -136,7 +136,7 @@ def stacking(N, m,
     # count = 0
     for i,Li in enumerate(tqdm(L)):
         num=len(Li)
-        entrada = np.array([Li.T[1], Li.T[5], Li.T[6], Li.T[7]]).T
+        entrada = np.array([Li.T[0], Li.T[4], Li.T[5], Li.T[6]]).T
         with Pool(processes=num) as pool:
             resmap = pool.map(partial_func_unpack,
                            entrada)
