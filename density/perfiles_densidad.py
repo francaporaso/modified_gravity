@@ -160,10 +160,14 @@ def stacking(N, m,
     
     # COVARIANZA JACKKNIFE
     delta = massbin/mu - 1
+    delta_cum = (np.cumsum(massbin,axis=1).T/np.cumsum(mu,axis=1).T-1).T
     deltagx = numbergx/mu_gx - 1
+    deltagx_cum = (np.cumsum(numbergx,axis=1).T/np.cumsum(mu_gx,axis=1).T-1).T
     cov_delta = cov_matrix(delta[1:,:])
+    cov_delta_cum = cov_matrix(delta_cum[1:,:])
     cov_deltagx = cov_matrix(deltagx[1:,:])
-    return delta[0], deltagx[0], cov_delta, cov_deltagx
+    cov_deltagx_cum = cov_matrix(deltagx_cum[1:,:])
+    return delta[0], deltagx[0], delta_cum[0], deltagx_cum[0], cov_delta, cov_deltagx, cov_delta_cum, cov_deltagx_cum
     
     # POISSON
     # Ngx = np.sum(numbergx,axis=0)
@@ -202,30 +206,30 @@ def main(args=args):
         t = 'all'
         
     # program arguments
-    print(' Program arguments '.center(30,"="))
-    print('Lens cat: '.ljust(15,'.'), f' {args.lens_cat}'.rjust(15,'.'), sep='')
-    print('Sour cat: '.ljust(15,'.'), f' {args.tracer_cat.split("_")[-1][:-5]}'.rjust(15,'.'),sep='')
-    print('Out: '.ljust(15,'.'), f' {args.sample}'.rjust(15,'.'),sep='')
-    print('N cores: '.ljust(15,'.'), f' {args.ncores}'.rjust(15,'.'),sep='')
-    print('N slices: '.ljust(15,'.'), f' {args.n_runslices}'.rjust(15,'.'),sep='')
+    print(' Program arguments '.center(47,"="))
+    print('Lens cat: '.ljust(23,'.'), f' {args.lens_cat}'.rjust(24,'.'), sep='')
+    print('Sour cat: '.ljust(23,'.'), f' {args.tracer_cat.split("_")[-1][:-5]}'.rjust(24,'.'),sep='')
+    print('Out: '.ljust(23,'.'), f' {args.sample}'.rjust(24,'.'),sep='')
+    print('N cores: '.ljust(23,'.'), f' {args.ncores}'.rjust(24,'.'),sep='')
+    print('N slices: '.ljust(23,'.'), f' {args.n_runslices}'.rjust(24,'.'),sep='')
 
     # lens arguments
-    print(' Void sample '.center(30,"="))
-    print('Radii: '.ljust(15,'.'), f' [{args.Rv_min}, {args.Rv_max})'.rjust(15,'.'), sep='')
-    print('Redshift: '.ljust(15,'.'), f' [{args.z_min}, {args.z_max})'.rjust(15,'.'),sep='')
-    print('Tipo: '.ljust(15,'.'), f' {t}'.rjust(15,'.'),sep='')
-    # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
-    print('N voids: '.ljust(15,'.'), f' {nvoids}'.rjust(15,'.'),sep='')
+    print(' Void sample '.center(47,"="))
+    print('Radii: '.ljust(23,'.'), f' [{args.Rv_min}, {args.Rv_max})'.rjust(24,'.'), sep='')
+    print('Redshift: '.ljust(23,'.'), f' [{args.z_min}, {args.z_max})'.rjust(24,'.'),sep='')
+    print('Tipo: '.ljust(23,'.'), f' {t}'.rjust(24,'.'),sep='')
+    # print('Octante: '.ljust(23,'.'), f' {args.octant}'.rjust(24,'.'),sep='')
+    print('N voids: '.ljust(23,'.'), f' {nvoids}'.rjust(24,'.'),sep='')
     
     # profile arguments
-    print(' Profile arguments '.center(30,"="))
-    print('RMIN: '.ljust(15,'.'), f' {args.RIN}'.rjust(15,'.'), sep='')
-    print('RMAX: '.ljust(15,'.'), f' {args.ROUT}'.rjust(15,'.'),sep='')
-    print('N: '.ljust(15,'.'), f' {args.ndots}'.rjust(15,'.'),sep='')
-    print('N jackknife: '.ljust(15,'.'), f' {args.nk}'.rjust(15,'.'),sep='')
-    # print('Shape Noise: '.ljust(15,'.'), f' {args.addnoise}'.rjust(15,'.'),sep='')
+    print(' Profile arguments '.center(47,"="))
+    print('RMIN: '.ljust(23,'.'), f' {args.RIN}'.rjust(24,'.'), sep='')
+    print('RMAX: '.ljust(23,'.'), f' {args.ROUT}'.rjust(24,'.'),sep='')
+    print('N: '.ljust(23,'.'), f' {args.ndots}'.rjust(24,'.'),sep='')
+    print('N jackknife: '.ljust(23,'.'), f' {args.nk}'.rjust(24,'.'),sep='')
+    # print('Shape Noise: '.ljust(23,'.'), f' {args.addnoise}'.rjust(24,'.'),sep='')
     
-    delta, deltagx, covdelta, covdeltagx = stacking(N=args.ndots, m=args.ROUT, L=L, K=K, nk=args.nk)
+    delta, deltagx, delta_cum, deltagx_cum, covdelta, covdeltagx, covdelta_cum, covdeltagx_cum = stacking(N=args.ndots, m=args.ROUT, L=L, K=K, nk=args.nk)
     
     Lrv = np.concatenate([Li[:,0] for Li in L])
     Lz = np.concatenate([Li[:,3] for Li in L])
@@ -253,13 +257,19 @@ def main(args=args):
     rrr = np.linspace(0,args.ROUT,args.ndots+1)
     rrr = rrr[:-1] + np.diff(rrr)*0.5
     
-    table_delta = np.array([fits.Column(name='r', format='E', array=rrr),
-                      fits.Column(name='delta', format='E', array=delta),
-                      fits.Column(name='deltagx', format='E', array=deltagx),
-                     ])
-    table_cov = np.array([fits.Column(name='cov_delta', format='E', array=covdelta.flatten()),
-                          fits.Column(name='cov_deltagx', format='E', array=covdeltagx.flatten()),
-                     ])
+    table_delta = np.array([
+        fits.Column(name='r', format='E', array=rrr),
+        fits.Column(name='delta', format='E', array=delta),
+        fits.Column(name='deltagx', format='E', array=deltagx),
+        fits.Column(name='delta', format='E', array=delta_cum),
+        fits.Column(name='deltagx', format='E', array=deltagx_cum),
+    ])
+    table_cov = np.array([
+        fits.Column(name='cov_delta', format='E', array=covdelta.flatten()),
+        fits.Column(name='cov_deltagx', format='E', array=covdeltagx.flatten()),
+        fits.Column(name='cov_delta', format='E', array=covdelta_cum.flatten()),
+        fits.Column(name='cov_delta', format='E', array=covdeltagx_cum.flatten()),
+    ])
 
     hdul.append(fits.BinTableHDU.from_columns(table_delta))
     hdul.append(fits.BinTableHDU.from_columns(table_cov))
@@ -273,9 +283,9 @@ if __name__ == '__main__':
     tin = time.time()
     print('''
 
-    ▗▄▄▄  ▗▞▀▚▖▄▄▄▄  ▄▄▄▄   ▄▄▄ ▄▄▄  ▗▞▀▀▘▄ █ ▗▞▀▚▖ ▄▄▄ 
-    ▐▌  █ ▐▛▀▀▘█   █ █   █ █   █   █ ▐▌   ▄ █ ▐▛▀▀▘▀▄▄  
-    ▐▌  █ ▝▚▄▄▖█   █ █▄▄▄▀ █   ▀▄▄▄▀ ▐▛▀▘ █ █ ▝▚▄▄▖▄▄▄▀ 
+    ▗▄▄▄  ▗▞▀▚▖▄▄▄▄  ▄▄▄▄   ▄▄▄ ▄▄▄  ▗▞▀▀▘▄ █ ▗▞▀▚▖ 
+    ▐▌  █ ▐▛▀▀▘█   █ █   █ █   █   █ ▐▌   ▄ █ ▐▛▀▀▘  
+    ▐▌  █ ▝▚▄▄▖█   █ █▄▄▄▀ █   ▀▄▄▄▀ ▐▛▀▘ █ █ ▝▚▄▄▖
     ▐▙▄▄▀            █               ▐▌   █ █           
                      ▀                                  
     ''',
