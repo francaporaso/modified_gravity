@@ -204,7 +204,7 @@ def main(args=args):
     # program arguments
     print(' Program arguments '.center(30,"="))
     print('Lens cat: '.ljust(15,'.'), f' {args.lens_cat}'.rjust(15,'.'), sep='')
-    print('Sour cat: '.ljust(15,'.'), f' {args.trac_cat.split("_")[-1][:-5]}'.rjust(15,'.'),sep='')
+    print('Sour cat: '.ljust(15,'.'), f' {args.tracer_cat.split("_")[-1][:-5]}'.rjust(15,'.'),sep='')
     print('Out: '.ljust(15,'.'), f' {args.sample}'.rjust(15,'.'),sep='')
     print('N cores: '.ljust(15,'.'), f' {args.ncores}'.rjust(15,'.'),sep='')
     print('N slices: '.ljust(15,'.'), f' {args.n_runslices}'.rjust(15,'.'),sep='')
@@ -233,7 +233,7 @@ def main(args=args):
     head = fits.Header()
     head.append(('Nvoids', int(nvoids))) ### TODO cuidado, no son los mismos q lensing xq no hay discarding
     head.append(('lens',args.lens_cat))
-    head.append(('sour',args.trac_cat.split("_")[-1][:-5],'cosmohub stamp')) ## considerando q los numeros de cosmohub son simepre 5...
+    head.append(('sour',args.tracer_cat.split("_")[-1][:-5],'cosmohub stamp')) ## considerando q los numeros de cosmohub son simepre 5...
     head.append(('Rv_min', Lrv.min()))
     head.append(('Rv_max', Lrv.max()))
     head.append(('z_min', Lz.min()))
