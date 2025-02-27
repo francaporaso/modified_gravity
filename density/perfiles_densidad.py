@@ -49,13 +49,13 @@ def tracercat_load(catname=args.tracer_cat, ## descargar catalogo
         with fits.open(folder+catname, memmap=True, mode='denywrite') as f:
             # centrals = f[1].data.kind == 0 ## chequear q sean los centrales!
             z_gal   = f[1].data.true_redshift_gal
-            mask_z  = (z_gal >= 0.1) & (z_gal <= 0.5)
+            # mask_z  = (z_gal >= 0.1) & (z_gal <= 0.5)
             # mmm = centrals&mask_z
-            mmm = mask_z
-            ra_gal  = f[1].data.ra_gal[mmm]
-            dec_gal = f[1].data.dec_gal[mmm]
-            z_gal   = z_gal[mmm]
-            lmhalo  = f[1].data.halo_lm[mmm] ## chequear
+            # mmm = mask_z
+            ra_gal  = f[1].data.ra_gal
+            dec_gal = f[1].data.dec_gal
+            # z_gal   = z_gal[mmm]
+            lmhalo  = f[1].data.halo_lm
         
         xh,yh,zh = ang2xyz(ra_gal, dec_gal, z_gal, cosmo=cosmo)
         return xh, yh, zh, lmhalo
@@ -78,7 +78,7 @@ def mean_density_comovingshell(xh, yh, zh, logmh,
 
     lmh = logmh[(dist > chi_min)&(dist < chi_max)]
 
-    vol = (1/8)*(4*np.pi/3)*(chi_max**3 - chi_min**3)
+    vol = (4*np.pi/3)*(chi_max**3 - chi_min**3)
     mass = np.sum(10.0 ** lmh)
 
     return mass/vol, len(lmh)/vol
