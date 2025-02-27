@@ -191,11 +191,11 @@ def main(args=args):
     
     # program arguments
     print(' Program arguments '.center(30,"="))
-    print('Lens catalog: '.ljust(15,'.'), f' {args.lens_cat}'.rjust(15,'.'), sep='')
-    # print('Sources catalog: '.ljust(15,'.'), f' {source_cat}'.rjust(15,'.'),sep='')
-    print('Output name: '.ljust(15,'.'), f' {args.sample}'.rjust(15,'.'),sep='')
-    print('N of cores: '.ljust(15,'.'), f' {args.ncores}'.rjust(15,'.'),sep='')
-    print('N of slices: '.ljust(15,'.'), f' {args.n_runslices}'.rjust(15,'.'),sep='')
+    print('Lens cat: '.ljust(15,'.'), f' {args.lens_cat}'.rjust(15,'.'), sep='')
+    print('Sour catalog: '.ljust(15,'.'), f' {args.source_cat.split('_')[-1][:-5]}'.rjust(15,'.'),sep='')
+    print('Out: '.ljust(15,'.'), f' {args.sample}'.rjust(15,'.'),sep='')
+    print('N cores: '.ljust(15,'.'), f' {args.ncores}'.rjust(15,'.'),sep='')
+    print('N slices: '.ljust(15,'.'), f' {args.n_runslices}'.rjust(15,'.'),sep='')
     
     if args.rho2_max<=0:
         tipo = 'R'
