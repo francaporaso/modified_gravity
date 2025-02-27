@@ -273,7 +273,7 @@ def main(args=args):
     head = fits.Header()
     head.append(('nvoids',int(nvoids-discarded)))
     head.append(('lens',args.lens_cat))
-    head.append(('sour',args.source_cat[-10:-5],'cosmohub stamp')) ## considerando q los numeros de cosmohub son simepre 5...
+    head.append(('sour',args.source_cat.split('_')[-1][:-5],'cosmohub stamp')) ## considerando q está separado por '_'
     head.append(('Rv_min',np.round(args.Rv_min,2)))
     head.append(('Rv_max',np.round(args.Rv_max,2)))
     head.append(('Rv_mean',np.round(rvmean,4)))
@@ -318,6 +318,12 @@ def main(args=args):
 if __name__=='__main__':
 
     tin = time.time()
+    print('''
+    ▗▖▗▞▀▚▖▄▄▄▄   ▄▄▄ ▄ ▄▄▄▄   ▗▄▄▖
+    ▐▌▐▛▀▀▘█   █ ▀▄▄  ▄ █   █ ▐▌   
+    ▐▌▝▚▄▄▖█   █ ▄▄▄▀ █ █   █ ▐▌▝▜▌
+    ▐▙▄▄▖             █       ▝▚▄▞▘
+    ''')
     main()
     print(' TOTAL TIME '.ljust(15,'.'), f' {np.round((time.time()-tin)/60.,2)} min'.rjust(15,'.'),sep='')
     print(' END :) '.center(30,"="))
