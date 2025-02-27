@@ -278,7 +278,8 @@ if __name__ == '__main__':
     ▐▌  █ ▝▚▄▄▖█   █ █▄▄▄▀ █   ▀▄▄▄▀ ▐▛▀▘ █ █ ▝▚▄▄▖▄▄▄▀ 
     ▐▙▄▄▀            █               ▐▌   █ █           
                      ▀                                  
-    ''')           
+    ''',
+    flush=True)           
     main()
     print(' TOTAL TIME '.ljust(15,'.'), f' {np.round((time.time()-tin)/60.,2)} min'.rjust(15,'.'),sep='')
     print(' END :) '.center(30,"="))
