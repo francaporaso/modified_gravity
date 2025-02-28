@@ -261,14 +261,14 @@ def main(args=args):
         fits.Column(name='r', format='E', array=rrr),
         fits.Column(name='delta', format='E', array=delta),
         fits.Column(name='deltagx', format='E', array=deltagx),
-        fits.Column(name='delta', format='E', array=delta_cum),
-        fits.Column(name='deltagx', format='E', array=deltagx_cum),
+        fits.Column(name='delta_cum', format='E', array=delta_cum),
+        fits.Column(name='deltagx_cum', format='E', array=deltagx_cum),
     ])
     table_cov = np.array([
         fits.Column(name='cov_delta', format='E', array=covdelta.flatten()),
         fits.Column(name='cov_deltagx', format='E', array=covdeltagx.flatten()),
-        fits.Column(name='cov_delta', format='E', array=covdelta_cum.flatten()),
-        fits.Column(name='cov_delta', format='E', array=covdeltagx_cum.flatten()),
+        fits.Column(name='cov_delta_cum', format='E', array=covdelta_cum.flatten()),
+        fits.Column(name='cov_deltagx_cum', format='E', array=covdeltagx_cum.flatten()),
     ])
 
     hdul.append(fits.BinTableHDU.from_columns(table_delta))
@@ -282,7 +282,6 @@ if __name__ == '__main__':
 
     tin = time.time()
     print('''
-
     ▗▄▄▄  ▗▞▀▚▖▄▄▄▄  ▄▄▄▄   ▄▄▄ ▄▄▄  ▗▞▀▀▘▄ █ ▗▞▀▚▖ 
     ▐▌  █ ▐▛▀▀▘█   █ █   █ █   █   █ ▐▌   ▄ █ ▐▛▀▀▘  
     ▐▌  █ ▝▚▄▄▖█   █ █▄▄▄▀ █   ▀▄▄▄▀ ▐▛▀▘ █ █ ▝▚▄▄▖
