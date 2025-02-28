@@ -198,6 +198,9 @@ def main(args=args):
             args.Rv_min, args.Rv_max, args.z_min, args.z_max, args.rho1_min, args.rho1_max, args.rho2_min, args.rho2_max, args.flag,
             args.ncores, args.nk)
 
+    Lrv = np.concatenate([Li[:,0] for Li in L])
+    Lz = np.concatenate([Li[:,3] for Li in L])
+    
     if args.rho2_max<=0:
         t = 'R'
     elif args.rho2_min>=0:
@@ -215,8 +218,8 @@ def main(args=args):
 
     # lens arguments
     print(' Void sample '.center(47,"="))
-    print('Radii: '.ljust(23,'.'), f' [{args.Rv_min}, {args.Rv_max})'.rjust(24,'.'), sep='')
-    print('Redshift: '.ljust(23,'.'), f' [{args.z_min}, {args.z_max})'.rjust(24,'.'),sep='')
+    print('Radii: '.ljust(23,'.'), f' [{Lrv.min()}, {Lrv.max()})'.rjust(24,'.'), sep='')
+    print('Redshift: '.ljust(23,'.'), f' [{np.round(Lz.min(),3)}, {np.round(Lz.max(),3)})'.rjust(24,'.'),sep='')
     print('Tipo: '.ljust(23,'.'), f' {t}'.rjust(24,'.'),sep='')
     # print('Octante: '.ljust(23,'.'), f' {args.octant}'.rjust(24,'.'),sep='')
     print('N voids: '.ljust(23,'.'), f' {nvoids}'.rjust(24,'.'),sep='')
@@ -231,8 +234,6 @@ def main(args=args):
     
     delta, deltagx, delta_cum, deltagx_cum, covdelta, covdeltagx, covdelta_cum, covdeltagx_cum = stacking(N=args.ndots, m=args.ROUT, L=L, K=K, nk=args.nk)
     
-    Lrv = np.concatenate([Li[:,0] for Li in L])
-    Lz = np.concatenate([Li[:,3] for Li in L])
     
     head = fits.Header()
     head.append(('Nvoids', int(nvoids))) ### TODO cuidado, no son los mismos q lensing xq no hay discarding
