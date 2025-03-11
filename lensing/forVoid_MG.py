@@ -155,6 +155,12 @@ def stacking(RIN, ROUT, ndots, nk,
         else:
             entrada = np.array([Li.T[1],Li.T[2],Li.T[3],Li.T[0],
                                 np.full(num,RIN), np.full(num,ROUT), np.full(num,ndots)]).T
+            ## TODO
+            # aparentemente, esto está mal usado
+            # Pool crea procesos que pueden ser reutilizados, por lo que reinsanciar en cada loop es contraproducente
+            
+            # sacar Pool fuera del loop, y probar darle L SIN cortes, es inteligente si le das más cosas que procesos
+            # y los hace esperar hasta que haya workers libres
             with Pool(processes=num) as pool:
                 resmap = np.array(pool.map(partial_profile_unpack,entrada))
                 pool.close()
