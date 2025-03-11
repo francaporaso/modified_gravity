@@ -35,7 +35,7 @@ parser.add_argument('--rho2_min', type=float, default=-1.0, action='store')
 parser.add_argument('--rho2_max', type=float, default=100.0, action='store')
 parser.add_argument('--flag', type=float, default=2.0, action='store')
 # parser.add_argument('--octant', action='store_true') ## 'store_true' guarda True SOLO cuando se da --octant
-parser.add_argument('--RIN', type=float, default=0.05, action='store')
+parser.add_argument('--RIN', type=float, default=0.0, action='store')
 parser.add_argument('--ROUT', type=float, default=5.0, action='store')    
 parser.add_argument('-N','--ndots', type=int, default=22, action='store')    
 parser.add_argument('-K','--nk', type=int, default=100, action='store')    
@@ -151,7 +151,7 @@ def stacking(RIN, ROUT, ndots, nk, ncores,
 
     with Pool(processes=ncores) as pool:
 
-        entrada = np.array([L.T[1],L.T[2],L.T[3],L.T[0],
+        entrada = np.array([L[1],L[2],L[3],L[0],
                             np.full(len(L),RIN), np.full(len(L),ROUT), np.full(len(L),ndots)]).T
 
         resmap = np.array(pool.map(partial_profile_unpack, entrada))
