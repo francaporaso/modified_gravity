@@ -152,7 +152,7 @@ def stacking(RIN, ROUT, ndots, nk, ncores,
     with Pool(processes=ncores) as pool:
 
         entrada = np.array([L[1],L[2],L[3],L[0],
-                            np.full(len(L),RIN), np.full(len(L),ROUT), np.full(len(L),ndots)]).T
+                            np.full(len(L.T),RIN), np.full(len(L.T),ROUT), np.full(len(L.T),ndots)]).T
 
         resmap = np.array(pool.map(partial_profile_unpack, entrada))
         pool.close()
