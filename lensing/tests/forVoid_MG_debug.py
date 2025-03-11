@@ -225,7 +225,7 @@ def main(args=args):
 
     if not bool(args.n_runslices-1):
         print('Running single slice')
-        Sigma, DSigma_T, DSigma_X, Ninbin, discarded = stacking(args.RIN, args.ROUT, args.ndots, args.nk, L, K)
+        Sigma, DSigma_T, DSigma_X, Ninbin, discarded = stacking(args.RIN, args.ROUT, args.ndots, args.nk, args.ncores, L, K)
 
         covS = cov_matrix(Sigma[1:,:])
         covDSt = cov_matrix(DSigma_T[1:,:])
