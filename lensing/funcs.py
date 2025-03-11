@@ -48,9 +48,9 @@ def lenscat_load(lens_cat,
     ## CdM: centro de masa
     ## CdV: centro del void
     try: 
-        L = np.loadtxt("/home/fcaporaso/cats/L768/"+lens_cat).T
+        L = np.loadtxt("/home/fcaporaso/cats/L768/"+lens_cat, dtype='f4').T
     except:
-        L = np.loadtxt(lens_cat).T
+        L = np.loadtxt(lens_cat, dtype='f4').T
     # if octant: ## octant deprecated
     #     # selecciono los void en un octante
     #     eps = 1.0
@@ -87,8 +87,8 @@ def lenscat_load(lens_cat,
     if bool(ncores-1):
         if ncores > nvoids:
             ncores = nvoids
-        lbins = int(round(nvoids/float(ncores), 0))
-        slices = ((np.arange(lbins)+1)*ncores).astype(int)
+        lbins = round(nvoids/ncores)
+        slices = (np.arange(lbins)+1)*ncores
         slices = slices[(slices < nvoids)]
         L = np.split(L.T, slices)
         K = np.split(K.T, slices)
@@ -97,9 +97,19 @@ def lenscat_load(lens_cat,
 
 def sourcecat_load(sourcename):
     folder = '/home/fcaporaso/cats/L768/'
-    with fits.open(folder+sourcename) as f:
+    with fits.open(folder+sourcename, memmap=True, mode='denywrite') as f:
         mask = np.abs(f[1].data.gamma1) < 10.0
         S = f[1].data[mask]
 
     return S
     # return S.ra_gal, S.dec_gal, S.true_redshift_gal, S.kappa, S.gamma1, S.gamma2
+
+
+#####################
+### BALLTREE - probar
+# import sklearn
+# S = fits...
+# X = np.deg2rad([S.dec_gal, S.ra_gal]).T ## shape = (len(S),2) 
+# BT = sklearn(X, leaf_size=2, metric='haversine') ## haversine == great-circle
+# idx = BT.query_radius([np.deg2rad([DEC0,RA0])], r=0.8) # r: great-dist en radianes
+# catdata = S.ra_gal[idx], S.dec_gal[idx]
