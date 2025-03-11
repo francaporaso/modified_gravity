@@ -154,10 +154,12 @@ def stacking(RIN, ROUT, ndots, nk, ncores,
         entrada = np.array([L[1],L[2],L[3],L[0],
                             np.full(len(L.T),RIN), np.full(len(L.T),ROUT), np.full(len(L.T),ndots)]).T
 
+        print('pool init')
         resmap = np.array(pool.map(partial_profile_unpack, entrada))
         pool.close()
         pool.join()
     
+        print('saving to arrays')
         for j, res in enumerate(resmap):
             km = np.tile(K[j],(ndots,1)).T
             if np.isfinite(res[0][0]):
@@ -167,6 +169,7 @@ def stacking(RIN, ROUT, ndots, nk, ncores,
                 Ninbin += np.tile(res[3],(nk+1,1))*km
             else:
                 discarded += 1 
+        print('quiting context manager')
 
     # COMPUTING PROFILE        
     Ninbin[DSIGMAwsum_T == 0] = 1.
