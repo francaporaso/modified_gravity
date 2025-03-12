@@ -90,17 +90,12 @@ def number_density_v2(N, m, xh, yh, zh, lmhalo, rv, xv, yv, zv):
     dist = np.sqrt((xh-xv)**2 + (yh-yv)**2 + (zh-zv)**2) ## dist to center of void i
     const = m*rv/N
 
+    mean_den_com, mean_gx_com = mean_density_comovingshell(xh,yh,zh,lmhalo,
+                                                           m,rv,xv,yv,zv)
+
     mask_mean = (dist < 1.1*m*rv)
     logmass = lmhalo[mask_mean]
     dist = dist[mask_mean]
-
-    mean_den_com, mean_gx_com = mean_density_comovingshell(xh,yh,zh,lmhalo,
-                                                           m,rv,xv,yv,zv)
-    
-    # mass_ball = np.sum( 10.0**(logmass) )
-    # vol_ball = (4/3)*np.pi*(5*m*rv)**3
-    # mean_gx_ball = np.sum(mask_mean)/vol_ball
-    # mean_den_ball = mass_ball/vol_ball
     
     for k in range(N):
         mask = (dist < (k+1)*const) & (dist >= k*const)
