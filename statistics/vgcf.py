@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 import numpy as np
 from astropy.io import fits
 from astropy.cosmology import LambdaCDM
+import pandas as pd
 
 parser = ArgumentParser()
 parser.add_argument('--lens_cat', type=str, default='voids_LCDM_09.dat', action='store')
@@ -53,7 +54,7 @@ def make_randoms(data,
     peso = poly_y/sum(poly_y)
     z_rand = np.random.choice(zr,size_random,replace=True,p=peso)
 
-    randoms = {'ra': ra_rand, 'dec': dec_rand, 'z':z_rand}
+    randoms = pd.DataFrame({'ra': ra_rand, 'dec': dec_rand, 'z':z_rand})
 
     if len(data.keys()) == 4:
         rv = data['rv']
