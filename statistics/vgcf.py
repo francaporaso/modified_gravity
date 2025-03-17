@@ -376,6 +376,6 @@ if __name__ == '__main__':
         print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='')
         # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
         cats = Catalogos(cat_config, lenscat, sourcecat)
-        print(cats.lenses.ra.min())
+        print(np.min(cats.lenses.ra))
         # vgcf.run(cats)
         # vgcf.write(args.sample+'_'+lenscat.split('_')[1], cat_config, lenscat, sourcecat)
