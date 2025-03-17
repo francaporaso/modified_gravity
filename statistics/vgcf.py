@@ -70,6 +70,8 @@ class Catalogos:
                      'logp','cmdist',
                      'flag']
         )
+        assert len(self.lenses) != 0
+        print('N voids: '.ljust(15,'.'), f' {len(self.lenses)}'.rjust(15,'.'),sep='')
         
         self.sources = pd.read_parquet(path+source_name).sample(frac=1.0, random_state=1)
         self.sources.rename(
@@ -130,7 +132,6 @@ class VoidGalaxyCrossCorrelation:
             ra_units='deg',
             dec_units='deg',
         )
-        print('N voids: '.ljust(15,'.'), f' {self.dvcat.nobj}'.rjust(15,'.'),sep='')
 
         ## Tracers (gx)
         self.dgcat = treecorr.Catalog(
@@ -376,8 +377,6 @@ if __name__ == '__main__':
         print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='')
         # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
 
-
         cats = Catalogos(cat_config, lenscat, sourcecat)
-        print(np.min(cats.lenses.ra))
-        # vgcf.run(cats)
-        # vgcf.write(args.sample+'_'+lenscat.split('_')[1], cat_config, lenscat, sourcecat)
+        vgcf.run(cats)
+        vgcf.write(args.sample+'_'+lenscat.split('_')[1], cat_config, lenscat, sourcecat)
