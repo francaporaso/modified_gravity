@@ -361,6 +361,8 @@ if __name__ == '__main__':
     source_name = ['l768_gr_galaxiesz00-07_bucket1of3_19814.parquet',
                 'l768_mg_galaxiesz00-07_bucket1of3_19813.parquet']
 
+    tin = time.time()
+
     vgcf = VoidGalaxyCrossCorrelation(tree_config)
     for lenscat, sourcecat in zip(lens_name, source_name):
         # program arguments
@@ -380,3 +382,6 @@ if __name__ == '__main__':
         cats = Catalogos(cat_config, lenscat, sourcecat)
         vgcf.run(cats)
         vgcf.write(args.sample+'_'+lenscat.split('_')[1], cat_config, lenscat, sourcecat)
+
+    print(f'Took {(time.time()-tin)/60.0} min')
+    print('End!')
