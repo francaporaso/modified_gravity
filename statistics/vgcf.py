@@ -116,7 +116,7 @@ class VoidGalaxyCrossCorrelation:
         print(' Profile arguments '.center(30,"="))
         print('RMIN: '.ljust(15,'.'), f' {config_treecorr["rmin"]}'.rjust(15,'.'), sep='')
         print('RMAX: '.ljust(15,'.'), f' {config_treecorr["rmax"]}'.rjust(15,'.'),sep='')
-        print('N: '.ljust(15,'.'), f' {config_treecorr["nbins"]}'.rjust(15,'.'),sep='')
+        print('N: '.ljust(15,'.'), f' {config_treecorr["ndots"]}'.rjust(15,'.'),sep='')
         # print('N jackknife: '.ljust(15,'.'), f' {config_treecorr['nk']}'.rjust(15,'.'),sep='')
         # print('Shape Noise: '.ljust(15,'.'), f' {config_treecorr['addnoise}'.rjust(15,'.'),sep='')
 
