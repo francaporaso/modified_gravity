@@ -82,29 +82,31 @@ class Catalogos:
         )
         query = f'redshift < {cat_config["z_max"]}+0.1 and redshift >= {cat_config["z_min"]}-0.1'
         self.sources.query(query,inplace=True)
-        
-        self.random_lenses = make_randoms(
-            self.lenses.ra,
-            self.lenses.dec,
-            self.lenses.redshift,
-            size_random=len(self.lenses)*2
-        )
 
-        self.random_sources = make_randoms(
-            self.sources.ra,
-            self.sources.dec,
-            self.sources.r_com, 
-            size_random=len(self.sources)*2
-        )
+        print(type(self.lenses.ra))
+
+        # self.random_lenses = make_randoms(
+        #     self.lenses.ra,
+        #     self.lenses.dec,
+        #     self.lenses.redshift,
+        #     size_random=len(self.lenses)*2
+        # )
+
+        # self.random_sources = make_randoms(
+        #     self.sources.ra,
+        #     self.sources.dec,
+        #     self.sources.r_com, 
+        #     size_random=len(self.sources)*2
+        # )
         
-        self.lenses['w'] = np.ones(len(self.lenses))
-        self.sources['w'] = np.ones(len(self.sources))
-        self.random_lenses['w'] = np.ones(len(self.random_lenses))
-        self.random_sources['w'] = np.ones(len(self.random_sources))
+        # self.lenses['w'] = np.ones(len(self.lenses))
+        # self.sources['w'] = np.ones(len(self.sources))
+        # self.random_lenses['w'] = np.ones(len(self.random_lenses))
+        # self.random_sources['w'] = np.ones(len(self.random_sources))
         
-        self.lenses['r_com'] = d_com(self.lenses.redshift)
-        self.random_lenses['r_com'] = d_com(self.random_lenses.redshift)
-        self.random_sources.rename(columns={'redshift':'r_com'}, inplace=True)
+        # self.lenses['r_com'] = d_com(self.lenses.redshift)
+        # self.random_lenses['r_com'] = d_com(self.random_lenses.redshift)
+        # self.random_sources.rename(columns={'redshift':'r_com'}, inplace=True)
 
 class VoidGalaxyCrossCorrelation:
     
@@ -376,5 +378,6 @@ if __name__ == '__main__':
         print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='')
         # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
         cats = Catalogos(cat_config, lenscat, sourcecat)
-        vgcf.run(cats)
-        vgcf.write(args.sample+'_'+lenscat.split('_')[1], cat_config, lenscat, sourcecat)
+
+        # vgcf.run(cats)
+        # vgcf.write(args.sample+'_'+lenscat.split('_')[1], cat_config, lenscat, sourcecat)
