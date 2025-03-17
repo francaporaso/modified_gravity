@@ -1,77 +1,17 @@
 from argparse import ArgumentParser
-import numpy as np
-from astropy.io import fits
 from astropy.cosmology import LambdaCDM
+from astropy.io import fits
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+import time
+import treecorr
 
-parser = ArgumentParser()
-parser.add_argument('--lens_cat', type=str, default='voids_LCDM_09.dat', action='store')
-parser.add_argument('--tracer_cat', type=str, default='l768_gr_centrals_19602.fits', action='store')
-parser.add_argument('--sample', type=str, default='TEST_LCDM_', action='store')
-parser.add_argument('-c','--ncores', type=int, default=2, action='store')
-parser.add_argument('-r','--n_runslices', type=int, default=1, action='store')
-parser.add_argument('--h_cosmo', type=float, default=1.0, action='store')
-parser.add_argument('--Om0', type=float, default=0.3089, action='store')
-parser.add_argument('--Ode0', type=float, default=0.6911, action='store')
-parser.add_argument('--Rv_min', type=float, default=1.0, action='store')
-parser.add_argument('--Rv_max', type=float, default=50.0, action='store')
-parser.add_argument('--z_min', type=float, default=0.0, action='store')
-parser.add_argument('--z_max', type=float, default=0.6, action='store')
-parser.add_argument('--rho1_min', type=float, default=-1.0, action='store')
-parser.add_argument('--rho1_max', type=float, default=0.0, action='store')
-parser.add_argument('--rho2_min', type=float, default=-1.0, action='store')
-parser.add_argument('--rho2_max', type=float, default=100.0, action='store')
-parser.add_argument('--flag', type=float, default=2.0, action='store')
-parser.add_argument('--RIN', type=float, default=0.05, action='store')
-parser.add_argument('--ROUT', type=float, default=5.0, action='store')    
-parser.add_argument('-N','--ndots', type=int, default=22, action='store')    
-parser.add_argument('-K','--nk', type=int, default=100, action='store')    
-# parser.add_argument('--addnoise', action='store_true')
-args = parser.parse_args()
+import sys
+sys.path.append('/home/fcaporaso/modified_gravity/')
+from lensing.funcs import lenscat_load
 
-cosmo = LambdaCDM(H0=100*args.h_cosmo, Om0=args.Om0, Ode0=args.Ode0)
-
-## TODO puede que sea más efficiente simplemente pasando los maximos y minimos
-## para z no funcionaría xq tiene q interpolar...
-def make_randoms(data,
-                 size_random = 100):
-    
-    print('Making randoms...')
-    ra, dec, z = data['ra'], data['dec'], data['z']
-
-    dec = np.deg2rad(dec)
-    sindec_rand = np.random.uniform(np.sin(dec.min()), np.sin(dec.max()), size_random)
-    dec_rand = np.arcsin(sindec_rand)*(180/np.pi)
-    ra_rand  = np.random.uniform(ra.min(), ra.max(), size_random)
-
-    y,xbins  = np.histogram(z, 25)
-    x  = xbins[:-1]+0.5*np.diff(xbins)
-    n = 3
-    poly = np.polyfit(x,y,n)
-    zr = np.random.uniform(z.min(),z.max(),1_000_000)
-    poly_y = np.poly1d(poly)(zr)
-    poly_y[poly_y<0] = 0.
-    peso = poly_y/sum(poly_y)
-    z_rand = np.random.choice(zr,size_random,replace=True,p=peso)
-
-    randoms = pd.DataFrame({'ra': ra_rand, 'dec': dec_rand, 'z':z_rand})
-
-    if len(data.keys()) == 4:
-        rv = data['rv']
-        y,xbins  = np.histogram(rv, 25)
-        x  = xbins[:-1] + 0.5*np.diff(xbins)
-        n = 3
-        poly = np.polyfit(x,y,n)
-        rvr = np.random.uniform(rv.min(), rv.max(), 1_000_000)
-        poly_y = np.poly1d(poly)(rvr)
-        poly_y[poly_y<0] = 0.
-        peso = poly_y/sum(poly_y)
-        rv_rand = np.random.choice(rvr, size_random, replace=True, p=peso)
-    
-        randoms['rv'] = rv_rand
-
-    print('Wii randoms!')
-    return randoms
+cosmo = LambdaCDM(H0=100.0, Om0=0.3089, Ode0=0.6911)
 
 def ang2xyz(ra, dec, redshift,
             cosmo=cosmo):
@@ -83,140 +23,356 @@ def ang2xyz(ra, dec, redshift,
 
     return x,y,z
 
-def compute_xi_2d(positions, random_positions,
-                  npi = 16, nbins = 12,
-                  rmin = 0.1, rmax = 200., pi_max = 60.,
-                  NPatches = 16, slop = 0.,
-                  cosmo = cosmo, ncores = 4):
+def d_com(z):
+    global cosmo
+    return cosmo.comoving_distance(z).value
 
-    ## Auxiliary functions to compute the covariance
-    def func(corrs):
-        return corrs[0].weight*0.5
+def make_randoms(ra, dec, redshift,
+                 size_random = 100):
     
-    def func2(corrs):
-        return corrs[0].weight
+    # print('Making randoms...')
+    np.random.seed(1)
     
-    """ Compute the galaxy-shape correlation in 3D. """
+    dec = np.deg2rad(dec)
+    sindec_rand = np.random.uniform(np.sin(dec.min()), np.sin(dec.max()), size_random)
+    dec_rand = np.arcsin(sindec_rand)*(180/np.pi)
+    ra_rand  = np.random.uniform(ra.min(), ra.max(), size_random)
 
-    # arrays to store the output
-    r         = np.zeros(nbins)
-    mean_r    = np.zeros(nbins)
-    mean_logr = np.zeros(nbins)
+    y,xbins  = np.histogram(redshift, 25)
+    x  = xbins[:-1]+0.5*np.diff(xbins)
+    n = 3
+    poly = np.polyfit(x,y,n)
+    zr = np.random.uniform(redshift.min(),redshift.max(),size_random)
+    poly_y = np.poly1d(poly)(zr)
+    poly_y[poly_y<0] = 0.
+    peso = poly_y/sum(poly_y)
+    z_rand = np.random.choice(zr,size_random,replace=True,p=peso)
 
-    xi    = np.zeros((npi, nbins))
-    xi_jk = np.zeros((NPatches, npi, nbins))
-    dd_jk = np.zeros_like(xi_jk)
-    dr_jk = np.zeros_like(xi_jk)
-    rr_jk = np.zeros_like(xi_jk)
+    # print('Wii randoms!')
+    return pd.DataFrame({'ra': ra_rand, 'dec': dec_rand, 'redshift':z_rand})
 
-    d_p  = cosmo.comoving_distance(positions['z']).value
-    d_r  = cosmo.comoving_distance(random_positions['z']).value
+class Catalogos:
+    def __init__(self, cat_config, lens_name, source_name):
+        path = '/home/fcaporaso/cats/L768/'
+        
+        self.lenses = pd.DataFrame(
+            lenscat_load(
+                path+lens_name,
+                *cat_config.values(),
+                1,1
+            )[0].T,
+            columns=['rv',
+                     'ra','dec','redshift',
+                     'xv','yv','zv',
+                     'rho1','rho2',
+                     'logp','cmdist',
+                     'flag']
+        )
+        
+        self.sources = pd.read_parquet(path+source_name).sample(frac=1.0, random_state=1)
+        self.sources.rename(
+            columns={
+                'ra_gal':'ra',
+                'dec_gal':'dec',
+                'true_redshift_gal':'redshift',
+                'r_gal':'r_com'},
+            inplace=True
+        )
+        query = f'redshift < {cat_config["z_max"]}+0.1 and redshift >= {cat_config["z_min"]}-0.1'
+        self.sources.query(query,inplace=True)
+        
+        self.random_lenses = make_randoms(
+            self.lenses.ra,
+            self.lenses.dec,
+            self.lenses.redshift,
+            size_random=len(self.lenses)*2
+        )
 
-    print('Loading catalogs...')
+        self.random_sources = make_randoms(
+            self.sources.ra,
+            self.sources.dec,
+            self.sources.r_com, 
+            size_random=len(self.sources)*2
+        )
+        
+        self.lenses['w'] = np.ones(len(self.lenses))
+        self.sources['w'] = np.ones(len(self.sources))
+        self.random_lenses['w'] = np.ones(len(self.random_lenses))
+        self.random_sources['w'] = np.ones(len(self.random_sources))
+        
+        self.lenses['r_com'] = d_com(self.lenses.redshift)
+        self.random_lenses['r_com'] = d_com(self.random_lenses.redshift)
+        self.random_sources.rename(columns={'redshift':'r_com'}, inplace=True)
+
+class VoidGalaxyCrossCorrelation:
     
-    pcat = treecorr.Catalog(ra=positions['ra'], dec=positions['dec'],
-                             r=d_p, npatch = NPatches,
-                             ra_units='deg', dec_units='deg')
+    def __init__(self, config_treecorr):
+        self.config : dict = config_treecorr
 
-    rcat = treecorr.Catalog(ra=random_positions['ra'], dec=random_positions['dec'],
-                             r=d_r, npatch = NPatches,
-                             patch_centers = pcat.patch_centers,
-                             ra_units='deg', dec_units='deg')
+        print(' Profile arguments '.center(30,"="))
+        print('RMIN: '.ljust(15,'.'), f' {config_treecorr['RIN']}'.rjust(15,'.'), sep='')
+        print('RMAX: '.ljust(15,'.'), f' {config_treecorr['ROUT']}'.rjust(15,'.'),sep='')
+        print('N: '.ljust(15,'.'), f' {config_treecorr['nbins']}'.rjust(15,'.'),sep='')
+        # print('N jackknife: '.ljust(15,'.'), f' {config_treecorr['nk']}'.rjust(15,'.'),sep='')
+        # print('Shape Noise: '.ljust(15,'.'), f' {config_treecorr['addnoise}'.rjust(15,'.'),sep='')
 
-    Nd = pcat.sumw
-    Nr = rcat.sumw
-    NNpairs = (Nd*(Nd - 1))/2.
-    RRpairs = (Nr*(Nr - 1))/2.
-    NRpairs = (Nd*Nr)
-
-    f0 = RRpairs/NNpairs
-    f1 = RRpairs/NRpairs
-
-    Pi = np.linspace(-1.*pi_max, pi_max, npi+1)
-    pibins = zip(Pi[:-1],Pi[1:])
-
-    # now loop over Pi bins, and compute w(r_p | Pi)
-    #bar = progressbar.ProgressBar(maxval=npi-1, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
-    #bar.start()
-    print('Calcualting correlation...')
-    for p,(plow,phigh) in enumerate(tqdm(pibins)):
-
-        #bar.update(p)
-        dd = treecorr.NNCorrelation(nbins=nbins, min_sep=rmin, max_sep=rmax,
-                                    min_rpar=plow, max_rpar=phigh,
-                                    bin_slop=slop, brute = False, verbose=0, var_method = 'jackknife')
+    def load_treecorrcatalogs(self, lenses, sources, random_lenses, random_sources):
         
-        # dr = treecorr.NNCorrelation(nbins=nbins, min_sep=rmin, max_sep=rmax,
-        #                             min_rpar=plow, max_rpar=phigh,
-        #                             bin_slop=slop, brute = False, verbose=0, var_method = 'jackknife')
+        ## Voids
+        self.dvcat = treecorr.Catalog(
+            ra=lenses.ra,
+            dec=lenses.dec,
+            w=lenses.w,
+            r=lenses.r_com,
+            npatch=self.config['NPatches'],
+            ra_units='deg',
+            dec_units='deg',
+        )
+        print('N voids: '.ljust(15,'.'), f' {self.dvcat.nobj}'.rjust(15,'.'),sep='')
+
+        ## Tracers (gx)
+        self.dgcat = treecorr.Catalog(
+            ra=sources.ra, 
+            dec=sources.dec, 
+            w = sources.w, 
+            r=sources.r_com, 
+            patch_centers= self.dvcat.patch_centers,
+            ra_units='deg', dec_units='deg'
+        )
+
+        ## Random voids
+        self.rvcat = treecorr.Catalog(
+            ra=random_lenses.ra, 
+            dec=random_lenses.dec, 
+            w = random_lenses.w, 
+            r=random_lenses.r_com, 
+            patch_centers= self.dvcat.patch_centers,
+            ra_units='deg', dec_units='deg'
+        )
+
+        ## Random tracers (gx)
+        self.rgcat = treecorr.Catalog(
+            ra=random_sources.ra, 
+            dec=random_sources.dec, 
+            w = random_sources.w, 
+            r=random_sources.r_com, 
+            patch_centers= self.dvcat.patch_centers,
+            ra_units='deg', dec_units='deg'
+        )
+
+    def calculate_corr(self):
         
-        rr = treecorr.NNCorrelation(nbins=nbins, min_sep=rmin, max_sep=rmax,
-                                    min_rpar=plow, max_rpar=phigh,
-                                    bin_slop=slop, brute = False, verbose=0, var_method = 'jackknife')
+        DvDg = treecorr.NNCorrelation(
+            nbins=self.config['nbins'], 
+            min_sep=self.config['rmin'], 
+            max_sep=self.config['rmax'], 
+            bin_slop=self.config['slop'], brute = False, 
+            verbose=0, var_method = 'jackknife',
+            bin_type='Linear'
+        )
 
-        dd.process(pcat,pcat, metric='Rperp', num_threads = ncores)
-        # dr.process(pcat,rcat, metric='Rperp', num_threads = ncores)
-        rr.process(rcat,rcat, metric='Rperp', num_threads = ncores)
+        DvRg = treecorr.NNCorrelation(
+            nbins=self.config['nbins'], 
+            min_sep=self.config['rmin'], 
+            max_sep=self.config['rmax'], 
+            bin_slop=self.config['slop'], brute = False, 
+            verbose=0, var_method = 'jackknife',
+            bin_type='Linear'
+        )
 
-        r[:] = np.copy(dd.rnom)
-        mean_r[:] = np.copy(dd.meanr)
-        mean_logr[:] = np.copy(dd.meanlogr)
+        RvDg = treecorr.NNCorrelation(
+            nbins=self.config['nbins'], 
+            min_sep=self.config['rmin'], 
+            max_sep=self.config['rmax'], 
+            bin_slop=self.config['slop'], brute = False, 
+            verbose=0, var_method = 'jackknife',
+            bin_type='Linear'
+        )
 
-        # xi[p, :] = (dd.weight*0.5*f0 - (2.*dr.weight)*f1 + rr.weight*0.5) / (rr.weight*0.5)
-
-        xi[p,:], _ = dd.calculateXi(rr=rr)
+        RvRg = treecorr.NNCorrelation(
+            nbins=self.config['nbins'], 
+            min_sep=self.config['rmin'], 
+            max_sep=self.config['rmax'], 
+            bin_slop=self.config['slop'], brute = False, 
+            verbose=0, var_method = 'jackknife',
+            bin_type='Linear'
+        )
         
-        #Here I compute the variance
-        dd_jk[:, p, :], weight = treecorr.build_multi_cov_design_matrix([dd], 'jackknife', func = func)
-        # dr_jk[:, p, :], weight = treecorr.build_multi_cov_design_matrix([dr], 'jackknife', func = func2)
-        rr_jk[:, p, :], weight = treecorr.build_multi_cov_design_matrix([rr], 'jackknife', func = func)
+        DvDg.process(self.dvcat, self.dgcat, num_threads=self.config['ncores'])
+        DvRg.process(self.dvcat, self.rgcat, num_threads=self.config['ncores'])
+        RvDg.process(self.rvcat, self.dgcat, num_threads=self.config['ncores'])
+        RvRg.process(self.rvcat, self.rgcat, num_threads=self.config['ncores'])
 
-        # dd.finalize()
-        # dr.finalize()
-        # rr.finalize()
+        self.r = DvDg.meanr
+        self.xi, self.varxi = DvDg.calculateXi(dr=DvRg, rd=RvDg, rr=RvRg)
+        self.cov = DvDg.cov
+    
+    def run(self, cats):
 
-    for i in range(NPatches):
+        self.load_treecorrcatalogs(
+            cats.lenses,
+            cats.sources,
+            cats.random_lenses,
+            cats.random_sources
+        )
+        self.calculate_corr()
 
-        swd = np.sum(pcat.w[~(pcat.patch == i)])
-        swr = np.sum(rcat.w[~(rcat.patch == i)])
+    def write(self, sample, cat_config, lenscat, sourcecat):
+        
+        if cat_config['rho2_max']<=0:
+            tipo = 'R'
+        elif cat_config['rho2_min']>=0:
+            tipo = 'S'
+        else:
+            tipo = 'all'
 
-        NNpairs_JK = (swd*(swd - 1))/2.
-        RRpairs_JK = (swr*(swr - 1))/2.
-        NRpairs_JK = (swd*swr)
+        head = fits.Header()
+        head.append(('nvoids',int(self.dvcat.nobj)))
+        head.append(('lens',lenscat))
+        head.append(('sour',sourcecat.split('_')[-1][:5],'cosmohub stamp'))
+        head.append(('Rv_min',np.round(cat_config['Rv_min'],2)))
+        head.append(('Rv_max',np.round(cat_config['Rv_max'],2)))
+        # head.append(('Rv_mean',np.round(rvmean,4)))
+        head.append(('r1_min',np.round(cat_config['rho1_min'],2)))
+        head.append(('r1_max',np.round(cat_config['rho1_max'],2)))
+        head.append(('r2_min',np.round(cat_config['rho2_min'],2)))
+        head.append(('r2_max',np.round(cat_config['rho2_max'],2)))
+        # head.append(('r2_mean',np.round(rho2mean,4)))
+        head.append(('z_min',np.round(cat_config['z_min'],2)))
+        head.append(('z_max',np.round(cat_config['z_max'],2)))
+        # head.append(('z_mean',np.round(zmean,4)))
+        # head.append(('SLCS_INFO'))
+        head.append(('RMIN',np.round(cat_config['RIN'],4)))
+        head.append(('RMAX',np.round(cat_config['ROUT'],4)))
+        head.append(('ndots',np.round(self.config['ndots'],4)))
+        # head.append(('nk',np.round(args.nk,4),'jackknife slices'))
+        head['HISTORY'] = f'{time.asctime()}'
 
-        xi_jk[i, :, :] = (dd_jk[i, :, :]/NNpairs_JK - (2.*dr_jk[i, :, :])/NRpairs_JK + rr_jk[i, :, :]/RRpairs_JK) / (rr_jk[i, :, :]/RRpairs_JK)
+        table_p = [
+            fits.Column(name='r', format='E', array=self.r),
+            fits.Column(name='Xi', format='E', array=self.xi),
+        ]
 
-    xi[np.isinf(xi)] = 0. #It sets to 0 the values of xi_gp that are infinite
-    xi[np.isnan(xi)] = 0. #It sets to 0 the values of xi_gp that are null
+        table_c = [
+            fits.Column(name='cov', format='E', array=self.cov.flatten()),
+        ]
 
-    xPi=(Pi[:-1]+Pi[1:])/2 #It returns an array going from -9.5,-8.5,...,8.5,9.5
+        tbhdu_p = fits.BinTableHDU.from_columns(fits.ColDefs(table_p))
+        tbhdu_c = fits.BinTableHDU.from_columns(fits.ColDefs(table_c))
+        
+        primary_hdu = fits.PrimaryHDU(header=head)
+        
+        hdul = fits.HDUList([primary_hdu, tbhdu_p, tbhdu_c])
 
-    return r, mean_r, mean_logr, xPi, xi, xi_jk
+        output_file = f'vgcf_{sample}_{np.ceil(cat_config['Rv_min']).astype(int)}-{np.ceil(cat_config['Rv_max']).astype(int)}_z0{int(10.0*cat_config['z_min'])}-0{int(10.0*cat_config['z_max'])}_type{tipo}.fits'
 
+        hdul.writeto(output_file,overwrite=True)
+
+    def plot_corr(self, label):
+
+        fig = plt.figure(figsize=(8,6))
+        ax = fig.add_axes([1,1,1,1])
+        ax.errorbar(self.r, self.xi, self.varxi, fmt='.-', capsize=2, c='purple', label=label)
+        ax.set_xlabel('meanr [Mpc/h]')
+        ax.set_ylabel('$\\xi$')
+        return ax
+        # plt.title('fR')
+        #plt.text(40,-0.6, f'$R_v \\in$ ({Rv_min},{Rv_max})')
+        #plt.text(40,-0.65, f'$z \\in$ ({z_min},{z_max})')
 
 if __name__ == '__main__':
-
-    import matplotlib.pyplot as plt
-    from plots_vgcf import *
-    from scipy.stats import skewnorm
-
-    N = 1_000
-    z0,z1 = 0., 0.1
-
-    with fits.open('/home/franco/FAMAF/Lensing/cats/MICE/mice18917.fits') as f:
-        z_gal = f[1].data.z_cgal
-        
-        m_z = (z_gal < z1) & (z_gal >= z0)
-        ra  = f[1].data.ra_gal[m_z]
-        dec = f[1].data.dec_gal[m_z]
-        z_gal = z_gal[m_z]
-
-    if (s := m_z.sum()) < N:
-        N = s
-    print(N)
     
-    ang_pos = {'ra':ra[:N], 'dec':dec[:N], 'z':z_gal[:N]}
-    # xyz_pos = ang2xyz(*ang_pos.values())
-    # rands_ang = make_randoms(*ang_pos.values(),size_randoms=N)
-    # rands_xyz = ang2xyz(*rands_ang.values())
-    # mask = (np.abs(rands_box[2]) < 10)
+    
+    print('''
+                             __ 
+                            / _|
+     __   __   __ _    ___  | |_ 
+     \ \ / /  / _` |  / __| |  _|
+      \ V /  | (_| | | (__  | |  
+       \_/    \__, |  \___| |_|  
+               __/ |             
+              |___/              
+    ''',
+    flush=True)
+
+    parser = ArgumentParser()
+    # parser.add_argument('--lens_cat', type=str, default='voids_LCDM_09.dat', action='store')
+    # parser.add_argument('--source_cat', type=str, default='l768_gr_z04-07_for02-03_19304.fits', action='store')
+    parser.add_argument('--sample', type=str, default='TEST', action='store')
+    parser.add_argument('-c','--ncores', type=int, default=2, action='store')
+    # parser.add_argument('-r','--n_runslices', type=int, default=1, action='store')
+    # parser.add_argument('--h_cosmo', type=float, default=1.0, action='store')
+    # parser.add_argument('--Om0', type=float, default=0.3089, action='store')
+    # parser.add_argument('--Ode0', type=float, default=0.6911, action='store')
+    parser.add_argument('--Rv_min', type=float, default=1.0, action='store')
+    parser.add_argument('--Rv_max', type=float, default=50.0, action='store')
+    parser.add_argument('--z_min', type=float, default=0.0, action='store')
+    parser.add_argument('--z_max', type=float, default=0.6, action='store')
+    parser.add_argument('--rho1_min', type=float, default=-1.0, action='store')
+    parser.add_argument('--rho1_max', type=float, default=0.0, action='store')
+    parser.add_argument('--rho2_min', type=float, default=-1.0, action='store')
+    parser.add_argument('--rho2_max', type=float, default=100.0, action='store')
+    parser.add_argument('--flag', type=float, default=2.0, action='store')
+    # parser.add_argument('--octant', action='store_true') ## 'store_true' guarda True SOLO cuando se da --octant
+    parser.add_argument('--RIN', type=float, default=0.05, action='store')
+    parser.add_argument('--ROUT', type=float, default=5.0, action='store')    
+    parser.add_argument('-N','--ndots', type=int, default=22, action='store')    
+    # parser.add_argument('-K','--nk', type=int, default=100, action='store')    
+    # parser.add_argument('--addnoise', action='store_true')
+    args = parser.parse_args()
+
+    cat_config = {
+        'Rv_min':args.Rv_min,
+        'Rv_max':args.Rv_max,
+        'z_min':args.z_min,
+        'z_max':args.z_max,
+        'rho1_min':args.rho1_min,
+        'rho1_max':args.rho1_max,
+        'rho2_min':args.rho2_min,
+        'rho2_max':args.rho2_max,
+        'flag':args.flag,
+    }
+
+    mean_rv = (cat_config['Rv_min']+cat_config['Rv_max'])*0.5
+    if cat_config['rho2_max']<=0:
+        tipo = 'R'
+    elif cat_config['rho2_min']>=0:
+        tipo = 'S'
+    else:
+        tipo = 'all'
+
+    tree_config = {
+        'nbins' : args.ndots, # number of radial bins
+        'rmin' : args.RIN*mean_rv, # minimum value for rp (r in case of the quadrupole)
+        'rmax' : args.ROUT*mean_rv, # maximum value for rp (r in case of the quadrupole)
+        # Related to JK patches
+        'NPatches' : int(args.ndots**(3./2.)),
+        # Other configuration parameters
+        'ncores' : args.ncores, # Number of cores to run in parallel
+        'slop' : 0., # Resolution for treecorr
+        'box' : False, # Indicates if the data corresponds to a box, otherwise it will assume a lightcone
+    } 
+
+    lens_name = ['voids_LCDM_09.dat',
+                 'voids_fR_09.dat']
+    source_name = ['l768_gr_galaxiesz00-07_bucket1of3_19814.parquet',
+                'l768_mg_galaxiesz00-07_bucket1of3_19813.parquet']
+
+    vgcf = VoidGalaxyCrossCorrelation(tree_config)
+    for lenscat, sourcecat in zip(lens_name, source_name):
+        # program arguments
+        print(' Catalogs config '.center(30,"="))
+        print('Lens cat: '.ljust(15,'.'), f' {lenscat}'.rjust(15,'.'), sep='')
+        print('Sour catalog: '.ljust(15,'.'), f' {sourcecat.split("_")[-1][:5]}'.rjust(15,'.'),sep='')
+        print('Out: '.ljust(15,'.'), f' {args.sample}'.rjust(15,'.'),sep='')
+        print('N cores: '.ljust(15,'.'), f' {args.ncores}'.rjust(15,'.'),sep='')
+        
+        # lens arguments
+        print(' Void sample '.center(30,"="))
+        print('Radii: '.ljust(15,'.'), f' [{cat_config['Rv_min']}, {cat_config['Rv_max']})'.rjust(15,'.'), sep='')
+        print('Redshift: '.ljust(15,'.'), f' [{cat_config['z_min']}, {cat_config['z_max']})'.rjust(15,'.'),sep='')
+        print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='')
+        # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
+
+        vgcf.run(Catalogos(cat_config, lenscat, sourcecat))
+        vgcf.write(args.sample+'_'+lenscat.split('_')[1], cat_config, lenscat, sourcecat)
