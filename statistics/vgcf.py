@@ -31,14 +31,14 @@ def make_randoms(ra, dec, redshift,
                  size_random = 100):
     
     # print('Making randoms...')
-    # np.random.seed(1)
+    np.random.seed(1)
     
-    # dec = np.deg2rad(dec)
+    dec = np.deg2rad(dec)
     ## esta linea dá error... OverflowError: Range exceeds valid bounds 
-    # sindec_rand = np.random.uniform(np.sin(dec.min()), np.sin(dec.max()), size_random)
-    sindec_rand = np.random.uniform(-1.0, 1.0, size_random)
+    sindec_rand = np.random.uniform(np.sin(dec.min()), np.sin(dec.max()), size_random)
+    # sindec_rand = np.random.uniform(-1.0, 1.0, size_random)
     dec_rand = np.arcsin(sindec_rand)*(180.0/np.pi)
-    ra_rand  = np.random.uniform(0.0, 360.0, size_random)
+    ra_rand  = np.random.uniform(ra.min(), ra.max(), size_random)
 
     y,xbins  = np.histogram(redshift, 25)
     x  = xbins[:-1]+0.5*np.diff(xbins)
@@ -83,28 +83,28 @@ class Catalogos:
         query = f'redshift < {cat_config["z_max"]}+0.1 and redshift >= {cat_config["z_min"]}-0.1'
         self.sources.query(query,inplace=True)
 
-        # self.random_lenses = make_randoms(
-        #     self.lenses.ra,
-        #     self.lenses.dec,
-        #     self.lenses.redshift,
-        #     size_random=len(self.lenses)*2
-        # )
+        self.random_lenses = make_randoms(
+            self.lenses.ra,
+            self.lenses.dec,
+            self.lenses.redshift,
+            size_random=len(self.lenses)*2
+        )
 
-        # self.random_sources = make_randoms(
-        #     self.sources.ra,
-        #     self.sources.dec,
-        #     self.sources.r_com, 
-        #     size_random=len(self.sources)*2
-        # )
+        self.random_sources = make_randoms(
+            self.sources.ra,
+            self.sources.dec,
+            self.sources.r_com, 
+            size_random=len(self.sources)*2
+        )
         
-        # self.lenses['w'] = np.ones(len(self.lenses))
-        # self.sources['w'] = np.ones(len(self.sources))
-        # self.random_lenses['w'] = np.ones(len(self.random_lenses))
-        # self.random_sources['w'] = np.ones(len(self.random_sources))
+        self.lenses['w'] = np.ones(len(self.lenses))
+        self.sources['w'] = np.ones(len(self.sources))
+        self.random_lenses['w'] = np.ones(len(self.random_lenses))
+        self.random_sources['w'] = np.ones(len(self.random_sources))
         
-        # self.lenses['r_com'] = d_com(self.lenses.redshift)
-        # self.random_lenses['r_com'] = d_com(self.random_lenses.redshift)
-        # self.random_sources.rename(columns={'redshift':'r_com'}, inplace=True)
+        self.lenses['r_com'] = d_com(self.lenses.redshift)
+        self.random_lenses['r_com'] = d_com(self.random_lenses.redshift)
+        self.random_sources.rename(columns={'redshift':'r_com'}, inplace=True)
 
 class VoidGalaxyCrossCorrelation:
     
@@ -375,6 +375,8 @@ if __name__ == '__main__':
         print('Redshift: '.ljust(15,'.'), f' [{cat_config["z_min"]}, {cat_config["z_max"]})'.rjust(15,'.'),sep='')
         print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='')
         # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
+
+
         cats = Catalogos(cat_config, lenscat, sourcecat)
         print(np.min(cats.lenses.ra))
         # vgcf.run(cats)
