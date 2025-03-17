@@ -31,7 +31,7 @@ def make_randoms(ra, dec, redshift,
                  size_random = 100):
     
     # print('Making randoms...')
-    np.random.seed(1)
+    # np.random.seed(1)
     
     # dec = np.deg2rad(dec)
     ## esta linea dá error... OverflowError: Range exceeds valid bounds 
