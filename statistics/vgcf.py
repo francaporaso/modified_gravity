@@ -110,9 +110,9 @@ class VoidGalaxyCrossCorrelation:
         self.config : dict = config_treecorr
 
         print(' Profile arguments '.center(30,"="))
-        print('RMIN: '.ljust(15,'.'), f' {config_treecorr['rmin']}'.rjust(15,'.'), sep='')
-        print('RMAX: '.ljust(15,'.'), f' {config_treecorr['rmax']}'.rjust(15,'.'),sep='')
-        print('N: '.ljust(15,'.'), f' {config_treecorr['nbins']}'.rjust(15,'.'),sep='')
+        print('RMIN: '.ljust(15,'.'), f' {config_treecorr["rmin"]}'.rjust(15,'.'), sep='')
+        print('RMAX: '.ljust(15,'.'), f' {config_treecorr["rmax"]}'.rjust(15,'.'),sep='')
+        print('N: '.ljust(15,'.'), f' {config_treecorr["nbins"]}'.rjust(15,'.'),sep='')
         # print('N jackknife: '.ljust(15,'.'), f' {config_treecorr['nk']}'.rjust(15,'.'),sep='')
         # print('Shape Noise: '.ljust(15,'.'), f' {config_treecorr['addnoise}'.rjust(15,'.'),sep='')
 
@@ -264,7 +264,7 @@ class VoidGalaxyCrossCorrelation:
         
         hdul = fits.HDUList([primary_hdu, tbhdu_p, tbhdu_c])
 
-        output_file = f'vgcf_{sample}_{np.ceil(cat_config['Rv_min']).astype(int)}-{np.ceil(cat_config['Rv_max']).astype(int)}_z0{int(10.0*cat_config['z_min'])}-0{int(10.0*cat_config['z_max'])}_type{tipo}.fits'
+        output_file = f'vgcf_{sample}_{np.ceil(cat_config["Rv_min"]).astype(int)}-{np.ceil(cat_config["Rv_max"]).astype(int)}_z0{int(10.0*cat_config["z_min"])}-0{int(10.0*cat_config["z_max"])}_type{tipo}.fits'
 
         hdul.writeto(output_file,overwrite=True)
 
@@ -369,8 +369,8 @@ if __name__ == '__main__':
         
         # lens arguments
         print(' Void sample '.center(30,"="))
-        print('Radii: '.ljust(15,'.'), f' [{cat_config['Rv_min']}, {cat_config['Rv_max']})'.rjust(15,'.'), sep='')
-        print('Redshift: '.ljust(15,'.'), f' [{cat_config['z_min']}, {cat_config['z_max']})'.rjust(15,'.'),sep='')
+        print('Radii: '.ljust(15,'.'), f' [{cat_config["Rv_min"]}, {cat_config["Rv_max"]})'.rjust(15,'.'), sep='')
+        print('Redshift: '.ljust(15,'.'), f' [{cat_config["z_min"]}, {cat_config["z_max"]})'.rjust(15,'.'),sep='')
         print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='')
         # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
 
