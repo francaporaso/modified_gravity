@@ -166,7 +166,7 @@ class VoidGalaxyCrossCorrelation:
     def calculate_corr(self):
         
         DvDg = treecorr.NNCorrelation(
-            nbins=self.config['nbins'], 
+            nbins=self.config['ndots'], 
             min_sep=self.config['rmin'], 
             max_sep=self.config['rmax'], 
             bin_slop=self.config['slop'], brute = False, 
@@ -175,7 +175,7 @@ class VoidGalaxyCrossCorrelation:
         )
 
         DvRg = treecorr.NNCorrelation(
-            nbins=self.config['nbins'], 
+            nbins=self.config['ndots'], 
             min_sep=self.config['rmin'], 
             max_sep=self.config['rmax'], 
             bin_slop=self.config['slop'], brute = False, 
@@ -184,7 +184,7 @@ class VoidGalaxyCrossCorrelation:
         )
 
         RvDg = treecorr.NNCorrelation(
-            nbins=self.config['nbins'], 
+            nbins=self.config['ndots'], 
             min_sep=self.config['rmin'], 
             max_sep=self.config['rmax'], 
             bin_slop=self.config['slop'], brute = False, 
@@ -193,7 +193,7 @@ class VoidGalaxyCrossCorrelation:
         )
 
         RvRg = treecorr.NNCorrelation(
-            nbins=self.config['nbins'], 
+            nbins=self.config['ndots'], 
             min_sep=self.config['rmin'], 
             max_sep=self.config['rmax'], 
             bin_slop=self.config['slop'], brute = False, 
@@ -345,7 +345,7 @@ if __name__ == '__main__':
         tipo = 'all'
 
     tree_config = {
-        'nbins' : args.ndots, # number of radial bins
+        'ndots' : args.ndots, # number of radial bins
         'rmin' : args.RIN*mean_rv, # minimum value for rp (r in case of the quadrupole)
         'rmax' : args.ROUT*mean_rv, # maximum value for rp (r in case of the quadrupole)
         # Related to JK patches
