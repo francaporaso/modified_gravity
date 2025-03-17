@@ -245,8 +245,8 @@ class VoidGalaxyCrossCorrelation:
         head.append(('z_max',np.round(cat_config['z_max'],2)))
         # head.append(('z_mean',np.round(zmean,4)))
         # head.append(('SLCS_INFO'))
-        head.append(('RMIN',np.round(cat_config['rmin'],4)))
-        head.append(('RMAX',np.round(cat_config['rmax'],4)))
+        head.append(('RMIN',np.round(self.config['rmin'],4)))
+        head.append(('RMAX',np.round(self.config['rmax'],4)))
         head.append(('ndots',np.round(self.config['ndots'],4)))
         # head.append(('nk',np.round(args.nk,4),'jackknife slices'))
         head['HISTORY'] = f'{time.asctime()}'
