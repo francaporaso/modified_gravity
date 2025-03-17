@@ -375,6 +375,6 @@ if __name__ == '__main__':
         print('Redshift: '.ljust(15,'.'), f' [{cat_config["z_min"]}, {cat_config["z_max"]})'.rjust(15,'.'),sep='')
         print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='')
         # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
-
-        vgcf.run(Catalogos(cat_config, lenscat, sourcecat))
+        cats = Catalogos(cat_config, lenscat, sourcecat)
+        vgcf.run(cats)
         vgcf.write(args.sample+'_'+lenscat.split('_')[1], cat_config, lenscat, sourcecat)
