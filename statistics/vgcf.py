@@ -83,8 +83,6 @@ class Catalogos:
         query = f'redshift < {cat_config["z_max"]}+0.1 and redshift >= {cat_config["z_min"]}-0.1'
         self.sources.query(query,inplace=True)
 
-        print(self.lenses.ra.min())
-
         # self.random_lenses = make_randoms(
         #     self.lenses.ra,
         #     self.lenses.dec,
@@ -378,6 +376,6 @@ if __name__ == '__main__':
         print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='')
         # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
         cats = Catalogos(cat_config, lenscat, sourcecat)
-
+        print(cats.lenses.ra.min())
         # vgcf.run(cats)
         # vgcf.write(args.sample+'_'+lenscat.split('_')[1], cat_config, lenscat, sourcecat)
