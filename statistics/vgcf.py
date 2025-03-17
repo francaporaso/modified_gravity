@@ -110,8 +110,8 @@ class VoidGalaxyCrossCorrelation:
         self.config : dict = config_treecorr
 
         print(' Profile arguments '.center(30,"="))
-        print('RMIN: '.ljust(15,'.'), f' {config_treecorr['RIN']}'.rjust(15,'.'), sep='')
-        print('RMAX: '.ljust(15,'.'), f' {config_treecorr['ROUT']}'.rjust(15,'.'),sep='')
+        print('RMIN: '.ljust(15,'.'), f' {config_treecorr['rmin']}'.rjust(15,'.'), sep='')
+        print('RMAX: '.ljust(15,'.'), f' {config_treecorr['rmax']}'.rjust(15,'.'),sep='')
         print('N: '.ljust(15,'.'), f' {config_treecorr['nbins']}'.rjust(15,'.'),sep='')
         # print('N jackknife: '.ljust(15,'.'), f' {config_treecorr['nk']}'.rjust(15,'.'),sep='')
         # print('Shape Noise: '.ljust(15,'.'), f' {config_treecorr['addnoise}'.rjust(15,'.'),sep='')
@@ -242,8 +242,8 @@ class VoidGalaxyCrossCorrelation:
         head.append(('z_max',np.round(cat_config['z_max'],2)))
         # head.append(('z_mean',np.round(zmean,4)))
         # head.append(('SLCS_INFO'))
-        head.append(('RMIN',np.round(cat_config['RIN'],4)))
-        head.append(('RMAX',np.round(cat_config['ROUT'],4)))
+        head.append(('RMIN',np.round(cat_config['rmin'],4)))
+        head.append(('RMAX',np.round(cat_config['rmax'],4)))
         head.append(('ndots',np.round(self.config['ndots'],4)))
         # head.append(('nk',np.round(args.nk,4),'jackknife slices'))
         head['HISTORY'] = f'{time.asctime()}'
