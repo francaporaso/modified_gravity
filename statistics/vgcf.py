@@ -37,8 +37,8 @@ def make_randoms(ra, dec, redshift,
     ## esta linea dá error... OverflowError: Range exceeds valid bounds 
     # sindec_rand = np.random.uniform(np.sin(dec.min()), np.sin(dec.max()), size_random)
     sindec_rand = np.random.uniform(-1.0, 1.0, size_random)
-    dec_rand = np.arcsin(sindec_rand)*(180/np.pi)
-    ra_rand  = np.random.uniform(ra.min(), ra.max(), size_random)
+    dec_rand = np.arcsin(sindec_rand)*(180.0/np.pi)
+    ra_rand  = np.random.uniform(0.0, 360.0, size_random)
 
     y,xbins  = np.histogram(redshift, 25)
     x  = xbins[:-1]+0.5*np.diff(xbins)
