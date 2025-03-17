@@ -83,7 +83,7 @@ class Catalogos:
         query = f'redshift < {cat_config["z_max"]}+0.1 and redshift >= {cat_config["z_min"]}-0.1'
         self.sources.query(query,inplace=True)
 
-        print(type(self.lenses.ra))
+        print(self.lenses.ra.min())
 
         # self.random_lenses = make_randoms(
         #     self.lenses.ra,
