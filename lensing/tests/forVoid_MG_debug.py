@@ -148,7 +148,6 @@ def stacking(RIN, ROUT, ndots, nk, ncores,
     DSIGMAwsum_X = np.zeros((nk+1,ndots))
                 
     discarded = 0
-
     with Pool(processes=ncores) as pool:
 
         entrada = np.array([L[1],L[2],L[3],L[0],
@@ -164,7 +163,7 @@ def stacking(RIN, ROUT, ndots, nk, ncores,
     print(f'shape of resmap: {resmap.shape}')
     print(f'type of resmap: {type(resmap)}')
     for j, res in enumerate(resmap):
-        km = np.tile(K[j],(ndots,1)).T
+        km = np.tile(K.T[j],(ndots,1)).T
         if np.isfinite(res[0][0]):
             SIGMAwsum    += np.tile(res[0],(nk+1,1))*km
             DSIGMAwsum_T += np.tile(res[1],(nk+1,1))*km
