@@ -367,8 +367,9 @@ if __name__ == '__main__':
 
     tin = time.time()
 
-    vgcf = VoidGalaxyCrossCorrelation(tree_config)
     for lenscat, sourcecat in zip(lens_name, source_name):
+        vgcf = VoidGalaxyCrossCorrelation(tree_config)
+    
         # program arguments
         print(' Catalogs config '.center(30,"="))
         print('Lens cat: '.ljust(15,'.'), f' {lenscat}'.rjust(15,'.'), sep='')
@@ -387,5 +388,5 @@ if __name__ == '__main__':
         vgcf.run(cats)
         vgcf.write(args.sample+'_'+lenscat.split('_')[1], cat_config, lenscat, sourcecat)
 
-    print(f'Took {(time.time()-tin)/60.0} min')
+    print(f'Took {(time.time()-tin)/60.0} min'.center(50,'.:'))
     print('End!')
