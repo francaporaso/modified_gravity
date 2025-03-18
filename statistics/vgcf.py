@@ -42,8 +42,7 @@ def make_randoms(ra, dec, redshift,
 
     y,xbins  = np.histogram(redshift, 25)
     x  = xbins[:-1]+0.5*np.diff(xbins)
-    n = 3
-    poly = np.polyfit(x,y,n)
+    poly = np.polyfit(x,y,3)
     zr = np.random.uniform(redshift.min(),redshift.max(),size_random)
     poly_y = np.poly1d(poly)(zr)
     poly_y[poly_y<0] = 0.
