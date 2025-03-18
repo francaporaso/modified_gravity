@@ -360,10 +360,14 @@ if __name__ == '__main__':
         'box' : False, # Indicates if the data corresponds to a box, otherwise it will assume a lightcone
     } 
 
-    lens_name = ['voids_LCDM_09.dat',
-                 'voids_fR_09.dat']
-    source_name = ['l768_gr_galaxiesz00-07_bucket1of3_19814.parquet',
-                'l768_mg_galaxiesz00-07_bucket1of3_19813.parquet']
+    lens_name = [
+        # 'voids_LCDM_09.dat',
+        'voids_fR_09.dat',
+    ]
+    source_name = [
+        # 'l768_gr_galaxiesz00-07_bucket1of3_19814.parquet',
+        'l768_mg_galaxiesz00-07_bucket1of3_19813.parquet',
+    ]
 
     tin = time.time()
 
