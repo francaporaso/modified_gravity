@@ -271,7 +271,7 @@ class VoidGalaxyCrossCorrelation:
         
         hdul = fits.HDUList([primary_hdu, tbhdu_p, tbhdu_c])
 
-        output_file = f'vgcf_{sample}_{np.ceil(cat_config["Rv_min"]).astype(int)}-{np.ceil(cat_config["Rv_max"]).astype(int)}_z0{int(10.0*cat_config["z_min"])}-0{int(10.0*cat_config["z_max"])}_type{tipo}.fits'
+        output_file = f'results/vgcf_{sample}_{np.ceil(cat_config["Rv_min"]).astype(int)}-{np.ceil(cat_config["Rv_max"]).astype(int)}_z0{int(10.0*cat_config["z_min"])}-0{int(10.0*cat_config["z_max"])}_type{tipo}.fits'
 
         hdul.writeto(output_file,overwrite=True)
 
@@ -388,5 +388,5 @@ if __name__ == '__main__':
         vgcf.run(cats)
         vgcf.write(args.sample+'_'+lenscat.split('_')[1], cat_config, lenscat, sourcecat)
 
-    print(f'Took {(time.time()-tin)/60.0} min'.center(50,'.:'))
+    print(f'Took {(time.time()-tin)/60.0} min'.center(50,':'))
     print('End!')
