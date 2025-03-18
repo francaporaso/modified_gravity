@@ -193,12 +193,12 @@ def main(args=args):
         1, args.nk)
     
     # program arguments
-    print(' Program arguments '.center(30,"="))
-    print('Lens cat: '.ljust(15,'.'), f' {args.lens_cat}'.rjust(15,'.'), sep='')
-    print('Sour catalog: '.ljust(15,'.'), f' {args.source_cat.split("_")[-1][:-5]}'.rjust(15,'.'),sep='')
-    print('Out: '.ljust(15,'.'), f' {args.sample}'.rjust(15,'.'),sep='')
-    print('N cores: '.ljust(15,'.'), f' {args.ncores}'.rjust(15,'.'),sep='')
-    print('N slices: '.ljust(15,'.'), f' {args.n_runslices}'.rjust(15,'.'),sep='')
+    print(' Program arguments '.center(40,"="))
+    print('Lens cat: '.ljust(20,'.'), f' {args.lens_cat}'.rjust(20,'.'), sep='')
+    print('Sour catalog: '.ljust(20,'.'), f' {args.source_cat.split("_")[-1][:-5]}'.rjust(20,'.'),sep='')
+    print('Out: '.ljust(20,'.'), f' {args.sample}'.rjust(20,'.'),sep='')
+    print('N cores: '.ljust(20,'.'), f' {args.ncores}'.rjust(20,'.'),sep='')
+    print('N slices: '.ljust(20,'.'), f' {args.n_runslices}'.rjust(20,'.'),sep='')
     
     if args.rho2_max<=0:
         tipo = 'R'
@@ -208,20 +208,20 @@ def main(args=args):
         tipo = 'all'
     
     # lens arguments
-    print(' Void sample '.center(30,"="))
-    print('Radii: '.ljust(15,'.'), f' [{args.Rv_min}, {args.Rv_max})'.rjust(15,'.'), sep='')
-    print('Redshift: '.ljust(15,'.'), f' [{args.z_min}, {args.z_max})'.rjust(15,'.'),sep='')
-    print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='')
-    # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
-    print('N voids: '.ljust(15,'.'), f' {nvoids}'.rjust(15,'.'),sep='')
+    print(' Void sample '.center(40,"="))
+    print('Radii: '.ljust(20,'.'), f' [{args.Rv_min}, {args.Rv_max})'.rjust(20,'.'), sep='')
+    print('Redshift: '.ljust(20,'.'), f' [{args.z_min}, {args.z_max})'.rjust(20,'.'),sep='')
+    print('Tipo: '.ljust(20,'.'), f' {tipo}'.rjust(20,'.'),sep='')
+    # print('Octante: '.ljust(20,'.'), f' {args.octant}'.rjust(20,'.'),sep='')
+    print('N voids: '.ljust(20,'.'), f' {nvoids}'.rjust(20,'.'),sep='')
     
     # profile arguments
-    print(' Profile arguments '.center(30,"="))
-    print('RMIN: '.ljust(15,'.'), f' {args.RIN}'.rjust(15,'.'), sep='')
-    print('RMAX: '.ljust(15,'.'), f' {args.ROUT}'.rjust(15,'.'),sep='')
-    print('N: '.ljust(15,'.'), f' {args.ndots}'.rjust(15,'.'),sep='')
-    print('N jackknife: '.ljust(15,'.'), f' {args.nk}'.rjust(15,'.'),sep='')
-    print('Shape Noise: '.ljust(15,'.'), f' {args.addnoise}'.rjust(15,'.'),sep='')
+    print(' Profile arguments '.center(40,"="))
+    print('RMIN: '.ljust(20,'.'), f' {args.RIN}'.rjust(20,'.'), sep='')
+    print('RMAX: '.ljust(20,'.'), f' {args.ROUT}'.rjust(20,'.'),sep='')
+    print('N: '.ljust(20,'.'), f' {args.ndots}'.rjust(20,'.'),sep='')
+    print('N jackknife: '.ljust(20,'.'), f' {args.nk}'.rjust(20,'.'),sep='')
+    print('Shape Noise: '.ljust(20,'.'), f' {args.addnoise}'.rjust(20,'.'),sep='')
     
     # Defining radial bins
     bines = np.linspace(args.RIN,args.ROUT,num=args.ndots+1)
@@ -322,12 +322,12 @@ if __name__=='__main__':
 
     tin = time.time()
     print('''
-    ▗▖▗▞▀▚▖▄▄▄▄   ▄▄▄ ▄ ▄▄▄▄   ▗▄▄▖
-    ▐▌▐▛▀▀▘█   █ ▀▄▄  ▄ █   █ ▐▌   
-    ▐▌▝▚▄▄▖█   █ ▄▄▄▀ █ █   █ ▐▌▝▜▌
-    ▐▙▄▄▖             █       ▝▚▄▞▘
+▗▖▗▞▀▚▖▄▄▄▄   ▄▄▄ ▄ ▄▄▄▄   ▗▄▄▖
+▐▌▐▛▀▀▘█   █ ▀▄▄  ▄ █   █ ▐▌   
+▐▌▝▚▄▄▖█   █ ▄▄▄▀ █ █   █ ▐▌▝▜▌
+▐▙▄▄▖             █       ▝▚▄▞▘
     ''',
     flush=True)
     main()
-    print(' TOTAL TIME '.ljust(15,'.'), f' {np.round((time.time()-tin)/60.,2)} min'.rjust(15,'.'),sep='')
-    print(' END :) '.center(30,"="))
+    print(' TOTAL TIME '.ljust(20,'.'), f' {np.round((time.time()-tin)/60.,2)} min'.rjust(20,'.'),sep='')
+    print(' END :) '.center(40,"="))
