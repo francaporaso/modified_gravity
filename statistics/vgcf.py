@@ -371,17 +371,17 @@ if __name__ == '__main__':
         vgcf = VoidGalaxyCrossCorrelation(tree_config)
     
         # program arguments
-        print(' Catalogs config '.center(30,"="))
-        print('Lens cat: '.ljust(15,'.'), f' {lenscat}'.rjust(15,'.'), sep='')
-        print('Sour catalog: '.ljust(15,'.'), f' {sourcecat.split("_")[-1][:5]}'.rjust(15,'.'),sep='')
-        print('Out: '.ljust(15,'.'), f' {args.sample}'.rjust(15,'.'),sep='')
-        print('N cores: '.ljust(15,'.'), f' {args.ncores}'.rjust(15,'.'),sep='')
+        print(' Catalogs config '.center(30,"="), flush=True)
+        print('Lens cat: '.ljust(15,'.'), f' {lenscat}'.rjust(15,'.'), sep='', flush=True)
+        print('Sour catalog: '.ljust(15,'.'), f' {sourcecat.split("_")[-1][:5]}'.rjust(15,'.'),sep='', flush=True)
+        print('Out: '.ljust(15,'.'), f' {args.sample}'.rjust(15,'.'),sep='', flush=True)
+        print('N cores: '.ljust(15,'.'), f' {args.ncores}'.rjust(15,'.'),sep='', flush=True)
         
         # lens arguments
-        print(' Void sample '.center(30,"="))
-        print('Radii: '.ljust(15,'.'), f' [{cat_config["Rv_min"]}, {cat_config["Rv_max"]})'.rjust(15,'.'), sep='')
-        print('Redshift: '.ljust(15,'.'), f' [{cat_config["z_min"]}, {cat_config["z_max"]})'.rjust(15,'.'),sep='')
-        print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='')
+        print(' Void sample '.center(30,"="), flush=True)
+        print('Radii: '.ljust(15,'.'), f' [{cat_config["Rv_min"]}, {cat_config["Rv_max"]})'.rjust(15,'.'), sep='', flush=True)
+        print('Redshift: '.ljust(15,'.'), f' [{cat_config["z_min"]}, {cat_config["z_max"]})'.rjust(15,'.'),sep='', flush=True)
+        print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='', flush=True)
         # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
 
         cats = Catalogos(cat_config, lenscat, sourcecat)
