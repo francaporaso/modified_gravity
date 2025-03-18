@@ -122,6 +122,10 @@ class VoidGalaxyCrossCorrelation:
 
     def load_treecorrcatalogs(self, lenses, sources, random_lenses, random_sources):
         
+        if len(lenses) <= self.config['NPatches']:
+            print('NPatches < Nvoids..., changing to Nvoids-1')
+            self.config['NPatches'] = len(lenses)-1
+
         ## Voids
         self.dvcat = treecorr.Catalog(
             ra=lenses.ra,
@@ -164,7 +168,7 @@ class VoidGalaxyCrossCorrelation:
         )
 
     def calculate_corr(self):
-        
+
         DvDg = treecorr.NNCorrelation(
             nbins=self.config['ndots'], 
             min_sep=self.config['rmin'], 
