@@ -71,7 +71,7 @@ class Catalogos:
                      'flag']
         )
         assert len(self.lenses) != 0, 'No void found with those parameters!'
-        print('N voids: '.ljust(15,'.'), f' {len(self.lenses)}'.rjust(15,'.'),sep='')
+        print('N voids: '.ljust(20,'.'), f' {len(self.lenses)}'.rjust(20,'.'),sep='')
         
         self.sources = pd.read_parquet(path+source_name).sample(frac=1.0, random_state=1)
         self.sources.rename(
@@ -113,12 +113,12 @@ class VoidGalaxyCrossCorrelation:
     def __init__(self, config_treecorr):
         self.config : dict = config_treecorr
 
-        print(' Profile arguments '.center(30,"="))
-        print('RMIN: '.ljust(15,'.'), f' {config_treecorr["rmin"]}'.rjust(15,'.'), sep='')
-        print('RMAX: '.ljust(15,'.'), f' {config_treecorr["rmax"]}'.rjust(15,'.'),sep='')
-        print('N: '.ljust(15,'.'), f' {config_treecorr["ndots"]}'.rjust(15,'.'),sep='')
-        # print('N jackknife: '.ljust(15,'.'), f' {config_treecorr['nk']}'.rjust(15,'.'),sep='')
-        # print('Shape Noise: '.ljust(15,'.'), f' {config_treecorr['addnoise}'.rjust(15,'.'),sep='')
+        print(' Profile arguments '.center(40,"="))
+        print('RMIN: '.ljust(20,'.'), f' {config_treecorr["rmin"]}'.rjust(20,'.'), sep='')
+        print('RMAX: '.ljust(20,'.'), f' {config_treecorr["rmax"]}'.rjust(20,'.'),sep='')
+        print('N: '.ljust(20,'.'), f' {config_treecorr["ndots"]}'.rjust(20,'.'),sep='')
+        # print('N jackknife: '.ljust(20,'.'), f' {config_treecorr['nk']}'.rjust(20,'.'),sep='')
+        # print('Shape Noise: '.ljust(20,'.'), f' {config_treecorr['addnoise}'.rjust(20,'.'),sep='')
 
     def load_treecorrcatalogs(self, lenses, sources, random_lenses, random_sources):
         
@@ -292,17 +292,17 @@ def main(tree_config, cat_config, lenscat, sourcecat, sample, ncores):
     vgcf = VoidGalaxyCrossCorrelation(tree_config)
 
     # program arguments
-    print(' Catalogs config '.center(30,"="), flush=True)
-    print('Lens cat: '.ljust(15,'.'), f' {lenscat}'.rjust(15,'.'), sep='', flush=True)
-    print('Sour catalog: '.ljust(15,'.'), f' {sourcecat.split("_")[-1][:5]}'.rjust(15,'.'),sep='', flush=True)
-    print('Out: '.ljust(15,'.'), f' {sample}'.rjust(15,'.'),sep='', flush=True)
-    print('N cores: '.ljust(15,'.'), f' {ncores}'.rjust(15,'.'),sep='', flush=True)
+    print(' Catalogs config '.center(40,"="), flush=True)
+    print('Lens cat: '.ljust(20,'.'), f' {lenscat}'.rjust(20,'.'), sep='', flush=True)
+    print('Sour catalog: '.ljust(20,'.'), f' {sourcecat.split("_")[-1][:5]}'.rjust(20,'.'),sep='', flush=True)
+    print('Out: '.ljust(20,'.'), f' {sample}'.rjust(20,'.'),sep='', flush=True)
+    print('N cores: '.ljust(20,'.'), f' {ncores}'.rjust(20,'.'),sep='', flush=True)
     
     # lens arguments
-    print(' Void sample '.center(30,"="), flush=True)
-    print('Radii: '.ljust(15,'.'), f' [{cat_config["Rv_min"]}, {cat_config["Rv_max"]})'.rjust(15,'.'), sep='', flush=True)
-    print('Redshift: '.ljust(15,'.'), f' [{cat_config["z_min"]}, {cat_config["z_max"]})'.rjust(15,'.'),sep='', flush=True)
-    print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='', flush=True)
+    print(' Void sample '.center(40,"="), flush=True)
+    print('Radii: '.ljust(20,'.'), f' [{cat_config["Rv_min"]}, {cat_config["Rv_max"]})'.rjust(20,'.'), sep='', flush=True)
+    print('Redshift: '.ljust(20,'.'), f' [{cat_config["z_min"]}, {cat_config["z_max"]})'.rjust(20,'.'),sep='', flush=True)
+    print('Tipo: '.ljust(20,'.'), f' {tipo}'.rjust(20,'.'),sep='', flush=True)
 
     cats = Catalogos(cat_config, lenscat, sourcecat)
     vgcf.run(cats)
