@@ -69,7 +69,7 @@ class Catalogos:
                      'logp','cmdist',
                      'flag']
         )
-        assert len(self.lenses) != 0
+        assert len(self.lenses) != 0, 'No void found with those parameters!'
         print('N voids: '.ljust(15,'.'), f' {len(self.lenses)}'.rjust(15,'.'),sep='')
         
         self.sources = pd.read_parquet(path+source_name).sample(frac=1.0, random_state=1)
@@ -286,6 +286,27 @@ class VoidGalaxyCrossCorrelation:
         #plt.text(40,-0.6, f'$R_v \\in$ ({Rv_min},{Rv_max})')
         #plt.text(40,-0.65, f'$z \\in$ ({z_min},{z_max})')
 
+def main(tree_config, cat_config, lenscat, sourcecat, sample, ncores):
+    
+    vgcf = VoidGalaxyCrossCorrelation(tree_config)
+
+    # program arguments
+    print(' Catalogs config '.center(30,"="), flush=True)
+    print('Lens cat: '.ljust(15,'.'), f' {lenscat}'.rjust(15,'.'), sep='', flush=True)
+    print('Sour catalog: '.ljust(15,'.'), f' {sourcecat.split("_")[-1][:5]}'.rjust(15,'.'),sep='', flush=True)
+    print('Out: '.ljust(15,'.'), f' {sample}'.rjust(15,'.'),sep='', flush=True)
+    print('N cores: '.ljust(15,'.'), f' {ncores}'.rjust(15,'.'),sep='', flush=True)
+    
+    # lens arguments
+    print(' Void sample '.center(30,"="), flush=True)
+    print('Radii: '.ljust(15,'.'), f' [{cat_config["Rv_min"]}, {cat_config["Rv_max"]})'.rjust(15,'.'), sep='', flush=True)
+    print('Redshift: '.ljust(15,'.'), f' [{cat_config["z_min"]}, {cat_config["z_max"]})'.rjust(15,'.'),sep='', flush=True)
+    print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='', flush=True)
+
+    cats = Catalogos(cat_config, lenscat, sourcecat)
+    vgcf.run(cats)
+    vgcf.write(sample+'_'+lenscat.split('_')[1], cat_config, lenscat, sourcecat)
+
 if __name__ == '__main__':
     
     
@@ -305,6 +326,7 @@ if __name__ == '__main__':
     # parser.add_argument('--lens_cat', type=str, default='voids_LCDM_09.dat', action='store')
     # parser.add_argument('--source_cat', type=str, default='l768_gr_z04-07_for02-03_19304.fits', action='store')
     parser.add_argument('--sample', type=str, default='TEST', action='store')
+    parser.add_argument('--sim', type=str, default='LCDM', action='store', choices=['LCDM','fR','both'])
     parser.add_argument('-c','--ncores', type=int, default=2, action='store')
     # parser.add_argument('-r','--n_runslices', type=int, default=1, action='store')
     # parser.add_argument('--h_cosmo', type=float, default=1.0, action='store')
@@ -359,37 +381,29 @@ if __name__ == '__main__':
         'box' : False, # Indicates if the data corresponds to a box, otherwise it will assume a lightcone
     } 
 
-    lens_name = [
-        'voids_LCDM_09.dat',
-        # 'voids_fR_09.dat',
-    ]
-    source_name = [
-        'l768_gr_galaxiesz00-07_bucket1of3_19814.parquet',
-        # 'l768_mg_galaxiesz00-07_bucket1of3_19813.parquet',
-    ]
-
-    tin = time.time()
-
-    for lenscat, sourcecat in zip(lens_name, source_name):
-        vgcf = VoidGalaxyCrossCorrelation(tree_config)
+    if args.sim == 'both':
+        cats_name = [
+            ('voids_LCDM_09.dat', 'l768_gr_galaxiesz00-07_bucket1of3_19814.parquet'),
+            ('voids_fR_09.dat', 'l768_mg_galaxiesz00-07_bucket1of3_19813.parquet'),
+        ]
     
-        # program arguments
-        print(' Catalogs config '.center(30,"="), flush=True)
-        print('Lens cat: '.ljust(15,'.'), f' {lenscat}'.rjust(15,'.'), sep='', flush=True)
-        print('Sour catalog: '.ljust(15,'.'), f' {sourcecat.split("_")[-1][:5]}'.rjust(15,'.'),sep='', flush=True)
-        print('Out: '.ljust(15,'.'), f' {args.sample}'.rjust(15,'.'),sep='', flush=True)
-        print('N cores: '.ljust(15,'.'), f' {args.ncores}'.rjust(15,'.'),sep='', flush=True)
-        
-        # lens arguments
-        print(' Void sample '.center(30,"="), flush=True)
-        print('Radii: '.ljust(15,'.'), f' [{cat_config["Rv_min"]}, {cat_config["Rv_max"]})'.rjust(15,'.'), sep='', flush=True)
-        print('Redshift: '.ljust(15,'.'), f' [{cat_config["z_min"]}, {cat_config["z_max"]})'.rjust(15,'.'),sep='', flush=True)
-        print('Tipo: '.ljust(15,'.'), f' {tipo}'.rjust(15,'.'),sep='', flush=True)
-        # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
+        tin = time.time()
+        for lenscat, sourcecat in cats_name:
+            main(tree_config, cat_config, lenscat, sourcecat, args.sample, args.ncores)
+    
+    elif args.sim == 'LCDM':
+        lenscat = 'voids_LCDM_09.dat' 
+        sourcecat = 'l768_gr_galaxiesz00-07_bucket1of3_19814.parquet'
+    
+        tin = time.time()
+        main(tree_config, cat_config, lenscat, sourcecat, args.sample, args.ncores)
 
-        cats = Catalogos(cat_config, lenscat, sourcecat)
-        vgcf.run(cats)
-        vgcf.write(args.sample+'_'+lenscat.split('_')[1], cat_config, lenscat, sourcecat)
+    else:
+        lenscat = 'voids_fR_09.dat'
+        sourcecat = 'l768_mg_galaxiesz00-07_bucket1of3_19813.parquet'
+    
+        tin = time.time()
+        main(tree_config, cat_config, lenscat, sourcecat, args.sample, args.ncores)
 
     print(f'Took {(time.time()-tin)/60.0} min'.center(50,':'))
     print('End!')
