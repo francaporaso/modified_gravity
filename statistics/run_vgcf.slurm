@@ -33,8 +33,8 @@ conda activate env_py39
 ##srun python vgcf.py --sample 'test6' --Rv_min 20.0 --Rv_max 22.0 --z_min 0.1 --z_max 0.2 --ndots 22 --ncores 56
 ##srun python vgcf.py --sample 'test7' --Rv_min 22.0 --Rv_max 50.0 --z_min 0.1 --z_max 0.2 --ndots 22 --ncores 56
 
-srun python vgcf.py --sim 'both' --sample 'test8_debug' --Rv_min 7.30 --Rv_max 10.0 --z_min 0.45 --z_max 0.5 --ndots 22 --ncores 56
-srun python vgcf.py --sim 'both' --sample 'test9_debug' --Rv_min 10.0 --Rv_max 12.0 --z_min 0.45 --z_max 0.5 --ndots 22 --ncores 56
+srun python vgcf.py --sim 'both' --sample 'test8_debug' --Rv_min 7.30 --Rv_max 10.0 --z_min 0.45 --z_max 0.46 --ndots 22 --ncores 56
+srun python vgcf.py --sim 'both' --sample 'test9_debug' --Rv_min 10.0 --Rv_max 12.0 --z_min 0.45 --z_max 0.46 --ndots 22 --ncores 56
 ## srun python vgcf.py --sample 'test10' --Rv_min 12.0 --Rv_max 14.0 --z_min 0.45 --z_max 0.5 --ndots 22 --ncores 56
 ## srun python vgcf.py --sample 'test11' --Rv_min 14.0 --Rv_max 16.0 --z_min 0.45 --z_max 0.5 --ndots 22 --ncores 56
 ## srun python vgcf.py --sample 'test12' --Rv_min 16.0 --Rv_max 18.0 --z_min 0.45 --z_max 0.5 --ndots 22 --ncores 56
