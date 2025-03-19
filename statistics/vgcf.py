@@ -34,17 +34,18 @@ def make_randoms(ra, dec, redshift,
     np.random.seed(1)
     
     dec = np.deg2rad(dec)
-    ## esta linea dá error... OverflowError: Range exceeds valid bounds 
     sindec_rand = np.random.uniform(np.sin(dec.min()), np.sin(dec.max()), size_random)
-    # sindec_rand = np.random.uniform(-1.0, 1.0, size_random)
     dec_rand = np.arcsin(sindec_rand)*(180.0/np.pi)
     ra_rand  = np.random.uniform(ra.min(), ra.max(), size_random)
 
     y,xbins  = np.histogram(redshift, 25)
     x  = xbins[:-1]+0.5*np.diff(xbins)
+    ## segun numpy mejor usar la clase numpy.polynomial.Polynomial instead of np.poly1d
     poly = np.polyfit(x,y,3)
+    ## poly = np.polynomial.Polynomial.fit(x,y,deg=3)
     zr = np.random.uniform(redshift.min(),redshift.max(),size_random)
     poly_y = np.poly1d(poly)(zr)
+    ## poly_y = np.polynomial.polynomial.polyval(zr, poly.coef) ## no da lo mismo....
     poly_y[poly_y<0] = 0.
     peso = poly_y/sum(poly_y)
     z_rand = np.random.choice(zr,size_random,replace=True,p=peso)
