@@ -42,15 +42,17 @@ def make_randoms(ra, dec, redshift,
     x  = xbins[:-1]+0.5*np.diff(xbins)
     ## segun numpy mejor usar la clase numpy.polynomial.Polynomial instead of np.poly1d
     poly = np.polyfit(x,y,3)
+    print('polyfit done')
     ## poly = np.polynomial.Polynomial.fit(x,y,deg=3)
     zr = np.random.uniform(redshift.min(),redshift.max(),size_random)
     poly_y = np.poly1d(poly)(zr)
+    print('poly eval done')
     ## poly_y = np.polynomial.polynomial.polyval(zr, poly.coef) ## no da lo mismo....
     poly_y[poly_y<0] = 0.
     peso = poly_y/sum(poly_y)
     z_rand = np.random.choice(zr,size_random,replace=True,p=peso)
 
-    # print('Wii randoms!')
+    print('Wii randoms!')
     return pd.DataFrame({'ra': ra_rand, 'dec': dec_rand, 'redshift':z_rand})
 
 class Catalogos:
@@ -111,6 +113,7 @@ class Catalogos:
 class VoidGalaxyCrossCorrelation:
     
     def __init__(self, config_treecorr):
+        print('VGCC init')
         self.config : dict = config_treecorr
 
         print(' Profile arguments '.center(40,"="))
@@ -121,7 +124,7 @@ class VoidGalaxyCrossCorrelation:
         # print('Shape Noise: '.ljust(20,'.'), f' {config_treecorr['addnoise}'.rjust(20,'.'),sep='')
 
     def load_treecorrcatalogs(self, lenses, sources, random_lenses, random_sources):
-        
+        print('loading cats w treecorr')
         if len(lenses) <= self.config['NPatches']:
             print('NPatches < Nvoids..., changing to Nvoids-1')
             self.config['NPatches'] = len(lenses)-1
@@ -136,7 +139,7 @@ class VoidGalaxyCrossCorrelation:
             ra_units='deg',
             dec_units='deg',
         )
-
+        print('dvcat done')
         ## Tracers (gx)
         self.dgcat = treecorr.Catalog(
             ra=sources.ra, 
@@ -146,7 +149,7 @@ class VoidGalaxyCrossCorrelation:
             patch_centers= self.dvcat.patch_centers,
             ra_units='deg', dec_units='deg'
         )
-
+        print('dgcat done')
         ## Random voids
         self.rvcat = treecorr.Catalog(
             ra=random_lenses.ra, 
@@ -156,6 +159,7 @@ class VoidGalaxyCrossCorrelation:
             patch_centers= self.dvcat.patch_centers,
             ra_units='deg', dec_units='deg'
         )
+        print('rvcat done')
 
         ## Random tracers (gx)
         self.rgcat = treecorr.Catalog(
@@ -166,9 +170,10 @@ class VoidGalaxyCrossCorrelation:
             patch_centers= self.dvcat.patch_centers,
             ra_units='deg', dec_units='deg'
         )
+        print('rgcat done')
 
     def calculate_corr(self):
-
+        print('calculating corr...')
         DvDg = treecorr.NNCorrelation(
             nbins=self.config['ndots'], 
             min_sep=self.config['rmin'], 
@@ -177,7 +182,7 @@ class VoidGalaxyCrossCorrelation:
             verbose=0, var_method = 'jackknife',
             bin_type='Linear'
         )
-
+        print('dvdg done')
         DvRg = treecorr.NNCorrelation(
             nbins=self.config['ndots'], 
             min_sep=self.config['rmin'], 
@@ -186,6 +191,7 @@ class VoidGalaxyCrossCorrelation:
             verbose=0, var_method = 'jackknife',
             bin_type='Linear'
         )
+        print('dvrg done')
 
         RvDg = treecorr.NNCorrelation(
             nbins=self.config['ndots'], 
@@ -195,6 +201,7 @@ class VoidGalaxyCrossCorrelation:
             verbose=0, var_method = 'jackknife',
             bin_type='Linear'
         )
+        print('rvdg done')
 
         RvRg = treecorr.NNCorrelation(
             nbins=self.config['ndots'], 
@@ -204,12 +211,19 @@ class VoidGalaxyCrossCorrelation:
             verbose=0, var_method = 'jackknife',
             bin_type='Linear'
         )
+        print('rvrg done')
         
+        print('process init')
         DvDg.process(self.dvcat, self.dgcat, num_threads=self.config['ncores'])
+        print('process DvDg done')
         DvRg.process(self.dvcat, self.rgcat, num_threads=self.config['ncores'])
+        print('process DvRg done')
         RvDg.process(self.rvcat, self.dgcat, num_threads=self.config['ncores'])
+        print('process RvDg done')
         RvRg.process(self.rvcat, self.rgcat, num_threads=self.config['ncores'])
+        print('process RvRg done')
 
+        print('reading xi')
         self.r = DvDg.meanr
         self.xi, self.varxi = DvDg.calculateXi(dr=DvRg, rd=RvDg, rr=RvRg)
         self.cov = DvDg.cov
@@ -225,7 +239,7 @@ class VoidGalaxyCrossCorrelation:
         self.calculate_corr()
 
     def write(self, sample, cat_config, lenscat, sourcecat):
-        
+        print('saving init')
         if cat_config['rho2_max']<=0:
             tipo = 'R'
         elif cat_config['rho2_min']>=0:
@@ -274,6 +288,7 @@ class VoidGalaxyCrossCorrelation:
         output_file = f'results/vgcf_{sample}_{np.ceil(cat_config["Rv_min"]).astype(int)}-{np.ceil(cat_config["Rv_max"]).astype(int)}_z0{int(10.0*cat_config["z_min"])}-0{int(10.0*cat_config["z_max"])}_type{tipo}.fits'
 
         hdul.writeto(output_file,overwrite=True)
+        print('saved in', output_file)
 
     def plot_corr(self, label):
 
