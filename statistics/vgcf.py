@@ -406,5 +406,5 @@ if __name__ == '__main__':
         tin = time.time()
         main(tree_config, cat_config, lenscat, sourcecat, args.sample, args.ncores)
 
-    print(f'Took {(time.time()-tin)/60.0} min'.center(50,':'))
-    print('End!')
+    print(f'Took {(time.time()-tin)/60.0} min'.center(50,':'), flush=True)
+    print('End!', flush=True)
