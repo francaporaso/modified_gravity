@@ -98,7 +98,7 @@ class Catalogos:
             self.sources.ra,
             self.sources.dec,
             self.sources.r_com, 
-            size_random=len(self.sources)*2
+            size_random=1000#len(self.sources)*2
         )
         
         self.lenses['w'] = np.ones(len(self.lenses))
