@@ -244,7 +244,7 @@ class VoidGalaxyCrossCorrelation:
         RvRg.process(self.rvcat, self.rgcat, num_threads=self.config['ncores'])
         print('process RvRg done',flush=True)
 
-        print('reading xi',flush=True)
+        print('calculating xi',flush=True)
         self.r = DvDg.meanr
         self.xi, self.varxi = DvDg.calculateXi(dr=DvRg, rd=RvDg, rr=RvRg)
         self.cov = DvDg.cov
