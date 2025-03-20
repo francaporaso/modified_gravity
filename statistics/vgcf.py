@@ -86,6 +86,9 @@ class Catalogos:
         )
         query = f'redshift < {cat_config["z_max"]}+0.1 and redshift >= {cat_config["z_min"]}-0.1'
         self.sources.query(query,inplace=True)
+        
+        assert len(self.sources) != 0, 'No tracer found with those parameters!'
+        print('N sources: '.ljust(20,'.'), f' {len(self.sources)}'.rjust(20,'.'),sep='',flush=True)
 
         self.lenses['w'] = np.ones(len(self.lenses))
         self.sources['w'] = np.ones(len(self.sources))
