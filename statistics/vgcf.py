@@ -56,7 +56,7 @@ def make_randoms(ra, dec, redshift,
     return pd.DataFrame({'ra': ra_rand, 'dec': dec_rand, 'redshift':z_rand})
 
 class Catalogos:
-    def __init__(self, cat_config, lens_name, source_name):
+    def __init__(self, cat_config, lens_name, source_name, do_rands=True):
         path = '/home/fcaporaso/cats/L768/'
         
         self.lenses = pd.DataFrame(
@@ -87,29 +87,35 @@ class Catalogos:
         query = f'redshift < {cat_config["z_max"]}+0.1 and redshift >= {cat_config["z_min"]}-0.1'
         self.sources.query(query,inplace=True)
 
-        self.random_lenses = make_randoms(
-            self.lenses.ra,
-            self.lenses.dec,
-            self.lenses.redshift,
-            size_random=len(self.lenses)*2
-        )
-
-        self.random_sources = make_randoms(
-            self.sources.ra,
-            self.sources.dec,
-            self.sources.r_com, 
-            size_random=len(self.sources)*2
-        )
-        
         self.lenses['w'] = np.ones(len(self.lenses))
         self.sources['w'] = np.ones(len(self.sources))
-        self.random_lenses['w'] = np.ones(len(self.random_lenses))
-        self.random_sources['w'] = np.ones(len(self.random_sources))
-        
-        self.lenses['r_com'] = d_com(self.lenses.redshift)
-        self.random_lenses['r_com'] = d_com(self.random_lenses.redshift)
-        self.random_sources.rename(columns={'redshift':'r_com'}, inplace=True)
 
+        self.lenses['r_com'] = d_com(self.lenses.redshift)
+
+        if do_rands:
+            self.random_lenses = make_randoms(
+                self.lenses.ra,
+                self.lenses.dec,
+                self.lenses.redshift,
+                size_random=len(self.lenses)*2
+            )
+
+            self.random_sources = make_randoms(
+                self.sources.ra,
+                self.sources.dec,
+                self.sources.r_com, 
+                size_random=len(self.sources)*2
+            )
+            self.random_lenses['w'] = np.ones(len(self.random_lenses))
+            self.random_sources['w'] = np.ones(len(self.random_sources))
+            
+            self.random_lenses['r_com'] = d_com(self.random_lenses.redshift)
+            self.random_sources.rename(columns={'redshift':'r_com'}, inplace=True)
+        
+        else:
+            self.random_lenses = pd.DataFrame({'ra':np.NaN, 'dec':np.NaN, 'redshift':np.NaN, 'r_com':np.NaN, 'w':np.NaN})
+            self.random_sources = pd.DataFrame({'ra':np.NaN, 'dec':np.NaN, 'redshift':np.NaN, 'r_com':np.NaN, 'w':np.NaN})
+        
 class VoidGalaxyCrossCorrelation:
     
     def __init__(self, config_treecorr):
