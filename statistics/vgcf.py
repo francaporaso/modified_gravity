@@ -113,8 +113,20 @@ class Catalogos:
             self.random_sources.rename(columns={'redshift':'r_com'}, inplace=True)
         
         else:
-            self.random_lenses = pd.DataFrame({'ra':np.NaN, 'dec':np.NaN, 'redshift':np.NaN, 'r_com':np.NaN, 'w':np.NaN})
-            self.random_sources = pd.DataFrame({'ra':np.NaN, 'dec':np.NaN, 'redshift':np.NaN, 'r_com':np.NaN, 'w':np.NaN})
+            self.random_lenses = pd.DataFrame({
+                'ra':np.full(len(self.lenses),np.NaN),
+                'dec':np.full(len(self.lenses),np.NaN),
+                'redshift':np.full(len(self.lenses),np.NaN),
+                'r_com':np.full(len(self.lenses),np.NaN),
+                'w':np.full(len(self.lenses),np.NaN)
+            })
+            self.random_sources = pd.DataFrame({
+                'ra':np.full(len(self.sources),np.NaN),
+                'dec':np.full(len(self.sources),np.NaN),
+                'redshift':np.full(len(self.sources),np.NaN),
+                'r_com':np.full(len(self.sources),np.NaN),
+                'w':np.full(len(self.sources),np.NaN)
+            })
         
 class VoidGalaxyCrossCorrelation:
     
