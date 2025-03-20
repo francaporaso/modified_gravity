@@ -40,6 +40,8 @@ def eq2p2(ra_gal, dec_gal, RA0,DEC0):
 
     return rad, theta
 
+## TODO
+## agregar de nuevo option for octant
 def lenscat_load(lens_cat,
                  Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max, flag,
                  ncores:int, nk:int):
