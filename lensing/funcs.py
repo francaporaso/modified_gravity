@@ -44,7 +44,7 @@ def eq2p2(ra_gal, dec_gal, RA0,DEC0):
 ## agregar de nuevo option for octant
 def lenscat_load(lens_cat,
                  Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max, flag,
-                 ncores:int, nk:int):
+                 ncores:int=1, nk:int=1, octant=False):
 
     ## 0:Rv, 1:ra, 2:dec, 3:z, 4:xv, 5:yv, 6:zv, 7:rho1, 8:rho2, 9:logp, 10:diff CdM y CdV, 11:flag
     ## CdM: centro de masa
@@ -53,10 +53,11 @@ def lenscat_load(lens_cat,
         L = np.loadtxt("/home/fcaporaso/cats/L768/"+lens_cat, dtype='f4').T
     except:
         L = np.loadtxt(lens_cat, dtype='f4').T
-    # if octant: ## octant deprecated
-    #     # selecciono los void en un octante
-    #     eps = 1.0
-    #     L = L[:, (L[1] >= 0.0+eps) & (L[1] <= 90.0-eps) & (L[2]>= 0.0+eps) & (L[2] <= 90.0-eps)]
+    
+    if octant: ## octant deprecated
+        # selecciono los void en un octante
+        eps = 6.0 ## sale de tomar el angulo substendido por el void más grande al redshift más bajo
+        L = L[:, (L[1] >= 0.0+eps) & (L[1] <= 90.0-eps) & (L[2]>= 0.0+eps) & (L[2] <= 90.0-eps)]
 
     sqrt_nk = int(np.sqrt(nk))
     NNN = len(L[0]) ##total number of voids
