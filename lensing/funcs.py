@@ -55,7 +55,7 @@ def lenscat_load(lens_cat,
         L = np.loadtxt(lens_cat, dtype='f4').T
     
     if octant: 
-        print('Using octant'.center(40,'#'), flush=True)
+        print(' Using octant '.center(40,'#'), flush=True)
         # selecciono los void en un octante
         eps = 6.0 ## sale de tomar el angulo substendido por el void más grande al redshift más bajo
         L = L[:, (L[1] >= 0.0+eps) & (L[1] <= 90.0-eps) & (L[2]>= 0.0+eps) & (L[2] <= 90.0-eps)]
