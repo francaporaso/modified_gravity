@@ -73,7 +73,7 @@ class Catalogos:
                      'flag']
         )
         assert len(self.lenses) != 0, 'No void found with those parameters!'
-        print('N voids: '.ljust(20,'.'), f' {len(self.lenses)}'.rjust(20,'.'),sep='',flush=True)
+        print('N voids: '.ljust(20,'.'), f' {len(self.lenses):.}'.rjust(20,'.'),sep='',flush=True)
         
         self.sources = pd.read_parquet(path+source_name).sample(frac=1.0, random_state=1)
         self.sources.rename(
@@ -88,7 +88,7 @@ class Catalogos:
         self.sources.query(query,inplace=True)
         
         assert len(self.sources) != 0, 'No tracer found with those parameters!'
-        print('N sources: '.ljust(20,'.'), f' {len(self.sources)}'.rjust(20,'.'),sep='',flush=True)
+        print('N sources: '.ljust(20,'.'), f' {len(self.sources):.}'.rjust(20,'.'),sep='',flush=True)
 
         self.lenses['w'] = np.ones(len(self.lenses))
         self.sources['w'] = np.ones(len(self.sources))
