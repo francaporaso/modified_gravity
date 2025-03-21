@@ -63,7 +63,7 @@ class Catalogos:
             lenscat_load(
                 path+lens_name,
                 *cat_config.values(),
-                1,1
+                octant=cat_config['octant']
             )[0].T,
             columns=['rv',
                      'ra','dec','redshift',
@@ -386,6 +386,8 @@ if __name__ == '__main__':
     # parser.add_argument('--addnoise', action='store_true')
     args = parser.parse_args()
 
+    ## TODO
+    ## add octant as flag maybe?
     cat_config = {
         'Rv_min':args.Rv_min,
         'Rv_max':args.Rv_max,
@@ -396,6 +398,7 @@ if __name__ == '__main__':
         'rho2_min':args.rho2_min,
         'rho2_max':args.rho2_max,
         'flag':args.flag,
+        'octant':True,
     }
 
     mean_rv = (cat_config['Rv_min']+cat_config['Rv_max'])*0.5
@@ -420,8 +423,8 @@ if __name__ == '__main__':
 
     if args.sim == 'both':
         cats_name = [
-            ('voids_LCDM_09.dat', 'l768_gr_galaxiesz00-07_bucket1of3_19814.parquet'),
-            ('voids_fR_09.dat', 'l768_mg_galaxiesz00-07_bucket1of3_19813.parquet'),
+            ('voids_LCDM_09.dat', 'l768_gr_galz00-06_Mr-18_19860.parquet'),
+            ('voids_fR_09.dat', 'l768_mg_galz00-06_Mr-18_19861.parquet'),
         ]
     
         tin = time.time()
@@ -430,14 +433,14 @@ if __name__ == '__main__':
     
     elif args.sim == 'LCDM':
         lenscat = 'voids_LCDM_09.dat' 
-        sourcecat = 'l768_gr_galaxiesz00-07_bucket1of3_19814.parquet'
+        sourcecat = 'l768_gr_galz00-06_Mr-18_19860.parquet'
     
         tin = time.time()
         main(tree_config, cat_config, lenscat, sourcecat, args.sample, args.ncores)
 
     else:
         lenscat = 'voids_fR_09.dat'
-        sourcecat = 'l768_mg_galaxiesz00-07_bucket1of3_19813.parquet'
+        sourcecat = 'l768_mg_galz00-06_Mr-18_19861.parquet'
     
         tin = time.time()
         main(tree_config, cat_config, lenscat, sourcecat, args.sample, args.ncores)
