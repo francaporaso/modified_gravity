@@ -61,8 +61,16 @@ class Catalogos:
         
         self.lenses = pd.DataFrame(
             lenscat_load(
-                path+lens_name,
-                *cat_config.values(),
+                lens_cat=path+lens_name,
+                Rv_min=cat_config['Rv_min'], 
+                Rv_max=cat_config['Rv_max'], 
+                z_min=cat_config['z_min'], 
+                z_max=cat_config['z_max'], 
+                rho1_min=cat_config['rho1_min'], 
+                rho1_max=cat_config['rho1_max'], 
+                rho2_min=cat_config['rho2_min'], 
+                rho2_max=cat_config['rho1_max'], 
+                flag=cat_config['flag'],
                 octant=cat_config['octant']
             )[0].T,
             columns=['rv',
