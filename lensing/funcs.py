@@ -44,8 +44,12 @@ def eq2p2(ra_gal, dec_gal, RA0,DEC0):
 ## agregar de nuevo option for octant
 def lenscat_load(lens_cat,
                  Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max, flag,
-                 ncores:int=1, nk:int=1, octant=False):
+                 ncores:int=1, nk:int=1, octant=False, MICE=False):
 
+    if MICE:
+        RV,RA,DEC,Z,R1,R2 = 1,2,3,4,8,9
+    else:
+        RV,RA,DEC,Z,R1,R2 = 0,1,2,3,7,8
     ## 0:Rv, 1:ra, 2:dec, 3:z, 4:xv, 5:yv, 6:zv, 7:rho1, 8:rho2, 9:logp, 10:diff CdM y CdV, 11:flag
     ## CdM: centro de masa
     ## CdV: centro del void
@@ -58,11 +62,11 @@ def lenscat_load(lens_cat,
         print(' Using octant '.center(40,'#'), flush=True)
         # selecciono los void en un octante
         eps = 6.0 ## sale de tomar el angulo substendido por el void más grande al redshift más bajo
-        L = L[:, (L[1] >= 0.0+eps) & (L[1] <= 90.0-eps) & (L[2]>= 0.0+eps) & (L[2] <= 90.0-eps)]
+        L = L[:, (L[RA] >= 0.0+eps) & (L[RA] <= 90.0-eps) & (L[DEC]>= 0.0+eps) & (L[DEC] <= 90.0-eps)]
 
     sqrt_nk = int(np.sqrt(nk))
     NNN = len(L[0]) ##total number of voids
-    ra,dec = L[1],L[2]
+    ra,dec = L[RA],L[DEC]
     K    = np.zeros((nk+1,NNN))
     K[0] = np.ones(NNN).astype(bool)
 
@@ -80,8 +84,8 @@ def lenscat_load(lens_cat,
             K[c] = ~(mra&mdec)
             c += 1
 
-    mask = (L[0] >= Rv_min) & (L[0] < Rv_max) & (L[3] >= z_min) & (L[3] < z_max) & (
-            L[7] >= rho1_min) & (L[7] < rho1_max) & (L[8] >= rho2_min) & (L[8] < rho2_max) & (L[11] >= flag)
+    mask = (L[RV] >= Rv_min) & (L[RV] < Rv_max) & (L[Z] >= z_min) & (L[Z] < z_max) & (
+            L[R1] >= rho1_min) & (L[R1] < rho1_max) & (L[R2] >= rho2_min) & (L[R2] < rho2_max) & (L[11] >= flag)
 
     nvoids = mask.sum()
     L = L[:,mask]
