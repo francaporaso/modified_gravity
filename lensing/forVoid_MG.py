@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from astropy.cosmology import LambdaCDM
-from astropy.coordinates import SkyCoord, angular_separation
+from astropy.coordinates import SkyCoord
 from astropy.io import fits
 import astropy.units as u
 from functools import partial
@@ -178,7 +178,7 @@ def stacking(RIN, ROUT, ndots, nk,
 
     # COMPUTING PROFILE        
     Ninbin[DSIGMAwsum_T == 0] = 1.
-            
+
     Sigma     = (SIGMAwsum/Ninbin)
     DSigma_T  = (DSIGMAwsum_T/Ninbin)
     DSigma_X  = (DSIGMAwsum_X/Ninbin)
