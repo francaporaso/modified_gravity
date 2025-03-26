@@ -88,7 +88,7 @@ def partial_profile(addnoise, S,
 
     catdata = S[mask]
 
-    sigma_c = SigmaCrit(Z, catdata.true_redshift_gal)
+    sigma_c = SigmaCrit(Z, catdata.true_redshift_gal)/Rv
     
     rads, theta = eq2p2(
         np.deg2rad(catdata.ra_gal), np.deg2rad(catdata.dec_gal),
@@ -107,11 +107,11 @@ def partial_profile(addnoise, S,
     #get tangential ellipticities 
     cos2t = np.cos(2*theta)
     sin2t = np.sin(2*theta)
-    et = -1.0*(e1*cos2t+e2*sin2t)*sigma_c/Rv
-    ex = (-e1*sin2t+e2*cos2t)*sigma_c/Rv
+    et = -1.0*(e1*cos2t+e2*sin2t)*sigma_c
+    ex = (-e1*sin2t+e2*cos2t)*sigma_c
            
     #get convergence
-    k  = catdata.kappa*sigma_c/Rv
+    k  = catdata.kappa*sigma_c
 
     r = (np.rad2deg(rads)/DEGxMPC)/Rv
     bines = np.linspace(RIN,ROUT,num=ndots+1)
