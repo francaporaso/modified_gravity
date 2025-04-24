@@ -108,20 +108,21 @@ class Catalogos:
                 self.lenses.ra,
                 self.lenses.dec,
                 self.lenses.redshift,
-                size_random=len(self.lenses)*2
+                size_random=len(self.lenses)*10
             )
 
             self.random_sources = make_randoms(
                 self.sources.ra,
                 self.sources.dec,
                 self.sources.r_com, 
-                size_random=len(self.sources)*2
+                size_random=len(self.sources)*10
             )
             self.random_lenses['w'] = np.ones(len(self.random_lenses))
             self.random_sources['w'] = np.ones(len(self.random_sources))
-            
             self.random_lenses['r_com'] = d_com(self.random_lenses.redshift)
             self.random_sources.rename(columns={'redshift':'r_com'}, inplace=True)
+            print('N rand voids: '.ljust(20,'.'), f' {len(self.random_lenses):,}'.rjust(20,'.'),sep='',flush=True)
+            print('N rand sources: '.ljust(20,'.'), f' {len(self.random_sources):,}'.rjust(20,'.'),sep='',flush=True)
         
         else:
             self.random_lenses = pd.DataFrame({
