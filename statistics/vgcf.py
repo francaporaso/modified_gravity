@@ -115,7 +115,7 @@ class Catalogos:
                 self.sources.ra,
                 self.sources.dec,
                 self.sources.r_com, 
-                size_random=len(self.sources)*10
+                size_random=len(self.sources)*20
             )
             self.random_lenses['w'] = np.ones(len(self.random_lenses))
             self.random_sources['w'] = np.ones(len(self.random_sources))
