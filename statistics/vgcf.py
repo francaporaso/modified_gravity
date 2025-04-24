@@ -433,8 +433,8 @@ if __name__ == '__main__':
     } 
 
     cats_name = [
-        ('voids_LCDM_09.dat', 'l768_gr_galz00-06_Mr-18_19860.parquet'),
-        ('voids_fR_09.dat', 'l768_mg_galz00-06_Mr-18_19861.parquet'),
+        ('voids_LCDM_09.dat', 'l768_gr_octant_galz00-06_Mr-18_19860.parquet'),
+        ('voids_fR_09.dat', 'l768_mg_octant_galz00-06_Mr-18_19861.parquet'),
     ]
     if args.sim == 'both':
     
