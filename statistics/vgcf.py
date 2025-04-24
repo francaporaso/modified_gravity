@@ -169,6 +169,7 @@ class VoidGalaxyCrossCorrelation:
             dec_units='deg',
         )
         print('dvcat done',flush=True)
+
         ## Tracers (gx)
         self.dgcat = treecorr.Catalog(
             ra=sources.ra, 
@@ -179,6 +180,7 @@ class VoidGalaxyCrossCorrelation:
             ra_units='deg', dec_units='deg'
         )
         print('dgcat done',flush=True)
+
         ## Random voids
         self.rvcat = treecorr.Catalog(
             ra=random_lenses.ra, 
@@ -209,7 +211,7 @@ class VoidGalaxyCrossCorrelation:
             max_sep=self.config['rmax'], 
             bin_slop=self.config['slop'], brute = False, 
             verbose=0, var_method = 'jackknife',
-            bin_type='Linear'
+            bin_type=self.config['bin_type']
         )
         print('dvdg done',flush=True)
         DvRg = treecorr.NNCorrelation(
@@ -218,7 +220,7 @@ class VoidGalaxyCrossCorrelation:
             max_sep=self.config['rmax'], 
             bin_slop=self.config['slop'], brute = False, 
             verbose=0, var_method = 'jackknife',
-            bin_type='Linear'
+            bin_type=self.config['bin_type']
         )
         print('dvrg done',flush=True)
 
@@ -228,7 +230,7 @@ class VoidGalaxyCrossCorrelation:
             max_sep=self.config['rmax'], 
             bin_slop=self.config['slop'], brute = False, 
             verbose=0, var_method = 'jackknife',
-            bin_type='Linear'
+            bin_type=self.config['bin_type']
         )
         print('rvdg done',flush=True)
 
@@ -238,7 +240,7 @@ class VoidGalaxyCrossCorrelation:
             max_sep=self.config['rmax'], 
             bin_slop=self.config['slop'], brute = False, 
             verbose=0, var_method = 'jackknife',
-            bin_type='Linear'
+            bin_type=self.config['bin_type']
         )
         print('rvrg done',flush=True)
         
@@ -427,29 +429,30 @@ if __name__ == '__main__':
         'ncores' : args.ncores, # Number of cores to run in parallel
         'slop' : 0., # Resolution for treecorr
         'box' : False, # Indicates if the data corresponds to a box, otherwise it will assume a lightcone
+        'bin_type':'Log',
     } 
 
+    cats_name = [
+        ('voids_LCDM_09.dat', 'l768_gr_galz00-06_Mr-18_19860.parquet'),
+        ('voids_fR_09.dat', 'l768_mg_galz00-06_Mr-18_19861.parquet'),
+    ]
     if args.sim == 'both':
-        cats_name = [
-            ('voids_LCDM_09.dat', 'l768_gr_galz00-06_Mr-18_19860.parquet'),
-            ('voids_fR_09.dat', 'l768_mg_galz00-06_Mr-18_19861.parquet'),
-        ]
     
         tin = time.time()
         for lenscat, sourcecat in cats_name:
             main(tree_config, cat_config, lenscat, sourcecat, args.sample, args.ncores)
     
     elif args.sim == 'LCDM':
-        lenscat = 'voids_LCDM_09.dat' 
-        sourcecat = 'l768_gr_galz00-06_Mr-18_19860.parquet'
-    
+        #lenscat = 'voids_LCDM_09.dat' 
+        #sourcecat = 'l768_gr_galz00-06_Mr-18_19860.parquet'
+        lenscat,sourcecat = cats_name[0]
         tin = time.time()
         main(tree_config, cat_config, lenscat, sourcecat, args.sample, args.ncores)
 
     else:
-        lenscat = 'voids_fR_09.dat'
-        sourcecat = 'l768_mg_galz00-06_Mr-18_19861.parquet'
-    
+        #lenscat = 'voids_fR_09.dat'
+        #sourcecat = 'l768_mg_galz00-06_Mr-18_19861.parquet'
+        lenscat,sourcecat = cats_name[1]
         tin = time.time()
         main(tree_config, cat_config, lenscat, sourcecat, args.sample, args.ncores)
 
