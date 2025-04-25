@@ -41,18 +41,18 @@ def make_randoms(ra, dec, redshift,
     x  = xbins[:-1]+0.5*np.diff(xbins)
     ## segun numpy mejor usar la clase numpy.polynomial.Polynomial instead of np.poly1d
     poly = np.polyfit(x,y,3)
-    print('polyfit done',flush=True)
+    # print('polyfit done',flush=True)
     ## poly = np.polynomial.Polynomial.fit(x,y,deg=3)
 
     zr = rng.uniform(redshift.min(),redshift.max(),size_random)
     poly_y = np.poly1d(poly)(zr)
-    print('poly eval done',flush=True)
+    # print('poly eval done',flush=True)
     ## poly_y = np.polynomial.polynomial.polyval(zr, poly.coef) ## no da lo mismo....
     poly_y[poly_y<0] = 0.
     peso = poly_y/sum(poly_y)
     z_rand = rng.choice(zr,size_random,replace=True,p=peso)
 
-    print('Wii randoms!',flush=True)
+    # print('Wii randoms!',flush=True)
     return pd.DataFrame({'ra': ra_rand, 'dec': dec_rand, 'redshift':z_rand})
 
 class Catalogos:
