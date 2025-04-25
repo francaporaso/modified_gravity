@@ -78,10 +78,10 @@ class Catalogos:
         assert nvoids != 0, 'No void found with those parameters!'
         print('N voids: '.ljust(20,'.'), f' {nvoids:,}'.rjust(20,'.'),sep='',flush=True)
         
-        self.sources = pd.read_parquet(path+source_name).sample(frac=1.0, random_state=1).to_numpy()
+        self.sources = pd.read_parquet(path+source_name).sample(frac=1.0, random_state=1).to_numpy().T
         ### [0]: kind, [1]:r_gal (com dist), [2]:redshift, [3]:ra, [4]:dec
         mask = (self.sources[2] < cat_config["z_max"]+0.1) & (self.sources[2] >= cat_config["z_min"]-0.1)
-        self.sources = self.sources[:,mask]
+        self.sources = self.sources[:, mask]
         nsources = len(self.sources.T)
         assert nsources != 0, 'No tracer found with those parameters!'
         print('N sources: '.ljust(20,'.'), f' {nsources:,}'.rjust(20,'.'),sep='',flush=True)
