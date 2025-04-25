@@ -29,8 +29,7 @@ def d_com(z):
     return cosmo.comoving_distance(z).value
 
 def make_randoms(ra, dec, redshift,
-                 size_random = 100,
-                 ncores=8):
+                 size_random = 100):
 
     rng = np.random.default_rng()    
     dec = np.deg2rad(dec)
@@ -51,9 +50,7 @@ def make_randoms(ra, dec, redshift,
     ## poly_y = np.polynomial.polynomial.polyval(zr, poly.coef) ## no da lo mismo....
     poly_y[poly_y<0] = 0.
     peso = poly_y/sum(poly_y)
-    with Pool(processes=ncores) as pool:
-        res = pool.map(lambda z: rng.choice(z,size_random,replace=True,p=peso), np.split(zr, ncores))
-    z_rand = np.concatenate(res)
+    z_rand = rng.choice(zr,size_random,replace=True,p=peso)
 
     # print('Wii randoms!',flush=True)
     return pd.DataFrame({'ra': ra_rand, 'dec': dec_rand, 'redshift':z_rand})
