@@ -72,7 +72,7 @@ class Catalogos:
                 rho2_max=cat_config['rho1_max'], 
                 flag=cat_config['flag'],
                 octant=cat_config['octant']
-            )[0]
+            )
         ## [0]:rv, [1]:ra, [2]:dec, [3]:redshift
         
         assert nvoids != 0, 'No void found with those parameters!'
