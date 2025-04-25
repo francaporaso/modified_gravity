@@ -98,6 +98,7 @@ class Catalogos:
                 self.lenses[3],
                 size_random=nvoids*10
             )
+            print('N rand voids: '.ljust(20,'.'), f' {nvoids*10:,}'.rjust(20,'.'),sep='',flush=True)
 
             self.random_sources = make_randoms(
                 self.sources[3],
@@ -105,6 +106,7 @@ class Catalogos:
                 self.sources[1], ## le paso la dist comovil y samplea de esos como si fuera redshift, así me ahorro el paso de pasar de z a dist com 
                 size_random=nsources*10
             )
+            print('N rand sources: '.ljust(20,'.'), f' {nsources*10:,}'.rjust(20,'.'),sep='',flush=True)
 
             ## w=1
             self.random_lenses = np.append(self.random_lenses, [np.ones(nvoids*10)]) ## [3]
@@ -112,8 +114,6 @@ class Catalogos:
             
             self.random_lenses = np.append(self.random_lenses, [d_com(self.random_lenses[2])]) ## [4]
             #self.random_sources.rename(columns={'redshift':'r_com'}, inplace=True)
-            print('N rand voids: '.ljust(20,'.'), f' {nvoids*10:,}'.rjust(20,'.'),sep='',flush=True)
-            print('N rand sources: '.ljust(20,'.'), f' {nsources*10:,}'.rjust(20,'.'),sep='',flush=True)
         
         else: ## cambiar a numpy...
             self.random_lenses = pd.DataFrame({
