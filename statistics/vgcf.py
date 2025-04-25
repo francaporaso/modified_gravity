@@ -53,14 +53,14 @@ def make_randoms(ra, dec, redshift,
     z_rand = rng.choice(zr,size_random,replace=True,p=peso)
 
     # print('Wii randoms!',flush=True)
-    return pd.DataFrame({'ra': ra_rand, 'dec': dec_rand, 'redshift':z_rand})
+    #return pd.DataFrame({'ra': ra_rand, 'dec': dec_rand, 'redshift':z_rand})
+    return ra_rand, dec_rand, z_rand
 
 class Catalogos:
     def __init__(self, cat_config, lens_name, source_name, do_rands=True):
         path = '/home/fcaporaso/cats/L768/'
         
-        self.lenses = pd.DataFrame(
-            lenscat_load(
+        self.lenses, _, nvoids = lenscat_load(
                 lens_cat=path+lens_name,
                 Rv_min=cat_config['Rv_min'], 
                 Rv_max=cat_config['Rv_max'], 
@@ -72,28 +72,16 @@ class Catalogos:
                 rho2_max=cat_config['rho1_max'], 
                 flag=cat_config['flag'],
                 octant=cat_config['octant']
-            )[0].T,
-            columns=['rv',
-                     'ra','dec','redshift',
-                     'xv','yv','zv',
-                     'rho1','rho2',
-                     'logp','cmdist',
-                     'flag']
-        )
-        assert len(self.lenses) != 0, 'No void found with those parameters!'
-        print('N voids: '.ljust(20,'.'), f' {len(self.lenses):,}'.rjust(20,'.'),sep='',flush=True)
+            )[0]
         
-        self.sources = pd.read_parquet(path+source_name).sample(frac=1.0, random_state=1)
-        self.sources.rename(
-            columns={
-                'ra_gal':'ra',
-                'dec_gal':'dec',
-                'true_redshift_gal':'redshift',
-                'r_gal':'r_com'},
-            inplace=True
-        )
-        query = f'redshift < {cat_config["z_max"]}+0.1 and redshift >= {cat_config["z_min"]}-0.1'
-        self.sources.query(query,inplace=True)
+        assert len(nvoids) != 0, 'No void found with those parameters!'
+        print('N voids: '.ljust(20,'.'), f' {len(nvoids):,}'.rjust(20,'.'),sep='',flush=True)
+        
+        self.sources = pd.read_parquet(path+source_name).sample(frac=1.0, random_state=1).to_numpy()
+        ### [0]: kind, [1]:r_gal (com dist), [2]:redshift, [3]:ra, [4]:dec
+        #query = f'redshift < {cat_config["z_max"]}+0.1 and redshift >= {cat_config["z_min"]}-0.1'
+        mask = (self.sources[2] < cat_config["z_max"]+0.1) & (self.sources[2] >= cat_config["z_min"]-0.1)
+        self.sources = self.sources[mask]
         
         assert len(self.sources) != 0, 'No tracer found with those parameters!'
         print('N sources: '.ljust(20,'.'), f' {len(self.sources):,}'.rjust(20,'.'),sep='',flush=True)
