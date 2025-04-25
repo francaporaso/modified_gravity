@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import time
 import treecorr
+#from multiprocessing import Pool
 
 import sys
 sys.path.append('/home/fcaporaso/modified_gravity/')
@@ -29,14 +30,12 @@ def d_com(z):
 
 def make_randoms(ra, dec, redshift,
                  size_random = 100):
-    
-    # print('Making randoms...')
-    np.random.seed(1)
-    
+
+    rng = np.random.default_rng()    
     dec = np.deg2rad(dec)
-    sindec_rand = np.random.uniform(np.sin(dec.min()), np.sin(dec.max()), size_random)
+    sindec_rand = rng.uniform(np.sin(dec.min()), np.sin(dec.max()), size_random)
     dec_rand = np.arcsin(sindec_rand)*(180.0/np.pi)
-    ra_rand  = np.random.uniform(ra.min(), ra.max(), size_random)
+    ra_rand  = rng.uniform(ra.min(), ra.max(), size_random)
 
     y,xbins  = np.histogram(redshift, 25)
     x  = xbins[:-1]+0.5*np.diff(xbins)
@@ -44,13 +43,14 @@ def make_randoms(ra, dec, redshift,
     poly = np.polyfit(x,y,3)
     print('polyfit done',flush=True)
     ## poly = np.polynomial.Polynomial.fit(x,y,deg=3)
-    zr = np.random.uniform(redshift.min(),redshift.max(),size_random)
+
+    zr = rng.uniform(redshift.min(),redshift.max(),size_random)
     poly_y = np.poly1d(poly)(zr)
     print('poly eval done',flush=True)
     ## poly_y = np.polynomial.polynomial.polyval(zr, poly.coef) ## no da lo mismo....
     poly_y[poly_y<0] = 0.
     peso = poly_y/sum(poly_y)
-    z_rand = np.random.choice(zr,size_random,replace=True,p=peso)
+    z_rand = rng.choice(zr,size_random,replace=True,p=peso)
 
     print('Wii randoms!',flush=True)
     return pd.DataFrame({'ra': ra_rand, 'dec': dec_rand, 'redshift':z_rand})
@@ -115,7 +115,7 @@ class Catalogos:
                 self.sources.ra,
                 self.sources.dec,
                 self.sources.r_com, 
-                size_random=len(self.sources)*20
+                size_random=len(self.sources)*10
             )
             self.random_lenses['w'] = np.ones(len(self.random_lenses))
             self.random_sources['w'] = np.ones(len(self.random_sources))
