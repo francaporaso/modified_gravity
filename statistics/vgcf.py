@@ -54,7 +54,7 @@ def make_randoms(ra, dec, redshift,
 
     # print('Wii randoms!',flush=True)
     #return pd.DataFrame({'ra': ra_rand, 'dec': dec_rand, 'redshift':z_rand})
-    return ra_rand, dec_rand, z_rand
+    return np.array([ra_rand, dec_rand, z_rand])
 
 class Catalogos:
     def __init__(self, cat_config, lens_name, source_name, do_rands=True):
@@ -73,46 +73,49 @@ class Catalogos:
                 flag=cat_config['flag'],
                 octant=cat_config['octant']
             )[0]
+        ## [0]:rv, [1]:ra, [2]:dec, [3]:redshift
         
-        assert len(nvoids) != 0, 'No void found with those parameters!'
-        print('N voids: '.ljust(20,'.'), f' {len(nvoids):,}'.rjust(20,'.'),sep='',flush=True)
+        assert nvoids != 0, 'No void found with those parameters!'
+        print('N voids: '.ljust(20,'.'), f' {nvoids:,}'.rjust(20,'.'),sep='',flush=True)
         
         self.sources = pd.read_parquet(path+source_name).sample(frac=1.0, random_state=1).to_numpy()
         ### [0]: kind, [1]:r_gal (com dist), [2]:redshift, [3]:ra, [4]:dec
-        #query = f'redshift < {cat_config["z_max"]}+0.1 and redshift >= {cat_config["z_min"]}-0.1'
         mask = (self.sources[2] < cat_config["z_max"]+0.1) & (self.sources[2] >= cat_config["z_min"]-0.1)
         self.sources = self.sources[mask]
+        nsources = len(self.sources.T)
+        assert nsources != 0, 'No tracer found with those parameters!'
+        print('N sources: '.ljust(20,'.'), f' {nsources:,}'.rjust(20,'.'),sep='',flush=True)
         
-        assert len(self.sources) != 0, 'No tracer found with those parameters!'
-        print('N sources: '.ljust(20,'.'), f' {len(self.sources):,}'.rjust(20,'.'),sep='',flush=True)
+        self.lenses = np.append(self.lenses, [d_com(self.lenses[2])]) ## [4]
 
-        self.lenses['w'] = np.ones(len(self.lenses))
-        self.sources['w'] = np.ones(len(self.sources))
-
-        self.lenses['r_com'] = d_com(self.lenses.redshift)
+        self.lenses = np.append(self.lenses, [np.ones(nvoids)]) ## [5]
+        self.sources = np.append(self.sources, [np.ones(nsources)]) ## [5]
 
         if do_rands:
             self.random_lenses = make_randoms(
-                self.lenses.ra,
-                self.lenses.dec,
-                self.lenses.redshift,
-                size_random=len(self.lenses)*10
+                self.lenses[1],
+                self.lenses[2],
+                self.lenses[3],
+                size_random=nvoids*10
             )
 
             self.random_sources = make_randoms(
-                self.sources.ra,
-                self.sources.dec,
-                self.sources.r_com, 
-                size_random=len(self.sources)*10
+                self.sources[3],
+                self.sources[4],
+                self.sources[1], ## le paso la dist comovil y samplea de esos como si fuera redshift, así me ahorro el paso de pasar de z a dist com 
+                size_random=nsources*10
             )
-            self.random_lenses['w'] = np.ones(len(self.random_lenses))
-            self.random_sources['w'] = np.ones(len(self.random_sources))
-            self.random_lenses['r_com'] = d_com(self.random_lenses.redshift)
-            self.random_sources.rename(columns={'redshift':'r_com'}, inplace=True)
-            print('N rand voids: '.ljust(20,'.'), f' {len(self.random_lenses):,}'.rjust(20,'.'),sep='',flush=True)
-            print('N rand sources: '.ljust(20,'.'), f' {len(self.random_sources):,}'.rjust(20,'.'),sep='',flush=True)
+
+            ## w=1
+            self.random_lenses = np.append(self.random_lenses, [np.ones(nvoids*10)]) ## [3]
+            self.random_sources = np.append(self.random_sources, [np.ones(nsources*10)]) ## [3]
+            
+            self.random_lenses = np.append(self.random_lenses, [d_com(self.random_lenses[2])]) ## [4]
+            #self.random_sources.rename(columns={'redshift':'r_com'}, inplace=True)
+            print('N rand voids: '.ljust(20,'.'), f' {nvoids*10:,}'.rjust(20,'.'),sep='',flush=True)
+            print('N rand sources: '.ljust(20,'.'), f' {nsources*10:,}'.rjust(20,'.'),sep='',flush=True)
         
-        else:
+        else: ## cambiar a numpy...
             self.random_lenses = pd.DataFrame({
                 'ra':np.full(len(self.lenses),np.NaN),
                 'dec':np.full(len(self.lenses),np.NaN),
@@ -121,11 +124,11 @@ class Catalogos:
                 'w':np.full(len(self.lenses),np.NaN)
             })
             self.random_sources = pd.DataFrame({
-                'ra':np.full(len(self.sources),np.NaN),
-                'dec':np.full(len(self.sources),np.NaN),
-                'redshift':np.full(len(self.sources),np.NaN),
-                'r_com':np.full(len(self.sources),np.NaN),
-                'w':np.full(len(self.sources),np.NaN)
+                'ra':np.full(nsources,np.NaN),
+                'dec':np.full(nsources,np.NaN),
+                'redshift':np.full(nsources,np.NaN),
+                'r_com':np.full(nsources,np.NaN),
+                'w':np.full(nsources,np.NaN)
             })
         
 class VoidGalaxyCrossCorrelation:
@@ -149,22 +152,22 @@ class VoidGalaxyCrossCorrelation:
 
         ## Voids
         self.dvcat = treecorr.Catalog(
-            ra=lenses.ra,
-            dec=lenses.dec,
-            w=lenses.w,
-            r=lenses.r_com,
+            ra=lenses[1],
+            dec=lenses[2],
+            w=lenses[5],
+            r=lenses[4],
             npatch=self.config['NPatches'],
             ra_units='deg',
             dec_units='deg',
         )
         print('dvcat done',flush=True)
 
-        ## Tracers (gx)
+        ## Tracers (gx)[1]:comdist, [3]:ra, [4]:dec
         self.dgcat = treecorr.Catalog(
-            ra=sources.ra, 
-            dec=sources.dec, 
-            w = sources.w, 
-            r=sources.r_com, 
+            ra=sources[3], 
+            dec=sources[4], 
+            w = sources[5], 
+            r=sources[1], 
             patch_centers= self.dvcat.patch_centers,
             ra_units='deg', dec_units='deg'
         )
@@ -172,10 +175,10 @@ class VoidGalaxyCrossCorrelation:
 
         ## Random voids
         self.rvcat = treecorr.Catalog(
-            ra=random_lenses.ra, 
-            dec=random_lenses.dec, 
-            w = random_lenses.w, 
-            r=random_lenses.r_com, 
+            ra=random_lenses[0], 
+            dec=random_lenses[1], 
+            w = random_lenses[3], 
+            r=random_lenses[4], 
             patch_centers= self.dvcat.patch_centers,
             ra_units='deg', dec_units='deg'
         )
@@ -183,10 +186,10 @@ class VoidGalaxyCrossCorrelation:
 
         ## Random tracers (gx)
         self.rgcat = treecorr.Catalog(
-            ra=random_sources.ra, 
-            dec=random_sources.dec, 
-            w = random_sources.w, 
-            r=random_sources.r_com, 
+            ra=random_sources[0], 
+            dec=random_sources[1], 
+            w = random_sources[3], 
+            r=random_sources[2], 
             patch_centers= self.dvcat.patch_centers,
             ra_units='deg', dec_units='deg'
         )
