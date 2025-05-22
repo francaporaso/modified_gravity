@@ -101,7 +101,7 @@ def lenscat_load(lens_cat,
         L = np.split(L.T, slices)
         K = np.split(K.T, slices)
 
-    return L[[RV,RA,DEC,Z]], K, nvoids
+    return L, K, nvoids
 
 def sourcecat_load(sourcename):
     folder = '/home/fcaporaso/cats/L768/'
