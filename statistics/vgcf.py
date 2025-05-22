@@ -268,6 +268,8 @@ class VoidGalaxyCrossCorrelation:
         self.calculate_corr()
 
     def write(self, sample, cat_config, lenscat, sourcecat):
+        ##TODO
+        ## se puede agregar n de randoms!
         print('saving init',flush=True)
         if cat_config['rho2_max']<=0:
             tipo = 'R'
