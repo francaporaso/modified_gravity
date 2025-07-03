@@ -44,7 +44,7 @@ def eq2p2(ra_gal, dec_gal, RA0,DEC0):
 ## agregar de nuevo option for octant
 def lenscat_load(lens_cat,
                  Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max, flag,
-                 ncores:int=1, nk:int=1, octant=False, MICE=False):
+                 ncores:int=1, nk:int=1, octant=False, MICE=False, fullshape=True):
 
     if MICE:
         RV,RA,DEC,Z,R1,R2 = 1,2,3,4,8,9
@@ -101,6 +101,8 @@ def lenscat_load(lens_cat,
         L = np.split(L.T, slices)
         K = np.split(K.T, slices)
 
+    if fullshape:
+        return L, K, nvoids
     return L[[RV,RA,DEC,Z]], K, nvoids
 
 def sourcecat_load(sourcename):
