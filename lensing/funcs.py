@@ -101,13 +101,11 @@ def lenscat_load(lens_cat,
         L = np.split(L.T, slices)
         K = np.split(K.T, slices)
 
-<<<<<<< HEAD
     return L, K, nvoids
-=======
+
     if fullshape:
         return L, K, nvoids
     return L[[RV,RA,DEC,Z]], K, nvoids
->>>>>>> @{u}
 
 def sourcecat_load(sourcename):
     folder = '/home/fcaporaso/cats/L768/'
