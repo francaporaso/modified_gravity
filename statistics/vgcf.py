@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import time
 import treecorr
-from multiprocess import Pool
+from multiprocessing import Pool
 
 import sys
 sys.path.append('/home/fcaporaso/modified_gravity/')
