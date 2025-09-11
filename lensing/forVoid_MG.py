@@ -39,15 +39,15 @@ parser.add_argument('-K','--nk', type=int, default=100, action='store')
 parser.add_argument('--addnoise', action='store_true')
 args = parser.parse_args()
 
-cosmo = LambdaCDM(H0=100.0*args.h_cosmo, Om0=args.Om0, Ode0=args.Ode0)
+cosmo = LambdaCDM(H0=100.0*args.h_cosmo, Om0=args.Om0, Ode0=args.Ode0) # type: ignore
 
 def SigmaCrit(zl, zs):
 
     global cosmo
-    dl  = cosmo.angular_diameter_distance(zl).value
+    dl  = cosmo.angular_diameter_distance(zl).value # type: ignore
     Dl = dl*1.e6*pc #en m
-    ds  = cosmo.angular_diameter_distance(zs).value              #dist ang diam de la fuente
-    dls = cosmo.angular_diameter_distance_z1z2(zl, zs).value      #dist ang diam entre fuente y lente
+    ds  = cosmo.angular_diameter_distance(zs).value              # type: ignore #dist ang diam de la fuente
+    dls = cosmo.angular_diameter_distance_z1z2(zl, zs).value      # type: ignore #dist ang diam entre fuente y lente
                 
     BETA_array = dls / ds
 
@@ -60,10 +60,10 @@ def SigmaCrit(zl, zs):
 def partial_profile(addnoise, S,
                     RA0, DEC0, Z, Rv,
                     RIN, ROUT, ndots):
-    
+    global cosmo
     ndots = int(ndots)
     
-    DEGxMPC = cosmo.arcsec_per_kpc_proper(Z).to('deg/Mpc').value
+    DEGxMPC = cosmo.arcsec_per_kpc_proper(Z).to('deg/Mpc').value # type: ignore
     delta = DEGxMPC*(ROUT*Rv)
     ## great-circle separation of sources from void centre
     ## WARNING: not stable near the edges
@@ -150,7 +150,7 @@ def stacking(RIN, ROUT, ndots, nk,
         if num == 1:
             entrada = [Li[1], Li[2], Li[3], Li[0],
                        RIN, ROUT, ndots]
-            resmap = np.array([part_profile_func(entrada)])
+            resmap = np.array([part_profile_func(*entrada)])
 
         else:
             entrada = np.array([Li.T[1],Li.T[2],Li.T[3],Li.T[0],
@@ -315,7 +315,9 @@ def main(args=args):
     
     hdul = fits.HDUList([primary_hdu, tbhdu_p, tbhdu_c])
 
-    output_file = f'results/{args.sample}_{args.lens_cat[6:-4]}_{np.ceil(args.Rv_min).astype(int)}-{np.ceil(args.Rv_max).astype(int)}_z0{int(10.0*args.z_min)}-0{int(10.0*args.z_max)}_type{tipo}.fits'
+    output_file = (f'results/{args.sample}_{args.lens_cat[6:-4]}_'
+                   f'{np.ceil(args.Rv_min).astype(int)}-{np.ceil(args.Rv_max).astype(int)}_'
+                   f'z0{int(10.0*args.z_min)}-0{int(10.0*args.z_max)}_type{tipo}.fits')
 
     hdul.writeto(output_file,overwrite=True)
     print(f'File saved in: {output_file}')
