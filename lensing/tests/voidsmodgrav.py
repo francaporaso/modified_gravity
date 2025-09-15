@@ -183,7 +183,7 @@ if __name__ == '__main__':
     cosmo_params = dict(
         Om0 = 0.3089,
         Ode0 = 0.6911,
-        h = 1.0
+        H0 = 100.0
     )
 
     l = Lensing(source_args=source_args, cosmo_params=cosmo_params, binning='lin')
