@@ -108,23 +108,20 @@ class Lensing:
         DSigma_t_wsum = np.zeros((self.Nk+1, self.N))
         DSigma_x_wsum = np.zeros((self.Nk+1, self.N))
 
-        with Pool(processes=self.ncores) as pool:
-            inp = np.array([self.L[1], self.L[2], self.L[3], self.L[0]]).T
+        for i, Li in enumerate(tqdm(self.L)):
+            num = len(Li)
+            with Pool(processes=num) as pool:
+                inp = np.array([Li[1], Li[2], Li[3], Li[0]]).T
 
-            resmap = np.array(
-                pool.imap(
-                    self.partial_profile, 
-                    inp, 
-                    chunksize=self.nvoids//self.ncores),
-            )
-            pool.close()
-            pool.join()
+                resmap = np.array(pool.map(self.partial_profile, inp))
+                pool.close()
+                pool.join()
 
-        for i,r in enumerate(resmap):
-            km = np.tile(self.K[i], (self.N,1)).T
-            N_inbin += np.tile(r.N_inbin, (self.Nk+1,1))*km
-            DSigma_t_wsum += np.tile(r.DSigma_t, (self.Nk+1,1))*km
-            DSigma_x_wsum += np.tile(r.DSigma_x, (self.Nk+1,1))*km
+            for j,r in enumerate(resmap):
+                km = np.tile(self.K[i][j], (self.N,1)).T
+                N_inbin += np.tile(r.N_inbin, (self.Nk+1,1))*km
+                DSigma_t_wsum += np.tile(r.DSigma_t, (self.Nk+1,1))*km
+                DSigma_x_wsum += np.tile(r.DSigma_x, (self.Nk+1,1))*km
 
         DSigma_t = DSigma_t_wsum/N_inbin
         DSigma_x = DSigma_x_wsum/N_inbin
@@ -140,7 +137,7 @@ class Lensing:
         self.ROUT : float = profile_args['ROUT']
         
         self.L, self.K, self.nvoids = lenscat_load(**lens_args)
-
+        print('Running stacking!')
         return self.stacking()
 
 if __name__ == '__main__':
@@ -171,7 +168,7 @@ if __name__ == '__main__':
         z_max = z_max,
         delta_min = delta_min, # void type
         delta_max = delta_max, # void type
-        ncores = 1,
+        ncores = ncores,
         nk = Nk,
     )
 
