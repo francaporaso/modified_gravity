@@ -105,9 +105,9 @@ def lenscat_load(name,
         return L, K, nvoids
     return L[[RV,RA,DEC,Z]], K, nvoids
 
-def sourcecat_load(sourcename):
+def sourcecat_load(name):
     folder = '/home/fcaporaso/cats/L768/'
-    with fits.open(folder+sourcename, memmap=True, mode='denywrite') as f:
+    with fits.open(folder+name, memmap=True, mode='denywrite') as f:
         mask = np.abs(f[1].data.gamma1) < 10.0
         S = f[1].data[mask]
 
