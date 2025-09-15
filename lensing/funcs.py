@@ -42,8 +42,8 @@ def eq2p2(ra_gal, dec_gal, RA0,DEC0):
 
 ## TODO
 ## agregar de nuevo option for octant
-def lenscat_load(lens_cat,
-                 Rv_min, Rv_max, z_min, z_max, rho1_min, rho1_max, rho2_min, rho2_max, flag,
+def lenscat_load(name,
+                 Rv_min, Rv_max, z_min, z_max, delta_min, delta_max, rho1_min=-1.0, rho1_max=0.0, flag=2,
                  ncores:int=1, nk:int=1, octant=False, MICE=False, fullshape=True):
 
     if MICE:
@@ -54,9 +54,9 @@ def lenscat_load(lens_cat,
     ## CdM: centro de masa
     ## CdV: centro del void
     try: 
-        L = np.loadtxt("/home/fcaporaso/cats/L768/"+lens_cat, dtype='f4').T
+        L = np.loadtxt("/home/fcaporaso/cats/L768/"+name, dtype='f4').T
     except:
-        L = np.loadtxt(lens_cat, dtype='f4').T
+        L = np.loadtxt(name, dtype='f4').T
     
     if octant: 
         print(' Using octant '.center(40,'#'), flush=True)
@@ -85,7 +85,7 @@ def lenscat_load(lens_cat,
             c += 1
 
     mask = (L[RV] >= Rv_min) & (L[RV] < Rv_max) & (L[Z] >= z_min) & (L[Z] < z_max) & (
-            L[R1] >= rho1_min) & (L[R1] < rho1_max) & (L[R2] >= rho2_min) & (L[R2] < rho2_max) & (L[11] >= flag)
+            L[R1] >= rho1_min) & (L[R1] < rho1_max) & (L[R2] >= delta_min) & (L[R2] < delta_max) & (L[11] >= flag)
 
     nvoids = mask.sum()
     L = L[:,mask]
@@ -111,8 +111,8 @@ def sourcecat_load(sourcename):
         mask = np.abs(f[1].data.gamma1) < 10.0
         S = f[1].data[mask]
 
-    return S
-    # return S.ra_gal, S.dec_gal, S.true_redshift_gal, S.kappa, S.gamma1, S.gamma2
+    #return S
+    return S.ra_gal, S.dec_gal, S.true_redshift_gal, S.kappa, S.gamma1, S.gamma2
 
 
 #####################
