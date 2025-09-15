@@ -56,7 +56,7 @@ class Lensing:
         self.L, self.K, self.nvoids = lenscat_load(**lens_args)
         self.stacking()
 
-    def sigma_crit(self, z_l:float, z_s:float)->float:
+    def sigma_crit(self, z_l, z_s):
         d_l = self.cosmo.angular_diameter_distance(z_l).value*pc*1.0e6
         d_s = self.cosmo.angular_diameter_distance(z_s).value
         d_ls = self.cosmo.angular_diameter_distance__z1z2(z_l, z_s).value
@@ -73,9 +73,13 @@ class Lensing:
         ra0, dec0, z0, Rv0 = inp
 
         DEGxMPC = self.cosmo.arcsec_per_kpc_proper(z0).to('deg/Mpc').value
-
+        #psi = DEGxMPC*ROUT*Rv0
         # for ni in range(self.N):
-        mask = ... 
+        mask = ...
+        ## VER CUENTAS DE ARCHIVO 'sphere_plane_cut.pdf'
+        #mask = cos(d2r(DEC0))*cos(d2r(RA0))*cos(d2r(sources[1]))*cos(d2r(sources[0])) + cos(d2r(DEC0))*sin(d2r(RA0))*cos(d2r(sources[1]))*sin(d2r(sources[0])) + sin(d2r(DEC0))*sin(d2r(sources[1])) >= sqrt(1-sin(d2r(psi))**2)
+
+
         # adentro del for, mask depende de n... solo quiero las gx en un anillo
         # otra opción es cortar en cuadrados, y dentro del for recortar de nuevo en anillos/circulos/cuadrados mas chicos...
         catdata = self.S[mask]
