@@ -1,3 +1,5 @@
+# sql queries
+*.sql
 # ignorando files
 *.csv
 *.dat
