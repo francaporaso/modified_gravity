@@ -111,12 +111,11 @@ class Lensing:
         with Pool(processes=self.ncores) as pool:
             inp = np.array([self.L[1], self.L[2], self.L[3], self.L[0]]).T
 
-            resmap = np.array(tqdm(
+            resmap = np.array(
                 pool.imap(
                     self.partial_profile, 
                     inp, 
-                    chunksize=self.nvoids//self.ncores), 
-                    total=self.nvoids)
+                    chunksize=self.nvoids//self.ncores),
             )
             pool.close()
             pool.join()
@@ -162,7 +161,7 @@ if __name__ == '__main__':
     ROUT = 1.5
     N = 10
     Nk = 100
-    ncores = 8
+    ncores = 32
 
     lens_args = dict(
         name = lens_name,
