@@ -112,7 +112,7 @@ class Lensing:
             num = len(Li)
             inp = np.array([Li[1], Li[2], Li[3], Li[0]]).T
             with Pool(processes=num) as pool:
-                resmap = np.array(pool.map(unwrap_partial_profile, zip([self]*num, inp))
+                resmap = np.array(pool.map(unwrap_partial_profile, zip([self]*num, inp)))
                 pool.close()
                 pool.join()
 
