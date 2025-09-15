@@ -110,9 +110,8 @@ class Lensing:
 
         for i, Li in enumerate(tqdm(self.L)):
             num = len(Li)
+            inp = np.array([Li[1], Li[2], Li[3], Li[0]]).T
             with Pool(processes=num) as pool:
-                inp = np.array([Li[1], Li[2], Li[3], Li[0]]).T
-
                 resmap = np.array(pool.map(self.partial_profile, inp))
                 pool.close()
                 pool.join()
@@ -192,6 +191,7 @@ if __name__ == '__main__':
     print('Start!')
     t1=time.time()
     l = Lensing(source_args=source_args, cosmo_params=cosmo_params, binning='lin')
+    
     np.savetxt('test.dat', 
                l.run(lens_args=lens_args, profile_args=profile_args), 
                delimiter=','
