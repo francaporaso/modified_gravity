@@ -4,25 +4,47 @@ from astropy.cosmology import LambdaCDM
 from astropy.constants import G,c,M_sun,pc
 from multiprocessing import Pool
 
-from funcs import eq2p2
+from funcs import eq2p2, lenscat_load
+
+lens_name = 'voids_fR_09.dat',
+Rv_min = 8.0,
+Rv_max = 12.0,
+z_min = 0.2,
+z_max = 0.25,
+delta_min = -1.0, # void type
+delta_max = -0.1, # void type
+
+source_name = 'l768_mg_z04-07_for02-03_19260.fits'
+
+RIN = 0.01,
+ROUT = 1.5,
+N = 20,
+NK = 100,
+ncores = 32,
+
 
 lens_args = dict(
-    name = 'voids_fR_09.dat',
-    z_range = (0.2,0.25),
-    Rv_range = (8.0,12.0),
-    delta_range = (-1.0, -0.1), # void type
+    name = lens_name,
+    Rv_min = Rv_min,
+    Rv_max = Rv_max,
+    z_min = z_min,
+    z_max = z_max,
+    delta_min = delta_min, # void type
+    delta_max = delta_max, # void type
+    ncores = ncores,
+    nk = NK,
 )
 
 source_args = dict(
-    name = 'l768_mg_z04-07_for02-03_19260.fits'
+    name = source_name
 )
 
 profile_args = dict(
-    RIN = 0.01,
-    ROUT = 1.5,
-    N = 20,
-    NK = 100,
-    ncores = 32,
+    RIN = RIN,
+    ROUT = ROUT,
+    N = N,
+    NK = NK,
+    ncores = ncores,
 )
 
 cosmo_params = dict(
@@ -30,9 +52,6 @@ cosmo_params = dict(
     Ode0 = 0.6911,
     h = 1.0
 )
-
-def lenscat_load():
-    pass
 
 def sourcecat_load():
     pass
@@ -43,6 +62,11 @@ class Lensing:
         
         self.cosmo = LambdaCDM(**cosmo_params)
         self.S = sourcecat_load(**source_args)
+
+        self.cosSra = np.cos(np.deg2rad(self.S.ra))
+        self.sinSra = np.sin(np.deg2rad(self.S.ra))
+        self.cosSdec = np.cos(np.deg2rad(self.S.dec))
+        self.sinSdec = np.sin(np.deg2rad(self.S.dec))
 
 
     def run(self, lens_args, profile_args):
@@ -62,6 +86,22 @@ class Lensing:
         d_ls = self.cosmo.angular_diameter_distance__z1z2(z_l, z_s).value
         return (((c.value**2.0)/(4.0*np.pi*G.value*d_l))*(d_s/d_ls))*(pc.value**2/M_sun.value)
 
+    def get_masked_data(self, psi, ra0, dec0):
+        '''
+        usando la interseccion de la esfera con un plano,
+        se obtienen los objetos dentro de un spherical cap de 
+        radio angular psi
+        '''
+        ## VER CUENTAS DE ARCHIVO 'sphere_plane_cut.pdf'
+
+        cosdec0 = np.cos(np.deg2rad(dec0))
+        sindec0 = np.sin(np.deg2rad(dec0))
+        cosra0 = np.cos(np.deg2rad(ra0))
+        sinra0 = np.sin(np.deg2rad(ra0))
+
+        mask = cosdec0*cosra0*self.cosSdec*self.cosSra + cosdec0*sinra0*self.cosSdec*self.sinSra + sindec0*self.sinSdec >= np.sqrt(1-np.sin(np.deg2rad(psi))**2)
+        return self.S[mask]
+
     def partial_profile(self, inp):
         ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
         
@@ -72,19 +112,15 @@ class Lensing:
         
         ra0, dec0, z0, Rv0 = inp
 
-        DEGxMPC = self.cosmo.arcsec_per_kpc_proper(z0).to('deg/Mpc').value
-        #psi = DEGxMPC*ROUT*Rv0
         # for ni in range(self.N):
-        mask = ...
-        ## VER CUENTAS DE ARCHIVO 'sphere_plane_cut.pdf'
-        #mask = cos(d2r(DEC0))*cos(d2r(RA0))*cos(d2r(sources[1]))*cos(d2r(sources[0])) + cos(d2r(DEC0))*sin(d2r(RA0))*cos(d2r(sources[1]))*sin(d2r(sources[0])) + sin(d2r(DEC0))*sin(d2r(sources[1])) >= sqrt(1-sin(d2r(psi))**2)
-
-
         # adentro del for, mask depende de n... solo quiero las gx en un anillo
-        # otra opción es cortar en cuadrados, y dentro del for recortar de nuevo en anillos/circulos/cuadrados mas chicos...
-        catdata = self.S[mask]
 
+        DEGxMPC = self.cosmo.arcsec_per_kpc_proper(z0).to('deg/Mpc').value
+        psi = DEGxMPC*self.ROUT*Rv0
+        
+        catdata = self.get_masked_data(psi, ra0, dec0)
         sigma_c = self.sigma_crit(z0, catdata.observed_redshift_gal)/Rv0
+
         rads, theta = eq2p2(
             np.deg2rad(catdata.ra_gal), np.deg2rad(catdata.dec_gal),
             np.deg2rad(ra0), np.deg2rad(dec0)
