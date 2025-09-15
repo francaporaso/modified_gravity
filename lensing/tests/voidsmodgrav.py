@@ -36,7 +36,7 @@ class Lensing:
         d_ls = self.cosmo.angular_diameter_distance__z1z2(z_l, z_s).value
         return (((c.value**2.0)/(4.0*np.pi*G.value*d_l))*(d_s/d_ls))*(pc.value**2/M_sun.value)
 
-    def get_masked_data(self, psi, ra0, dec0):
+    def get_masked_data(self, psi, ra0, dec0, z0):
         '''
         usando la interseccion de la esfera con un plano,
         se obtienen los objetos dentro de un spherical cap de 
@@ -50,7 +50,7 @@ class Lensing:
         sinra0 = np.sin(np.deg2rad(ra0))
 
         mask = cosdec0*cosra0*self.cosSdec*self.cosSra + cosdec0*sinra0*self.cosSdec*self.sinSra + sindec0*self.sinSdec >= np.sqrt(1-np.sin(np.deg2rad(psi))**2)
-        return self.S[mask]
+        return self.S[mask&(self.S>z0+0.1)]
 
     def partial_profile(self, inp):
         ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
@@ -68,7 +68,7 @@ class Lensing:
         DEGxMPC = self.cosmo.arcsec_per_kpc_proper(z0).to('deg/Mpc').value
         psi = DEGxMPC*self.ROUT*Rv0
         
-        catdata = self.get_masked_data(psi, ra0, dec0)
+        catdata = self.get_masked_data(psi, ra0, dec0, z0)
         sigma_c = self.sigma_crit(z0, catdata[2])/Rv0
 
         rads, theta = eq2p2(
