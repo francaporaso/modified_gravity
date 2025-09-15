@@ -143,20 +143,20 @@ if __name__ == '__main__':
     import time
 
     lens_name = 'voids_fR_09.dat'
-    Rv_min = 8.0
+    Rv_min = 10.0
     Rv_max = 12.0
     z_min = 0.2
-    z_max = 0.25
+    z_max = 0.22
     delta_min = -1.0 # void type
     delta_max = -0.1 # void type
 
     source_name = 'l768_gr_z04-07_for02-03_19304.fits'
 
-    RIN = 0.01
+    RIN = 0.1
     ROUT = 1.5
-    N = 20
+    N = 10
     Nk = 100
-    ncores = 32
+    ncores = 8
 
     lens_args = dict(
         name = lens_name,
