@@ -3,82 +3,32 @@ import numpy as np
 from astropy.cosmology import LambdaCDM
 from astropy.constants import G,c,M_sun,pc
 from multiprocessing import Pool
+from tqdm import tqdm
 
-from funcs import eq2p2, lenscat_load
+from funcs import eq2p2, lenscat_load, sourcecat_load
 
-lens_name = 'voids_fR_09.dat',
-Rv_min = 8.0,
-Rv_max = 12.0,
-z_min = 0.2,
-z_max = 0.25,
-delta_min = -1.0, # void type
-delta_max = -0.1, # void type
-
-source_name = 'l768_mg_z04-07_for02-03_19260.fits'
-
-RIN = 0.01,
-ROUT = 1.5,
-N = 20,
-NK = 100,
-ncores = 32,
-
-
-lens_args = dict(
-    name = lens_name,
-    Rv_min = Rv_min,
-    Rv_max = Rv_max,
-    z_min = z_min,
-    z_max = z_max,
-    delta_min = delta_min, # void type
-    delta_max = delta_max, # void type
-    ncores = ncores,
-    nk = NK,
-)
-
-source_args = dict(
-    name = source_name
-)
-
-profile_args = dict(
-    RIN = RIN,
-    ROUT = ROUT,
-    N = N,
-    NK = NK,
-    ncores = ncores,
-)
-
-cosmo_params = dict(
-    Om0 = 0.3089,
-    Ode0 = 0.6911,
-    h = 1.0
-)
-
-def sourcecat_load():
-    pass
 
 class Lensing:
 
-    def __init__(self, source_args, cosmo_params) -> None:
+    def __init__(self, source_args, cosmo_params, binning='lin'):
         
+        if binning == 'lin':
+            self._binspace = np.linspace
+        elif binning == 'log':
+            self._binspace = np.logspace
+        else:
+            raise ValueError("mode must be either 'linear' or 'log'")
+
         self.cosmo = LambdaCDM(**cosmo_params)
         self.S = sourcecat_load(**source_args)
 
-        self.cosSra = np.cos(np.deg2rad(self.S.ra))
-        self.sinSra = np.sin(np.deg2rad(self.S.ra))
-        self.cosSdec = np.cos(np.deg2rad(self.S.dec))
-        self.sinSdec = np.sin(np.deg2rad(self.S.dec))
+        self.cosSra = np.cos(np.deg2rad(self.S[0]))
+        self.sinSra = np.sin(np.deg2rad(self.S[0]))
+        self.cosSdec = np.cos(np.deg2rad(self.S[1]))
+        self.sinSdec = np.sin(np.deg2rad(self.S[1]))
 
-
-    def run(self, lens_args, profile_args):
-        
-        self.N : int = profile_args['N']
-        self.Nk : int = profile_args['Nk']
-        self.ncores : int = profile_args['ncores']
-        self.RIN : float = profile_args['RIN']
-        self.ROUT : float = profile_args['ROUT']
-        
-        self.L, self.K, self.nvoids = lenscat_load(**lens_args)
-        self.stacking()
+    def binspace(self):
+        return self._binspace(self.RIN, self.ROUT, self.N+1)
 
     def sigma_crit(self, z_l, z_s):
         d_l = self.cosmo.angular_diameter_distance(z_l).value*pc*1.0e6
@@ -119,16 +69,16 @@ class Lensing:
         psi = DEGxMPC*self.ROUT*Rv0
         
         catdata = self.get_masked_data(psi, ra0, dec0)
-        sigma_c = self.sigma_crit(z0, catdata.observed_redshift_gal)/Rv0
+        sigma_c = self.sigma_crit(z0, catdata[2])/Rv0
 
         rads, theta = eq2p2(
-            np.deg2rad(catdata.ra_gal), np.deg2rad(catdata.dec_gal),
+            np.deg2rad(catdata[0]), np.deg2rad(catdata[1]),
             np.deg2rad(ra0), np.deg2rad(dec0)
         )
 
         ## TODO :: al descargar, cambiarle el signo... es más facil y se ahorra calculo
-        e1 = -catdata.gamma1
-        e2 = -catdata.gamma2
+        e1 = -catdata[4]
+        e2 = -catdata[5]
 
         #get tangential ellipticities 
         cos2t = np.cos(2.0*theta)
@@ -140,7 +90,7 @@ class Lensing:
         k  = catdata.kappa*sigma_c
 
         r = (np.rad2deg(rads)/DEGxMPC)/Rv0
-        bines = np.linspace(self.RIN, self.ROUT, num = self.N+1)
+        bines = self.binspace()
         dig = np.digitize(r,bines)
 
         for nbin in range(self.N):
@@ -159,9 +109,9 @@ class Lensing:
         DSigma_x_wsum = np.zeros((self.Nk+1, self.N))
 
         with Pool(processes=self.ncores) as pool:
-            inp = np.array([self.L.ra, self.L.dec, self.L.redshift, self.L.Rv]).T
+            inp = np.array([self.L[1], self.L[2], self.L[3], self.L[0]]).T
 
-            resmap = np.array(pool.imap(self.partial_profile, inp))
+            resmap = np.array(tqdm(pool.imap(self.partial_profile, inp), total=self.nvoids))
             pool.close()
             pool.join()
 
@@ -176,5 +126,65 @@ class Lensing:
 
         return DSigma_t, DSigma_x     
 
+    def run(self, lens_args, profile_args):
+        
+        self.N : int = profile_args['N']
+        self.Nk : int = profile_args['Nk']
+        self.ncores : int = profile_args['ncores']
+        self.RIN : float = profile_args['RIN']
+        self.ROUT : float = profile_args['ROUT']
+        
+        self.L, self.K, self.nvoids = lenscat_load(**lens_args)
+
+        return self.stacking()
+
 if __name__ == '__main__':
-    print('a')
+
+    lens_name = 'voids_fR_09.dat',
+    Rv_min = 8.0,
+    Rv_max = 12.0,
+    z_min = 0.2,
+    z_max = 0.25,
+    delta_min = -1.0, # void type
+    delta_max = -0.1, # void type
+
+    source_name = 'l768_gr_z04-07_for02-03_19304.fits'
+
+    RIN = 0.01,
+    ROUT = 1.5,
+    N = 20,
+    NK = 100,
+    ncores = 32,
+
+    lens_args = dict(
+        name = lens_name,
+        Rv_min = Rv_min,
+        Rv_max = Rv_max,
+        z_min = z_min,
+        z_max = z_max,
+        delta_min = delta_min, # void type
+        delta_max = delta_max, # void type
+        ncores = ncores,
+        nk = NK,
+    )
+
+    source_args = dict(
+        name = source_name
+    )
+
+    profile_args = dict(
+        RIN = RIN,
+        ROUT = ROUT,
+        N = N,
+        NK = NK,
+        ncores = ncores,
+    )
+
+    cosmo_params = dict(
+        Om0 = 0.3089,
+        Ode0 = 0.6911,
+        h = 1.0
+    )
+
+    l = Lensing(source_args=source_args, cosmo_params=cosmo_params, binning='lin')
+    np.savetxt('test.dat', l.run(), delimiter=',')
