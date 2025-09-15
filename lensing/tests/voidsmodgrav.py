@@ -140,7 +140,7 @@ class Lensing:
         return self.stacking()
 
 def unwrap_partial_profile(inp):
-    return Lensing.partial_profile(inp)
+    return Lensing.partial_profile(*inp)
 
 if __name__ == '__main__':
 
