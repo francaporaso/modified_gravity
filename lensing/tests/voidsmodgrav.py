@@ -172,7 +172,7 @@ if __name__ == '__main__':
         z_max = z_max,
         delta_min = delta_min, # void type
         delta_max = delta_max, # void type
-        ncores = ncores,
+        ncores = 1,
         nk = Nk,
     )
 
