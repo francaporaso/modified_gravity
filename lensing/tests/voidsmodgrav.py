@@ -140,6 +140,8 @@ class Lensing:
 
 if __name__ == '__main__':
 
+    import time
+
     lens_name = 'voids_fR_09.dat',
     Rv_min = 8.0,
     Rv_max = 12.0,
@@ -185,6 +187,13 @@ if __name__ == '__main__':
         Ode0 = 0.6911,
         H0 = 100.0
     )
-
+    print('Start!')
+    t1=time.time()
     l = Lensing(source_args=source_args, cosmo_params=cosmo_params, binning='lin')
-    np.savetxt('test.dat', l.run(), delimiter=',')
+    np.savetxt('test.dat', 
+               l.run(lens_args=lens_args, profile_args=profile_args), 
+               delimiter=','
+               )
+    
+    print('End!')
+    print(f'took {(time.time()-t1)/60.0} s')
