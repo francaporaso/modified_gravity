@@ -155,7 +155,7 @@ if __name__ == '__main__':
     RIN = 0.01,
     ROUT = 1.5,
     N = 20,
-    NK = 100,
+    Nk = 100,
     ncores = 32,
 
     lens_args = dict(
@@ -167,7 +167,7 @@ if __name__ == '__main__':
         delta_min = delta_min, # void type
         delta_max = delta_max, # void type
         ncores = ncores,
-        nk = NK,
+        nk = Nk,
     )
 
     source_args = dict(
@@ -178,7 +178,7 @@ if __name__ == '__main__':
         RIN = RIN,
         ROUT = ROUT,
         N = N,
-        NK = NK,
+        Nk = Nk,
         ncores = ncores,
     )
 
