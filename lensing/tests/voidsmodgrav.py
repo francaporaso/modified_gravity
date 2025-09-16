@@ -71,7 +71,7 @@ class Lensing:
         psi = DEGxMPC*self.ROUT*Rv0
         
         catdata = self.get_masked_data(psi, ra0, dec0, z0)
-        sigma_c = self.sigma_crit(z0, catdata[2])/Rv0
+        sigma_c = self.sigma_crit(z0, catdata['true_redshift_gal'])/Rv0
 
         rads, theta = eq2p2(
             np.deg2rad(catdata['ra_gal']), np.deg2rad(catdata['dec_gal']),
