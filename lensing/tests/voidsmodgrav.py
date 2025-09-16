@@ -1,6 +1,7 @@
-#import numpy as np imported in funcs!
+import numpy as np #also imported in funcs...
 from astropy.cosmology import LambdaCDM
 from astropy.constants import G,c,M_sun,pc
+from astropy.table import Table
 from multiprocessing import Pool
 from tqdm import tqdm
 
@@ -24,12 +25,12 @@ class Lensing:
         self.cosmo = LambdaCDM(**cosmo_params)
         self.S = sourcecat_load(**source_args)
 
-        ra_gal_rad  = np.deg2rad(self.S.ra_gal)
-        dec_gal_rad = np.deg2rad(self.S.ra_gal)
-        self.cos_ra_gal  = np.cos(ra_gal_rad)
-        self.sin_ra_gal  = np.sin(ra_gal_rad)
-        self.cos_dec_gal = np.cos(dec_gal_rad)
-        self.sin_dec_gal = np.sin(dec_gal_rad)
+        ra_gal_rad  = np.deg2rad(self.S['ra_gal'])
+        dec_gal_rad = np.deg2rad(self.S['dec_gal'])
+        self.S['cos_ra_gal']  = np.cos(ra_gal_rad)
+        self.S['sin_ra_gal']  = np.sin(ra_gal_rad)
+        self.S['cos_dec_gal'] = np.cos(dec_gal_rad)
+        self.S['sin_dec_gal'] = np.sin(dec_gal_rad)
 
     def sigma_crit(self, z_l, z_s):
         d_l  = self.cosmo.angular_diameter_distance(z_l).value*pc.value*1.0e6
@@ -48,10 +49,10 @@ class Lensing:
         dec0_rad = np.deg2rad(dec0)
         cos_dec0 = np.cos(dec0_rad)
 
-        mask = (cos_dec0*np.cos(ra0_rad)*self.cos_dec_gal*self.cos_ra_gal
-                 + cos_dec0*np.sin(ra0_rad)*self.cos_dec_gal*self.sin_ra_gal 
-                 + np.sin(dec0_rad)*self.sin_dec_gal >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
-        return self.S[:, mask&(self.S.true_redshift_gal>z0+0.1)]
+        mask = (cos_dec0*np.cos(ra0_rad)*self.S['cos_dec_gal']*self.S['cos_ra_gal']
+                 + cos_dec0*np.sin(ra0_rad)*self.S['cos_dec_gal']*self.S['sin_ra_gal'] 
+                 + np.sin(dec0_rad)*self.S['sin_dec_gal'] >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
+        return self.S[mask&(self.S['true_redshift_gal']>z0+0.1)]
 
     ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
     def partial_profile(self, inp):
@@ -73,13 +74,13 @@ class Lensing:
         sigma_c = self.sigma_crit(z0, catdata[2])/Rv0
 
         rads, theta = eq2p2(
-            np.deg2rad(catdata[0]), np.deg2rad(catdata[1]),
+            np.deg2rad(catdata['ra_gal']), np.deg2rad(catdata['dec_gal']),
             np.deg2rad(ra0), np.deg2rad(dec0)
         )
 
         ## TODO :: al descargar, cambiarle el signo
-        e1 = -catdata[4]
-        e2 = -catdata[5]
+        e1 = -catdata['gamma1']
+        e2 = -catdata['gamma2']
 
         #get tangential ellipticities 
         cos2t = np.cos(2.0*theta)
@@ -88,7 +89,7 @@ class Lensing:
         ex = (-e1*sin2t+e2*cos2t)*sigma_c
             
         #get convergence
-        k  = catdata[3]*sigma_c
+        k  = catdata['kappa']*sigma_c
 
         r = (np.rad2deg(rads)/DEGxMPC)/Rv0
         #bines = self.binspace()
