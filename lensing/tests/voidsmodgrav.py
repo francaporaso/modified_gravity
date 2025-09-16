@@ -33,7 +33,7 @@ class Lensing:
         return self._binspace(self.RIN, self.ROUT, self.N+1)
 
     def sigma_crit(self, z_l, z_s):
-        d_l = self.cosmo.angular_diameter_distance(z_l).value*pc*1.0e6
+        d_l = self.cosmo.angular_diameter_distance(z_l).value*pc.value*1.0e6
         d_s = self.cosmo.angular_diameter_distance(z_s).value
         d_ls = self.cosmo.angular_diameter_distance_z1z2(z_l, z_s).value
         return (((c.value**2.0)/(4.0*np.pi*G.value*d_l))*(d_s/d_ls))*(pc.value**2/M_sun.value)
