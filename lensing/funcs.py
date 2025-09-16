@@ -112,7 +112,7 @@ def sourcecat_load(name):
         S = f[1].data[mask]
 
     #return S
-    return S.ra_gal, S.dec_gal, S.true_redshift_gal, S.kappa, S.gamma1, S.gamma2
+    return np.vstack([S.ra_gal, S.dec_gal, S.true_redshift_gal, S.kappa, S.gamma1, S.gamma2])
 
 
 #####################
