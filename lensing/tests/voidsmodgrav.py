@@ -128,7 +128,9 @@ def stacking(lens_args, source_args, profile_args, cosmo_params):
     for i, Li in enumerate(tqdm(L)):
         num = len(Li)
         inp = np.array([Li.T[1], Li.T[2], Li.T[3], Li.T[0]]).T
-        with Pool(processes=num) as pool:
+        with Pool(processes=num, initializer=init_worker, 
+                  initargs=(source_args, profile_args, cosmo_params)) as pool:
+            
             resmap = np.array(pool.map(partial_profile, inp))
             pool.close()
             pool.join()
