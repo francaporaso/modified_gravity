@@ -120,10 +120,7 @@ def stacking(lens_args,cosmo_params,source_args,profile_args):
 
     for i, Li in enumerate(tqdm(L)):
         num = len(Li)
-        inp = np.array([Li[1], Li[2], Li[3], Li[0]]).T
-        print(inp.shape)
-        print(inp[0])
-        return 0
+        inp = np.array([Li.T[1], Li.T[2], Li.T[3], Li.T[0]]).T
         with Pool(processes=num) as pool:
             resmap = np.array(pool.map(vlen.partial_profile, inp))
             pool.close()
@@ -173,6 +170,7 @@ if __name__ == '__main__':
         delta_max = delta_max, # void type
         ncores = ncores,
         Nk = Nk,
+        fullshape=True,
     )
 
     source_args = dict(
