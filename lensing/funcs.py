@@ -88,7 +88,10 @@ def lenscat_load(name,
             L[R1] >= rho1_min) & (L[R1] < rho1_max) & (L[R2] >= delta_min) & (L[R2] < delta_max) & (L[11] >= flag)
 
     nvoids = mask.sum()
-    L = L[:,mask]
+    if fullshape:
+        L = L[:,mask]
+    else:
+        L = L[[RV,RA,DEC,Z]]
     ## no hace falta con nuevos voids
     # L[1][L[1]<0.0] = L[1][L[1]<0.0] + np.float32(360.0) # corrección ra sources in (0,360)
 
@@ -101,9 +104,7 @@ def lenscat_load(name,
         L = np.split(L.T, slices)
         K = np.split(K.T, slices)
 
-    if fullshape:
-        return L, K, nvoids
-    return L[[RV,RA,DEC,Z]], K, nvoids
+    return L, K, nvoids
 
 def sourcecat_load(name):
     folder = '/home/fcaporaso/cats/L768/'
