@@ -158,7 +158,7 @@ if __name__ == '__main__':
     ROUT = 1.0
     N = 10
     Nk = 10
-    ncores = 16
+    ncores = 8
 
     lens_args = dict(
         name = lens_name,
@@ -170,7 +170,7 @@ if __name__ == '__main__':
         delta_max = delta_max, # void type
         ncores = ncores,
         Nk = Nk,
-        fullshape=True,
+        fullshape=False,
     )
 
     source_args = dict(
