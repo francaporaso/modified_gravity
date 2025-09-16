@@ -112,7 +112,7 @@ class Lensing:
             num = len(Li)
             inp = np.array([Li[1], Li[2], Li[3], Li[0]]).T
             with Pool(processes=num) as pool:
-                resmap = np.array(pool.map(unwrap_partial_profile, zip([self]*num, inp)))
+                resmap = np.array(pool.map(_remote_partial_profile, zip([self]*num, inp)))
                 pool.close()
                 pool.join()
 
@@ -139,8 +139,8 @@ class Lensing:
         print('Running stacking!')
         return self.stacking()
 
-def unwrap_partial_profile(arg, **kwarg):
-    return Lensing.partial_profile(*arg, **kwarg)
+def _remote_partial_profile(lensing, inp):
+    return lensing.partial_profile(inp)
 
 if __name__ == '__main__':
 
