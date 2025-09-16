@@ -107,7 +107,7 @@ class Lensing:
         return Sigma_wsum, DSigma_t_wsum, DSigma_x_wsum, N_inbin
 
 
-def stacking(lens_args,cosmo_params,source_args,profile_args):
+def stacking(lens_args,source_args,profile_args,cosmo_params):
     N = profile_args['N']
     Nk = profile_args['Nk']
     ncores = profile_args['ncores']
@@ -175,7 +175,7 @@ if __name__ == '__main__':
         z_max = z_max,
         delta_min = delta_min, # void type
         delta_max = delta_max, # void type
-        ncores = ncores,
+        ncores = 1,
         Nk = Nk,
         fullshape=False,
     )
@@ -199,12 +199,6 @@ if __name__ == '__main__':
     )
     print('Start!')
     t1=time.time()
-    l = Lensing(source_args=source_args, cosmo_params=cosmo_params, binning='lin')
-    
-    np.savetxt('test.dat', 
-               l.run(lens_args=lens_args, profile_args=profile_args), 
-               delimiter=','
-               )
-    
+    stacking(lens_args, source_args, profile_args, cosmo_params)
     print('End!')
     print(f'took {(time.time()-t1)/60.0} s')
