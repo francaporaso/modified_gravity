@@ -22,10 +22,12 @@ class Lensing:
         self.cosmo = LambdaCDM(**cosmo_params)
         self.S = sourcecat_load(**source_args)
 
-        self.cosSra = np.cos(np.deg2rad(self.S[0]))
-        self.sinSra = np.sin(np.deg2rad(self.S[0]))
-        self.cosSdec = np.cos(np.deg2rad(self.S[1]))
-        self.sinSdec = np.sin(np.deg2rad(self.S[1]))
+        ra_gal_rad = np.deg2rad(self.S[0])
+        dec_gal_rad = np.deg2rad(self.S[1])
+        self.cos_ra_gal = np.cos(ra_gal_rad)
+        self.sin_ra_gal = np.sin(ra_gal_rad)
+        self.cos_dec_gal = np.cos(dec_gal_rad)
+        self.sin_dec_gal = np.sin(dec_gal_rad)
 
     def binspace(self):
         return self._binspace(self.RIN, self.ROUT, self.N+1)
@@ -33,7 +35,7 @@ class Lensing:
     def sigma_crit(self, z_l, z_s):
         d_l = self.cosmo.angular_diameter_distance(z_l).value*pc*1.0e6
         d_s = self.cosmo.angular_diameter_distance(z_s).value
-        d_ls = self.cosmo.angular_diameter_distance__z1z2(z_l, z_s).value
+        d_ls = self.cosmo.angular_diameter_distance_z1z2(z_l, z_s).value
         return (((c.value**2.0)/(4.0*np.pi*G.value*d_l))*(d_s/d_ls))*(pc.value**2/M_sun.value)
 
     def get_masked_data(self, psi, ra0, dec0, z0):
@@ -43,21 +45,21 @@ class Lensing:
         radio angular psi
         '''
         ## VER CUENTAS DE ARCHIVO 'sphere_plane_cut.pdf'
+        ra0_rad = np.deg2rad(ra0)
+        dec0_rad = np.deg2rad(dec0)
+        cos_dec0 = np.cos(dec0_rad)
 
-        cosdec0 = np.cos(np.deg2rad(dec0))
-        sindec0 = np.sin(np.deg2rad(dec0))
-        cosra0 = np.cos(np.deg2rad(ra0))
-        sinra0 = np.sin(np.deg2rad(ra0))
-
-        mask = cosdec0*cosra0*self.cosSdec*self.cosSra + cosdec0*sinra0*self.cosSdec*self.sinSra + sindec0*self.sinSdec >= np.sqrt(1-np.sin(np.deg2rad(psi))**2)
+        mask = (cos_dec0*np.cos(ra0_rad)*self.cosSdec*self.cosSra
+                 + cos_dec0*np.sin(ra0_rad)*self.cosSdec*self.sinSra 
+                 + np.sin(dec0_rad)*self.sinSdec >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
         return self.S[mask&(self.S>z0+0.1)]
 
     def partial_profile(self, inp):
         ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
         
-        SIGMAwsum    = np.zeros(self.N)
-        DSIGMAwsum_T = np.zeros(self.N)
-        DSIGMAwsum_X = np.zeros(self.N)
+        Sigma_wsum    = np.zeros(self.N)
+        DSigma_t_wsum = np.zeros(self.N)
+        DSigma_x_wsum = np.zeros(self.N)
         N_inbin      = np.zeros(self.N)
         
         ra0, dec0, z0, Rv0 = inp
@@ -95,52 +97,54 @@ class Lensing:
 
         for nbin in range(self.N):
             mbin = dig == nbin+1              
-            SIGMAwsum[nbin]    = k[mbin].sum()
-            DSIGMAwsum_T[nbin] = et[mbin].sum()
-            DSIGMAwsum_X[nbin] = ex[mbin].sum()
+            Sigma_wsum[nbin]    = k[mbin].sum()
+            DSigma_t_wsum[nbin] = et[mbin].sum()
+            DSigma_x_wsum[nbin] = ex[mbin].sum()
             N_inbin[nbin]      = np.count_nonzero(mbin) ## hace lo mismo q mbin.sum() pero más rápido
         
-        return SIGMAwsum, DSIGMAwsum_T, DSIGMAwsum_X, N_inbin
+        return Sigma_wsum, DSigma_t_wsum, DSigma_x_wsum, N_inbin
 
-    def stacking(self):
-        
-        N_inbin = np.zeros((self.Nk+1, self.N))
-        DSigma_t_wsum = np.zeros((self.Nk+1, self.N))
-        DSigma_x_wsum = np.zeros((self.Nk+1, self.N))
 
-        for i, Li in enumerate(tqdm(self.L)):
-            num = len(Li)
-            inp = np.array([Li[1], Li[2], Li[3], Li[0]]).T
-            with Pool(processes=num) as pool:
-                resmap = np.array(pool.map(_remote_partial_profile, zip([self]*num, inp)))
-                pool.close()
-                pool.join()
 
-            for j,r in enumerate(resmap):
-                km = np.tile(self.K[i][j], (self.N,1)).T
-                N_inbin += np.tile(r.N_inbin, (self.Nk+1,1))*km
-                DSigma_t_wsum += np.tile(r.DSigma_t, (self.Nk+1,1))*km
-                DSigma_x_wsum += np.tile(r.DSigma_x, (self.Nk+1,1))*km
+def stacking(L,K):
 
-        DSigma_t = DSigma_t_wsum/N_inbin
-        DSigma_x = DSigma_x_wsum/N_inbin
+    lensing = Lensing()
+    
+    N_inbin = np.zeros((Nk+1, N))
+    DSigma_t_wsum = np.zeros((Nk+1, N))
+    DSigma_x_wsum = np.zeros((Nk+1, N))
 
-        return DSigma_t, DSigma_x     
+    for i, Li in enumerate(tqdm(L)):
+        num = len(Li)
+        inp = np.array([Li[1], Li[2], Li[3], Li[0]]).T
+        with Pool(processes=num) as pool:
+            resmap = np.array(pool.map(lensing.partial_profile, inp))
+            pool.close()
+            pool.join()
 
-    def run(self, lens_args, profile_args):
-        
-        self.N : int = profile_args['N']
-        self.Nk : int = profile_args['Nk']
-        self.ncores : int = profile_args['ncores']
-        self.RIN : float = profile_args['RIN']
-        self.ROUT : float = profile_args['ROUT']
-        
-        self.L, self.K, self.nvoids = lenscat_load(**lens_args)
-        print('Running stacking!')
-        return self.stacking()
+        for j,r in enumerate(resmap):
+            km = np.tile(K[i][j], (N,1)).T
+            N_inbin += np.tile(r.N_inbin, (Nk+1,1))*km
+            DSigma_t_wsum += np.tile(r.DSigma_t, (Nk+1,1))*km
+            DSigma_x_wsum += np.tile(r.DSigma_x, (Nk+1,1))*km
 
-def _remote_partial_profile(lensing, inp):
-    return lensing.partial_profile(inp)
+    DSigma_t = DSigma_t_wsum/N_inbin
+    DSigma_x = DSigma_x_wsum/N_inbin
+
+    return DSigma_t, DSigma_x     
+
+def run(lens_args, profile_args):
+    
+    N : int = profile_args['N']
+    Nk : int = profile_args['Nk']
+    ncores : int = profile_args['ncores']
+    RIN : float = profile_args['RIN']
+    ROUT : float = profile_args['ROUT']
+    
+    L, K, nvoids = lenscat_load(**lens_args)
+    print('Running stacking!')
+    return stacking(L)
+
 
 if __name__ == '__main__':
 
