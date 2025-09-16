@@ -1,10 +1,9 @@
 #--------------------------- Functions --------------------------------------------
-
 import numpy as np
 from astropy.coordinates import angular_separation, position_angle
 #from astropy.constants import G,c,M_sun,pc
-from astropy.io import fits
-
+#from astropy.io import fits
+from astropy.table import Table
 #parameters
 # cvel = c.value;    # Speed of light (m.s-1)
 # G    = G.value;    # Gravitational constant (m3.kg-1.s-2)
@@ -106,9 +105,7 @@ def lenscat_load(name,
 
 def sourcecat_load(name):
     folder = '/home/fcaporaso/cats/L768/'
-    with fits.open(folder+name, memmap=True, mode='readonly') as f:
-        #mask = np.abs(f[1].data.gamma1) < 10.0
-        S = f[1].data
+    S = Table.read(folder+name, memmap=True, format='fits')
     return S
     #return np.vstack([S.ra_gal, S.dec_gal, S.true_redshift_gal, S.kappa, S.gamma1, S.gamma2])
 
