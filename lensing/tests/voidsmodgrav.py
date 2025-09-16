@@ -89,7 +89,7 @@ class Lensing:
         ex = (-e1*sin2t+e2*cos2t)*sigma_c
             
         #get convergence
-        k  = catdata.kappa*sigma_c
+        k  = catdata[3]*sigma_c
 
         r = (np.rad2deg(rads)/DEGxMPC)/Rv0
         bines = self.binspace()
