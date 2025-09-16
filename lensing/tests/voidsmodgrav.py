@@ -52,7 +52,7 @@ class Lensing:
         mask = (cos_dec0*np.cos(ra0_rad)*self.cos_dec_gal*self.cos_ra_gal
                  + cos_dec0*np.sin(ra0_rad)*self.cos_dec_gal*self.sin_ra_gal 
                  + np.sin(dec0_rad)*self.sin_dec_gal >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
-        return self.S[mask&(self.S>z0+0.1)]
+        return self.S[mask&(self.S[2]>z0+0.1)]
 
     def partial_profile(self, inp):
         ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
