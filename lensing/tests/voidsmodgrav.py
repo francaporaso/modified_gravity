@@ -118,27 +118,27 @@ def stacking(lens_args, source_args, profile_args, cosmo_params):
     L, K, nvoids = lenscat_load(**lens_args)
     print(f'Nvoids: {nvoids}', flush=True)
 
-    # for i, Li in enumerate(tqdm(L)):
-    #     num = len(Li)
-    #     inp = np.array([Li.T[1], Li.T[2], Li.T[3], Li.T[0]]).T
-    #     with Pool(processes=num) as pool:
-    #         resmap = np.array(pool.map(vlen.partial_profile, inp))
-    #         pool.close()
-    #         pool.join()
-
-    with Pool(processes=ncores, initializer=init_worker, 
-              initargs=(source_args, profile_args, cosmo_params)) as pool:
+    # with Pool(processes=ncores, initializer=init_worker, 
+    #           initargs=(source_args, profile_args, cosmo_params)) as pool:
         
-        resmap = np.array(pool.map(partial_profile, L.T))
-        pool.close()
-        pool.join()
+    #     resmap = np.array(pool.map(partial_profile, L.T))
+    #     pool.close()
+    #     pool.join()
 
-    for j,r in enumerate(resmap):
-        km = np.tile(K[j], (N,1)).T
-        N_inbin += np.tile(r[-1], (Nk+1,1))*km
-        Sigma_wsum += np.tile(r[0], (Nk+1,1))*km
-        DSigma_t_wsum += np.tile(r[1], (Nk+1,1))*km
-        DSigma_x_wsum += np.tile(r[2], (Nk+1,1))*km
+    for i, Li in enumerate(tqdm(L)):
+        num = len(Li)
+        inp = np.array([Li.T[1], Li.T[2], Li.T[3], Li.T[0]]).T
+        with Pool(processes=num) as pool:
+            resmap = np.array(pool.map(partial_profile, inp))
+            pool.close()
+            pool.join()
+
+        for j,r in enumerate(resmap):
+            km = np.tile(K[i][j], (N,1)).T
+            N_inbin += np.tile(r[-1], (Nk+1,1))*km
+            Sigma_wsum += np.tile(r[0], (Nk+1,1))*km
+            DSigma_t_wsum += np.tile(r[1], (Nk+1,1))*km
+            DSigma_x_wsum += np.tile(r[2], (Nk+1,1))*km
 
     Sigma = Sigma_wsum/N_inbin
     DSigma_t = DSigma_t_wsum/N_inbin
@@ -175,7 +175,7 @@ if __name__ == '__main__':
         z_max = z_max,
         delta_min = delta_min, # void type
         delta_max = delta_max, # void type
-        ncores = 1,
+        ncores = ncores,
         Nk = Nk,
         fullshape=False,
     )
