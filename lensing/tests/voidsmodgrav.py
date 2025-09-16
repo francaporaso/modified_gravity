@@ -49,9 +49,9 @@ class Lensing:
         dec0_rad = np.deg2rad(dec0)
         cos_dec0 = np.cos(dec0_rad)
 
-        mask = (cos_dec0*np.cos(ra0_rad)*self.cosSdec*self.cosSra
-                 + cos_dec0*np.sin(ra0_rad)*self.cosSdec*self.sinSra 
-                 + np.sin(dec0_rad)*self.sinSdec >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
+        mask = (cos_dec0*np.cos(ra0_rad)*self.cos_dec_gal*self.cos_ra_gal
+                 + cos_dec0*np.sin(ra0_rad)*self.cos_dec_gal*self.sin_ra_gal 
+                 + np.sin(dec0_rad)*self.sin_dec_gal >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
         return self.S[mask&(self.S>z0+0.1)]
 
     def partial_profile(self, inp):
