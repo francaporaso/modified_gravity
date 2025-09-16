@@ -1,5 +1,4 @@
-from ctypes import Array
-import numpy as np
+#import numpy as np imported in funcs!
 from astropy.cosmology import LambdaCDM
 from astropy.constants import G,c,M_sun,pc
 from multiprocessing import Pool
@@ -12,11 +11,10 @@ class Lensing:
 
     def __init__(self, source_args, cosmo_params, profile_args, binning='lin'):
         
-        self.N : int      = profile_args['N']
-        self.Nk : int     = profile_args['Nk']
-        #self.ncores : int = profile_args['ncores']
-        self.RIN : float  = profile_args['RIN']
-        self.ROUT : float = profile_args['ROUT']
+        self.N    = profile_args['N']
+        self.Nk   = profile_args['Nk']
+        self.RIN  = profile_args['RIN']
+        self.ROUT = profile_args['ROUT']
 
         if binning == 'log':
             self.bines = np.logspace(self.RIN, self.ROUT, self.N+1)
@@ -26,8 +24,8 @@ class Lensing:
         self.cosmo = LambdaCDM(**cosmo_params)
         self.S = sourcecat_load(**source_args)
 
-        ra_gal_rad  = np.deg2rad(self.S[0])
-        dec_gal_rad = np.deg2rad(self.S[1])
+        ra_gal_rad  = np.deg2rad(self.S.ra_gal)
+        dec_gal_rad = np.deg2rad(self.S.ra_gal)
         self.cos_ra_gal  = np.cos(ra_gal_rad)
         self.sin_ra_gal  = np.sin(ra_gal_rad)
         self.cos_dec_gal = np.cos(dec_gal_rad)
@@ -53,7 +51,7 @@ class Lensing:
         mask = (cos_dec0*np.cos(ra0_rad)*self.cos_dec_gal*self.cos_ra_gal
                  + cos_dec0*np.sin(ra0_rad)*self.cos_dec_gal*self.sin_ra_gal 
                  + np.sin(dec0_rad)*self.sin_dec_gal >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
-        return self.S[:, mask&(self.S[2]>z0+0.1)]
+        return self.S[:, mask&(self.S.true_redshift_gal>z0+0.1)]
 
     ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
     def partial_profile(self, inp):
