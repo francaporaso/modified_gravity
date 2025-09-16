@@ -7,118 +7,114 @@ from tqdm import tqdm
 
 from funcs import eq2p2, lenscat_load, sourcecat_load
 
+_cosmo = None
+_S = None
+_bines = None
 
-class Lensing:
+def init_worker(source_args, profile_args, cosmo_params):
 
-    def __init__(self, source_args, cosmo_params, profile_args, binning='lin'):
+    global _cosmo, _S, _bines # only declare global when intending to modify them
+
+    _cosmo = LambdaCDM(**cosmo_params)
+    _S = sourcecat_load(**source_args) 
+    ra_gal_rad  = np.deg2rad(_S['ra_gal'])
+    dec_gal_rad = np.deg2rad(_S['dec_gal'])
+    _S['cos_ra_gal']  = np.cos(ra_gal_rad)
+    _S['sin_ra_gal']  = np.sin(ra_gal_rad)
+    _S['cos_dec_gal'] = np.cos(dec_gal_rad)
+    _S['sin_dec_gal'] = np.sin(dec_gal_rad)
+
+    if profile_args['binning'] == 'log':
+        _bines = np.logspace(profile_args['RIN'], profile_args['ROUT'], profile_args['N']+1)
+    else:
+        _bines = np.linspace(profile_args['RIN'], profile_args['ROUT'], profile_args['N']+1)
+
+def sigma_crit(z_l, z_s):
+    d_l  = _cosmo.angular_diameter_distance(z_l).value*pc.value*1.0e6
+    d_s  = _cosmo.angular_diameter_distance(z_s).value
+    d_ls = _cosmo.angular_diameter_distance_z1z2(z_l, z_s).value
+    return (((c.value**2.0)/(4.0*np.pi*G.value*d_l))*(d_s/d_ls))*(pc.value**2/M_sun.value)
+
+
+## Cuentas en drive 'IATE/sphere_plane_cut.pdf'
+def get_masked_data(psi, ra0, dec0, z0):
+    '''
+    objects are selected by intersecting a sphere and a plane
+    and keeping those inside the spherical cap.
+    '''
+    ra0_rad = np.deg2rad(ra0)
+    dec0_rad = np.deg2rad(dec0)
+    cos_dec0 = np.cos(dec0_rad)
+
+    mask = (cos_dec0*np.cos(ra0_rad)*_S['cos_dec_gal']*_S['cos_ra_gal']
+                + cos_dec0*np.sin(ra0_rad)*_S['cos_dec_gal']*_S['sin_ra_gal'] 
+                + np.sin(dec0_rad)*_S['sin_dec_gal'] >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
+    return _S[mask&(_S['true_redshift_gal']>z0+0.1)]
+
+## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
+def partial_profile(inp):    
+    assert len(inp) == 4
+
+    Sigma_wsum    = np.zeros(N)
+    DSigma_t_wsum = np.zeros(N)
+    DSigma_x_wsum = np.zeros(N)
+    N_inbin       = np.zeros(N)
+    
+    ra0, dec0, z0, Rv0 = inp
+
+    # for ni in range(N):
+    # adentro del for, mask depende de n... solo quiero las gx en un anillo
+
+    DEGxMPC = _cosmo.arcsec_per_kpc_proper(z0).to('deg/Mpc').value
+    psi = DEGxMPC*ROUT*Rv0
+    
+    catdata = get_masked_data(psi, ra0, dec0, z0)
+    sigma_c = sigma_crit(z0, catdata['true_redshift_gal'])/Rv0
+
+    rads, theta = eq2p2(
+        np.deg2rad(catdata['ra_gal']), np.deg2rad(catdata['dec_gal']),
+        np.deg2rad(ra0), np.deg2rad(dec0)
+    )
+
+    ## TODO :: al descargar, cambiarle el signo
+    e1 = -catdata['gamma1']
+    e2 = -catdata['gamma2']
+
+    #get tangential ellipticities 
+    cos2t = np.cos(2.0*theta)
+    sin2t = np.sin(2.0*theta)
+    et = -(e1*cos2t+e2*sin2t)*sigma_c
+    ex = (-e1*sin2t+e2*cos2t)*sigma_c
         
-        self.N    = profile_args['N']
-        self.Nk   = profile_args['Nk']
-        self.RIN  = profile_args['RIN']
-        self.ROUT = profile_args['ROUT']
+    #get convergence
+    k  = catdata['kappa']*sigma_c
 
-        if binning == 'log':
-            self.bines = np.logspace(self.RIN, self.ROUT, self.N+1)
-        else:
-            self.bines = np.linspace(self.RIN, self.ROUT, self.N+1)
+    # r = (np.rad2deg(rads)/DEGxMPC)/Rv0
+    # bines = linspace() or logspace()
+    dig = np.digitize((np.rad2deg(rads)/DEGxMPC)/Rv0, _bines)
 
-        self.cosmo = LambdaCDM(**cosmo_params)
-        self.S = sourcecat_load(**source_args)
+    for nbin in range(N):
+        mbin = dig == nbin+1              
+        Sigma_wsum[nbin]    = k[mbin].sum()
+        DSigma_t_wsum[nbin] = et[mbin].sum()
+        DSigma_x_wsum[nbin] = ex[mbin].sum()
+        N_inbin[nbin]       = np.count_nonzero(mbin) ## idem mbin.sum(), faster
+    
+    return Sigma_wsum, DSigma_t_wsum, DSigma_x_wsum, N_inbin
 
-        ra_gal_rad  = np.deg2rad(self.S['ra_gal'])
-        dec_gal_rad = np.deg2rad(self.S['dec_gal'])
-        self.S['cos_ra_gal']  = np.cos(ra_gal_rad)
-        self.S['sin_ra_gal']  = np.sin(ra_gal_rad)
-        self.S['cos_dec_gal'] = np.cos(dec_gal_rad)
-        self.S['sin_dec_gal'] = np.sin(dec_gal_rad)
-
-    def sigma_crit(self, z_l, z_s):
-        d_l  = self.cosmo.angular_diameter_distance(z_l).value*pc.value*1.0e6
-        d_s  = self.cosmo.angular_diameter_distance(z_s).value
-        d_ls = self.cosmo.angular_diameter_distance_z1z2(z_l, z_s).value
-        return (((c.value**2.0)/(4.0*np.pi*G.value*d_l))*(d_s/d_ls))*(pc.value**2/M_sun.value)
-
-    def get_masked_data(self, psi, ra0, dec0, z0):
-        '''
-        usando la interseccion de la esfera con un plano,
-        se obtienen los objetos dentro de un spherical cap de 
-        radio angular psi
-        '''
-        ## VER CUENTAS DE ARCHIVO 'sphere_plane_cut.pdf'
-        ra0_rad = np.deg2rad(ra0)
-        dec0_rad = np.deg2rad(dec0)
-        cos_dec0 = np.cos(dec0_rad)
-
-        mask = (cos_dec0*np.cos(ra0_rad)*self.S['cos_dec_gal']*self.S['cos_ra_gal']
-                 + cos_dec0*np.sin(ra0_rad)*self.S['cos_dec_gal']*self.S['sin_ra_gal'] 
-                 + np.sin(dec0_rad)*self.S['sin_dec_gal'] >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
-        return self.S[mask&(self.S['true_redshift_gal']>z0+0.1)]
-
-    ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
-    def partial_profile(self, inp):
-        
-        assert len(inp) == 4
-
-        Sigma_wsum    = np.zeros(self.N)
-        DSigma_t_wsum = np.zeros(self.N)
-        DSigma_x_wsum = np.zeros(self.N)
-        N_inbin       = np.zeros(self.N)
-        
-        ra0, dec0, z0, Rv0 = inp
-
-        # for ni in range(self.N):
-        # adentro del for, mask depende de n... solo quiero las gx en un anillo
-
-        DEGxMPC = self.cosmo.arcsec_per_kpc_proper(z0).to('deg/Mpc').value
-        psi = DEGxMPC*self.ROUT*Rv0
-        
-        catdata = self.get_masked_data(psi, ra0, dec0, z0)
-        sigma_c = self.sigma_crit(z0, catdata['true_redshift_gal'])/Rv0
-
-        rads, theta = eq2p2(
-            np.deg2rad(catdata['ra_gal']), np.deg2rad(catdata['dec_gal']),
-            np.deg2rad(ra0), np.deg2rad(dec0)
-        )
-
-        ## TODO :: al descargar, cambiarle el signo
-        e1 = -catdata['gamma1']
-        e2 = -catdata['gamma2']
-
-        #get tangential ellipticities 
-        cos2t = np.cos(2.0*theta)
-        sin2t = np.sin(2.0*theta)
-        et = -(e1*cos2t+e2*sin2t)*sigma_c
-        ex = (-e1*sin2t+e2*cos2t)*sigma_c
-            
-        #get convergence
-        k  = catdata['kappa']*sigma_c
-
-        r = (np.rad2deg(rads)/DEGxMPC)/Rv0
-        #bines = self.binspace()
-        dig = np.digitize(r, self.bines)
-
-        for nbin in range(self.N):
-            mbin = dig == nbin+1              
-            Sigma_wsum[nbin]    = k[mbin].sum()
-            DSigma_t_wsum[nbin] = et[mbin].sum()
-            DSigma_x_wsum[nbin] = ex[mbin].sum()
-            N_inbin[nbin]       = np.count_nonzero(mbin) ## idem mbin.sum(), faster
-        
-        return Sigma_wsum, DSigma_t_wsum, DSigma_x_wsum, N_inbin
-
-
-def stacking(lens_args,source_args,profile_args,cosmo_params):
+def stacking(lens_args, source_args, profile_args, cosmo_params):
+    
     N = profile_args['N']
     Nk = profile_args['Nk']
     ncores = profile_args['ncores']
 
     N_inbin = np.zeros((Nk+1, N))
+    Sigma_wsum = np.zeros((Nk+1, N))
     DSigma_t_wsum = np.zeros((Nk+1, N))
     DSigma_x_wsum = np.zeros((Nk+1, N))
 
     L, K, nvoids = lenscat_load(**lens_args)
     print(f'Nvoids: {nvoids}', flush=True)
-    vlen = Lensing(source_args=source_args, cosmo_params=cosmo_params, profile_args=profile_args)
 
     # for i, Li in enumerate(tqdm(L)):
     #     num = len(Li)
@@ -128,8 +124,10 @@ def stacking(lens_args,source_args,profile_args,cosmo_params):
     #         pool.close()
     #         pool.join()
 
-    with Pool(processes=ncores) as pool:
-        resmap = np.array(pool.map(vlen.partial_profile, L.T, chunksize=nvoids//ncores))
+    with Pool(processes=ncores, initializer=init_worker, 
+              initargs=(source_args, profile_args, cosmo_params)) as pool:
+        
+        resmap = np.array(pool.map(partial_profile, L.T))
         pool.close()
         pool.join()
 
@@ -144,7 +142,7 @@ def stacking(lens_args,source_args,profile_args,cosmo_params):
     DSigma_t = DSigma_t_wsum/N_inbin
     DSigma_x = DSigma_x_wsum/N_inbin
 
-    return vlen.bines, Sigma, DSigma_t, DSigma_x 
+    return Sigma, DSigma_t, DSigma_x 
 
 
 if __name__ == '__main__':
@@ -190,6 +188,7 @@ if __name__ == '__main__':
         N = N,
         Nk = Nk,
         ncores = ncores,
+        binning = 'lin'
     )
 
     cosmo_params = dict(
