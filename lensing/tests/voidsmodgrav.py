@@ -129,7 +129,7 @@ def stacking(lens_args,source_args,profile_args,cosmo_params):
     #         pool.join()
 
     with Pool(processes=ncores) as pool:
-        resmap = np.array(pool.map(vlen.partial_profile, L.T, chunksize=ncores))
+        resmap = np.array(pool.map(vlen.partial_profile, L.T, chunksize=nvoids//ncores))
         pool.close()
         pool.join()
 
