@@ -57,6 +57,8 @@ class Lensing:
     ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
     def partial_profile(self, inp):
         
+        assert len(inp) == 4
+
         Sigma_wsum    = np.zeros(self.N)
         DSigma_t_wsum = np.zeros(self.N)
         DSigma_x_wsum = np.zeros(self.N)
@@ -108,6 +110,7 @@ class Lensing:
 def stacking(lens_args,cosmo_params,source_args,profile_args):
     N = profile_args['N']
     Nk = profile_args['Nk']
+    ncores = profile_args['ncores']
 
     N_inbin = np.zeros((Nk+1, N))
     DSigma_t_wsum = np.zeros((Nk+1, N))
@@ -117,20 +120,25 @@ def stacking(lens_args,cosmo_params,source_args,profile_args):
     print(f'Nvoids: {nvoids}', flush=True)
     vlen = Lensing(source_args=source_args, cosmo_params=cosmo_params, profile_args=profile_args)
 
-    for i, Li in enumerate(tqdm(L)):
-        num = len(Li)
-        inp = np.array([Li.T[1], Li.T[2], Li.T[3], Li.T[0]]).T
-        with Pool(processes=num) as pool:
-            resmap = np.array(pool.map(vlen.partial_profile, inp))
-            pool.close()
-            pool.join()
+    # for i, Li in enumerate(tqdm(L)):
+    #     num = len(Li)
+    #     inp = np.array([Li.T[1], Li.T[2], Li.T[3], Li.T[0]]).T
+    #     with Pool(processes=num) as pool:
+    #         resmap = np.array(pool.map(vlen.partial_profile, inp))
+    #         pool.close()
+    #         pool.join()
 
-        for j,r in enumerate(resmap):
-            km = np.tile(K[i][j], (N,1)).T
-            N_inbin += np.tile(r[-1], (Nk+1,1))*km
-            Sigma_wsum += np.tile(r[0], (Nk+1,1))*km
-            DSigma_t_wsum += np.tile(r[1], (Nk+1,1))*km
-            DSigma_x_wsum += np.tile(r[2], (Nk+1,1))*km
+    with Pool(processes=ncores) as pool:
+        resmap = np.array(pool.map(vlen.partial_profile, L.T, chunksize=ncores))
+        pool.close()
+        pool.join()
+
+    for j,r in enumerate(resmap):
+        km = np.tile(K[j], (N,1)).T
+        N_inbin += np.tile(r[-1], (Nk+1,1))*km
+        Sigma_wsum += np.tile(r[0], (Nk+1,1))*km
+        DSigma_t_wsum += np.tile(r[1], (Nk+1,1))*km
+        DSigma_x_wsum += np.tile(r[2], (Nk+1,1))*km
 
     Sigma = Sigma_wsum/N_inbin
     DSigma_t = DSigma_t_wsum/N_inbin
