@@ -46,10 +46,12 @@ def get_masked_data(psi, ra0, dec0, z0):
     dec0_rad = np.deg2rad(dec0)
     cos_dec0 = np.cos(dec0_rad)
 
-    mask = (cos_dec0*np.cos(ra0_rad)*_S['cos_dec_gal']*_S['cos_ra_gal']
-                + cos_dec0*np.sin(ra0_rad)*_S['cos_dec_gal']*_S['sin_ra_gal'] 
-                + np.sin(dec0_rad)*_S['sin_dec_gal'] >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
-    return _S[mask&(_S['true_redshift_gal']>z0+0.1)]
+    local_S = _S[(_S['true_redshift_gal']>z0+0.1)]
+    mask_field = (cos_dec0*np.cos(ra0_rad)*local_S['cos_dec_gal']*local_S['cos_ra_gal']
+                + cos_dec0*np.sin(ra0_rad)*local_S['cos_dec_gal']*local_S['sin_ra_gal'] 
+                + np.sin(dec0_rad)*local_S['sin_dec_gal'] >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
+    
+    return local_S[mask_field]
 
 ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
 def partial_profile(inp):    
