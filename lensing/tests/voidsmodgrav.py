@@ -10,31 +10,32 @@ from funcs import eq2p2, lenscat_load, sourcecat_load
 
 class Lensing:
 
-    def __init__(self, source_args, cosmo_params, binning='lin'):
+    def __init__(self, source_args, cosmo_params, profile_args, binning='lin'):
         
-        if binning == 'lin':
-            self._binspace = np.linspace
-        elif binning == 'log':
-            self._binspace = np.logspace
+        self.N : int      = profile_args['N']
+        self.Nk : int     = profile_args['Nk']
+        #self.ncores : int = profile_args['ncores']
+        self.RIN : float  = profile_args['RIN']
+        self.ROUT : float = profile_args['ROUT']
+
+        if binning == 'log':
+            self.bines = np.logspace(self.RIN, self.ROUT, self.N+1)
         else:
-            raise ValueError("mode must be either 'linear' or 'log'")
+            self.bines = np.linspace(self.RIN, self.ROUT, self.N+1)
 
         self.cosmo = LambdaCDM(**cosmo_params)
         self.S = sourcecat_load(**source_args)
 
-        ra_gal_rad = np.deg2rad(self.S[0])
+        ra_gal_rad  = np.deg2rad(self.S[0])
         dec_gal_rad = np.deg2rad(self.S[1])
-        self.cos_ra_gal = np.cos(ra_gal_rad)
-        self.sin_ra_gal = np.sin(ra_gal_rad)
+        self.cos_ra_gal  = np.cos(ra_gal_rad)
+        self.sin_ra_gal  = np.sin(ra_gal_rad)
         self.cos_dec_gal = np.cos(dec_gal_rad)
         self.sin_dec_gal = np.sin(dec_gal_rad)
 
-    def binspace(self):
-        return self._binspace(self.RIN, self.ROUT, self.N+1)
-
     def sigma_crit(self, z_l, z_s):
-        d_l = self.cosmo.angular_diameter_distance(z_l).value*pc.value*1.0e6
-        d_s = self.cosmo.angular_diameter_distance(z_s).value
+        d_l  = self.cosmo.angular_diameter_distance(z_l).value*pc.value*1.0e6
+        d_s  = self.cosmo.angular_diameter_distance(z_s).value
         d_ls = self.cosmo.angular_diameter_distance_z1z2(z_l, z_s).value
         return (((c.value**2.0)/(4.0*np.pi*G.value*d_l))*(d_s/d_ls))*(pc.value**2/M_sun.value)
 
@@ -54,13 +55,13 @@ class Lensing:
                  + np.sin(dec0_rad)*self.sin_dec_gal >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
         return self.S[:, mask&(self.S[2]>z0+0.1)]
 
+    ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
     def partial_profile(self, inp):
-        ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
         
         Sigma_wsum    = np.zeros(self.N)
         DSigma_t_wsum = np.zeros(self.N)
         DSigma_x_wsum = np.zeros(self.N)
-        N_inbin      = np.zeros(self.N)
+        N_inbin       = np.zeros(self.N)
         
         ra0, dec0, z0, Rv0 = inp
 
@@ -78,7 +79,7 @@ class Lensing:
             np.deg2rad(ra0), np.deg2rad(dec0)
         )
 
-        ## TODO :: al descargar, cambiarle el signo... es más facil y se ahorra calculo
+        ## TODO :: al descargar, cambiarle el signo
         e1 = -catdata[4]
         e2 = -catdata[5]
 
@@ -92,67 +93,63 @@ class Lensing:
         k  = catdata[3]*sigma_c
 
         r = (np.rad2deg(rads)/DEGxMPC)/Rv0
-        bines = self.binspace()
-        dig = np.digitize(r,bines)
+        #bines = self.binspace()
+        dig = np.digitize(r, self.bines)
 
         for nbin in range(self.N):
             mbin = dig == nbin+1              
             Sigma_wsum[nbin]    = k[mbin].sum()
             DSigma_t_wsum[nbin] = et[mbin].sum()
             DSigma_x_wsum[nbin] = ex[mbin].sum()
-            N_inbin[nbin]      = np.count_nonzero(mbin) ## hace lo mismo q mbin.sum() pero más rápido
+            N_inbin[nbin]       = np.count_nonzero(mbin) ## idem mbin.sum(), faster
         
         return Sigma_wsum, DSigma_t_wsum, DSigma_x_wsum, N_inbin
 
 
+def stacking(lens_args,cosmo_params,source_args,profile_args):
+    N = profile_args['N']
+    Nk = profile_args['Nk']
 
-def stacking(L,K):
-
-    lensing = Lensing()
-    
     N_inbin = np.zeros((Nk+1, N))
     DSigma_t_wsum = np.zeros((Nk+1, N))
     DSigma_x_wsum = np.zeros((Nk+1, N))
 
+    L, K, nvoids = lenscat_load(**lens_args)
+    print(f'Nvoids: {nvoids}', flush=True)
+    vlen = Lensing(source_args=source_args, cosmo_params=cosmo_params, profile_args=profile_args)
+
     for i, Li in enumerate(tqdm(L)):
         num = len(Li)
         inp = np.array([Li[1], Li[2], Li[3], Li[0]]).T
+        print(inp.shape)
+        print(inp[0])
+        return 0
         with Pool(processes=num) as pool:
-            resmap = np.array(pool.map(lensing.partial_profile, inp))
+            resmap = np.array(pool.map(vlen.partial_profile, inp))
             pool.close()
             pool.join()
 
         for j,r in enumerate(resmap):
             km = np.tile(K[i][j], (N,1)).T
-            N_inbin += np.tile(r.N_inbin, (Nk+1,1))*km
-            DSigma_t_wsum += np.tile(r.DSigma_t, (Nk+1,1))*km
-            DSigma_x_wsum += np.tile(r.DSigma_x, (Nk+1,1))*km
+            N_inbin += np.tile(r[-1], (Nk+1,1))*km
+            Sigma_wsum += np.tile(r[0], (Nk+1,1))*km
+            DSigma_t_wsum += np.tile(r[1], (Nk+1,1))*km
+            DSigma_x_wsum += np.tile(r[2], (Nk+1,1))*km
 
+    Sigma = Sigma_wsum/N_inbin
     DSigma_t = DSigma_t_wsum/N_inbin
     DSigma_x = DSigma_x_wsum/N_inbin
 
-    return DSigma_t, DSigma_x     
-
-def run(lens_args, profile_args):
-    
-    N : int = profile_args['N']
-    Nk : int = profile_args['Nk']
-    ncores : int = profile_args['ncores']
-    RIN : float = profile_args['RIN']
-    ROUT : float = profile_args['ROUT']
-    
-    L, K, nvoids = lenscat_load(**lens_args)
-    print('Running stacking!')
-    return stacking(L)
+    return vlen.bines, Sigma, DSigma_t, DSigma_x 
 
 
 if __name__ == '__main__':
 
     import time
 
-    lens_name = 'voids_fR_09.dat'
+    lens_name = 'voids_LCDM_09.dat'
     Rv_min = 10.0
-    Rv_max = 12.0
+    Rv_max = 11.0
     z_min = 0.2
     z_max = 0.22
     delta_min = -1.0 # void type
@@ -161,10 +158,10 @@ if __name__ == '__main__':
     source_name = 'l768_gr_z04-07_for02-03_19304.fits'
 
     RIN = 0.1
-    ROUT = 1.5
+    ROUT = 1.0
     N = 10
-    Nk = 100
-    ncores = 32
+    Nk = 10
+    ncores = 16
 
     lens_args = dict(
         name = lens_name,
@@ -175,7 +172,7 @@ if __name__ == '__main__':
         delta_min = delta_min, # void type
         delta_max = delta_max, # void type
         ncores = ncores,
-        nk = Nk,
+        Nk = Nk,
     )
 
     source_args = dict(
