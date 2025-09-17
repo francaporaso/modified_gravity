@@ -8,26 +8,25 @@ from tqdm import tqdm
 from funcs import eq2p2, lenscat_load, sourcecat_load
 
 _cosmo = None
-_S = None
-_bines = None
+#_S = None
+_binspace = None
+
+_RIN = None
+_ROUT = None
+_N = None
+_Nk = None
+_ncores = None
 
 def init_worker(source_args, profile_args, cosmo_params):
 
-    global _cosmo, _S, _bines # only declare global when intending to modify them
+    global _cosmo, S, _binspace # only declare global when intending to modify them
 
     _cosmo = LambdaCDM(**cosmo_params)
-    _S = sourcecat_load(**source_args) 
-    ra_gal_rad  = np.deg2rad(_S['ra_gal'])
-    dec_gal_rad = np.deg2rad(_S['dec_gal'])
-    _S['cos_ra_gal']  = np.cos(ra_gal_rad)
-    _S['sin_ra_gal']  = np.sin(ra_gal_rad)
-    _S['cos_dec_gal'] = np.cos(dec_gal_rad)
-    _S['sin_dec_gal'] = np.sin(dec_gal_rad)
-
+ 
     if profile_args['binning'] == 'log':
-        _bines = np.logspace(profile_args['RIN'], profile_args['ROUT'], profile_args['N']+1)
+        _binspace = np.logspace
     else:
-        _bines = np.linspace(profile_args['RIN'], profile_args['ROUT'], profile_args['N']+1)
+        _binspace = np.linspace
 
 def sigma_crit(z_l, z_s):
     d_l  = _cosmo.angular_diameter_distance(z_l).value*pc.value*1.0e6
@@ -42,16 +41,18 @@ def get_masked_data(psi, ra0, dec0, z0):
     objects are selected by intersecting a sphere and a plane
     and keeping those inside the spherical cap.
     '''
+    S = sourcecat_load(**source_args) 
+
     ra0_rad = np.deg2rad(ra0)
     dec0_rad = np.deg2rad(dec0)
     cos_dec0 = np.cos(dec0_rad)
 
-    local_S = _S[(_S['true_redshift_gal']>z0+0.1)]
-    mask_field = (cos_dec0*np.cos(ra0_rad)*local_S['cos_dec_gal']*local_S['cos_ra_gal']
-                + cos_dec0*np.sin(ra0_rad)*local_S['cos_dec_gal']*local_S['sin_ra_gal'] 
-                + np.sin(dec0_rad)*local_S['sin_dec_gal'] >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
+    S = S[(S['true_redshift_gal']>z0+0.1)]
+    mask_field = (cos_dec0*np.cos(ra0_rad)*S['cos_dec_gal']*S['cos_ra_gal']
+                + cos_dec0*np.sin(ra0_rad)*S['cos_dec_gal']*S['sin_ra_gal'] 
+                + np.sin(dec0_rad)*S['sin_dec_gal'] >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
     
-    return local_S[mask_field]
+    return S[mask_field]
 
 ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
 def partial_profile(inp):    
@@ -92,8 +93,8 @@ def partial_profile(inp):
     k  = catdata['kappa']*sigma_c
 
     # r = (np.rad2deg(rads)/DEGxMPC)/Rv0
-    # bines = linspace() or logspace()
-    dig = np.digitize((np.rad2deg(rads)/DEGxMPC)/Rv0, _bines)
+    bines = _binspace(_RIN, _ROUT, _N+1)
+    dig = np.digitize((np.rad2deg(rads)/DEGxMPC)/Rv0, bines)
 
     for nbin in range(N):
         mbin = dig == nbin+1              
@@ -106,9 +107,12 @@ def partial_profile(inp):
 
 def stacking(lens_args, source_args, profile_args, cosmo_params):
     
-    N = profile_args['N']
-    Nk = profile_args['Nk']
-    ncores = profile_args['ncores']
+    global _RIN, _ROUT, _N, _Nk, _ncores
+    _RIN = profile_args['RIN']
+    _ROUT = profile_args['ROUT']
+    _N = profile_args['N']
+    _Nk = profile_args['Nk']
+    _ncores = profile_args['ncores']
 
     N_inbin = np.zeros((Nk+1, N))
     Sigma_wsum = np.zeros((Nk+1, N))
