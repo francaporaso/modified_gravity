@@ -139,11 +139,11 @@ def main(profile_args, lens_args, source_args, cosmo_params):
     global _cosmo, _binspace 
     global _source_name
 
-    _RIN  : float = profile_args['RIN']
-    _ROUT : float = profile_args['ROUT']
-    _N    : int   = profile_args['N']
-    _Nk   : int   = profile_args['Nk']
-    _ncores : int = profile_args['ncores']
+    _RIN= profile_args['RIN']
+    _ROUT= profile_args['ROUT']
+    _N= profile_args['N']
+    _Nk= profile_args['Nk']
+    _ncores= profile_args['ncores']
 
     _cosmo = LambdaCDM(**cosmo_params)
 
