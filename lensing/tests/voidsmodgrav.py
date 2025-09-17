@@ -17,16 +17,7 @@ _N = None
 _Nk = None
 _ncores = None
 
-def init_worker(source_args, profile_args, cosmo_params):
-
-    global _cosmo, S, _binspace # only declare global when intending to modify them
-
-    _cosmo = LambdaCDM(**cosmo_params)
- 
-    if profile_args['binning'] == 'log':
-        _binspace = np.logspace
-    else:
-        _binspace = np.linspace
+_source_name = None
 
 def sigma_crit(z_l, z_s):
     d_l  = _cosmo.angular_diameter_distance(z_l).value*pc.value*1.0e6
@@ -34,14 +25,13 @@ def sigma_crit(z_l, z_s):
     d_ls = _cosmo.angular_diameter_distance_z1z2(z_l, z_s).value
     return (((c.value**2.0)/(4.0*np.pi*G.value*d_l))*(d_s/d_ls))*(pc.value**2/M_sun.value)
 
-
 ## Cuentas en drive 'IATE/sphere_plane_cut.pdf'
 def get_masked_data(psi, ra0, dec0, z0):
     '''
     objects are selected by intersecting a sphere and a plane
     and keeping those inside the spherical cap.
     '''
-    S = sourcecat_load(**source_args) 
+    S = sourcecat_load(_source_name) 
 
     ra0_rad = np.deg2rad(ra0)
     dec0_rad = np.deg2rad(dec0)
@@ -105,19 +95,12 @@ def partial_profile(inp):
     
     return Sigma_wsum, DSigma_t_wsum, DSigma_x_wsum, N_inbin
 
-def stacking(lens_args, source_args, profile_args, cosmo_params):
-    
-    global _RIN, _ROUT, _N, _Nk, _ncores
-    _RIN = profile_args['RIN']
-    _ROUT = profile_args['ROUT']
-    _N = profile_args['N']
-    _Nk = profile_args['Nk']
-    _ncores = profile_args['ncores']
+def stacking(lens_args):
 
-    N_inbin = np.zeros((Nk+1, N))
-    Sigma_wsum = np.zeros((Nk+1, N))
-    DSigma_t_wsum = np.zeros((Nk+1, N))
-    DSigma_x_wsum = np.zeros((Nk+1, N))
+    N_inbin = np.zeros((_Nk+1, _N))
+    Sigma_wsum = np.zeros((_Nk+1, _N))
+    DSigma_t_wsum = np.zeros((_Nk+1, _N))
+    DSigma_x_wsum = np.zeros((_Nk+1, _N))
 
     L, K, nvoids = lenscat_load(**lens_args)
     print(f'Nvoids: {nvoids}', flush=True)
@@ -132,25 +115,46 @@ def stacking(lens_args, source_args, profile_args, cosmo_params):
     for i, Li in enumerate(tqdm(L)):
         num = len(Li)
         inp = np.array([Li.T[1], Li.T[2], Li.T[3], Li.T[0]]).T
-        with Pool(processes=num, initializer=init_worker, 
-                  initargs=(source_args, profile_args, cosmo_params)) as pool:
-            
+        with Pool(processes=num) as pool:
             resmap = np.array(pool.map(partial_profile, inp))
             pool.close()
             pool.join()
 
         for j,r in enumerate(resmap):
-            km = np.tile(K[i][j], (N,1)).T
-            N_inbin += np.tile(r[-1], (Nk+1,1))*km
-            Sigma_wsum += np.tile(r[0], (Nk+1,1))*km
-            DSigma_t_wsum += np.tile(r[1], (Nk+1,1))*km
-            DSigma_x_wsum += np.tile(r[2], (Nk+1,1))*km
+            km = np.tile(K[i][j], (_N,1)).T
+            N_inbin += np.tile(r[-1], (_Nk+1,1))*km
+            Sigma_wsum += np.tile(r[0], (_Nk+1,1))*km
+            DSigma_t_wsum += np.tile(r[1], (_Nk+1,1))*km
+            DSigma_x_wsum += np.tile(r[2], (_Nk+1,1))*km
 
     Sigma = Sigma_wsum/N_inbin
     DSigma_t = DSigma_t_wsum/N_inbin
     DSigma_x = DSigma_x_wsum/N_inbin
 
     return Sigma, DSigma_t, DSigma_x 
+
+def main(profile_args, lens_args, source_args, cosmo_params):
+    # only declare global when intending to modify them
+    global _RIN, _ROUT, _N, _Nk, _ncores
+    global _cosmo, _binspace 
+    global _source_name
+
+    _RIN  : float = profile_args['RIN']
+    _ROUT : float = profile_args['ROUT']
+    _N    : int   = profile_args['N']
+    _Nk   : int   = profile_args['Nk']
+    _ncores : int = profile_args['ncores']
+
+    _cosmo = LambdaCDM(**cosmo_params)
+
+    _source_name : str = source_args['name']
+
+    if profile_args['binning'] == 'log':
+        _binspace = np.logspace
+    else:
+        _binspace = np.linspace
+
+    stacking(lens_args)
 
 
 if __name__ == '__main__':
@@ -206,6 +210,6 @@ if __name__ == '__main__':
     )
     print('Start!')
     t1=time.time()
-    stacking(lens_args, source_args, profile_args, cosmo_params)
+    main(profile_args, lens_args, source_args, cosmo_params)
     print('End!')
     print(f'took {(time.time()-t1)/60.0} s')
