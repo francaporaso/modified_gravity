@@ -147,7 +147,7 @@ def main(profile_args, lens_args, source_args, cosmo_params):
 
     _cosmo = LambdaCDM(**cosmo_params)
 
-    _source_name : str = source_args['name']
+    _source_name = source_args['name']
 
     if profile_args['binning'] == 'log':
         _binspace = np.logspace
