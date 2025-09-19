@@ -65,10 +65,7 @@ def partial_profile(inp):
     DSigma_x_wsum = np.zeros(N)
     N_inbin       = np.zeros(N)
     
-    ra0, dec0, z0, Rv0 = inp
-    print(f'N: {_N:5d}, NK: {_NK:5d}, NCORES: {_NCORES:5d}, RIN-ROUT: {_RIN:3f}-{_ROUT:3f}')
-    return np.NaN
-
+    Rv0, ra0, dec0, z0 = inp
     # for ni in range(N):
     # adentro del for, mask depende de n... solo quiero las gx en un anillo
 
@@ -173,7 +170,7 @@ if __name__ == '__main__':
     delta_min = -1.0 # void type
     delta_max = -0.1 # void type
 
-    source_name = 'l768_gr_z04-07_for02-03_19304.fits'
+    source_name = 'l768_gr_z04-07_for02-03_w_trig_19304.fits'
 
     RIN = 0.1
     ROUT = 1.0
