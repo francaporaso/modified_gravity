@@ -131,24 +131,28 @@ def stacking(source_args, lens_args, profile_args):
         with Pool(processes=num, 
                   initializer=init_worker, 
                   initargs=(source_args, profile_args)) as pool:
-            resmap = np.array(pool.map(partial_profile, inp))
-            pool.close()
-            pool.join()
+            print(inp, flush=True)
+            print(type(_S), flush=True)
+            print(_S.info(), flush=True)
+            print('-'.center(10,'#'))
+            # resmap = np.array(pool.map(partial_profile, inp))
+            # pool.close()
+            # pool.join()
 
-        for j,r in enumerate(resmap):
-            km = np.tile(K[i][j], (_N,1)).T
-            N_inbin += np.tile(r[-1], (_NK+1,1))*km
-            Sigma_wsum += np.tile(r[0], (_NK+1,1))*km
-            DSigma_t_wsum += np.tile(r[1], (_NK+1,1))*km
-            DSigma_x_wsum += np.tile(r[2], (_NK+1,1))*km
+        # for j,r in enumerate(resmap):
+        #     km = np.tile(K[i][j], (_N,1)).T
+        #     N_inbin += np.tile(r[-1], (_NK+1,1))*km
+        #     Sigma_wsum += np.tile(r[0], (_NK+1,1))*km
+        #     DSigma_t_wsum += np.tile(r[1], (_NK+1,1))*km
+        #     DSigma_x_wsum += np.tile(r[2], (_NK+1,1))*km
 
-    Sigma = Sigma_wsum/N_inbin
-    DSigma_t = DSigma_t_wsum/N_inbin
-    DSigma_x = DSigma_x_wsum/N_inbin
+    # Sigma = Sigma_wsum/N_inbin
+    # DSigma_t = DSigma_t_wsum/N_inbin
+    # DSigma_x = DSigma_x_wsum/N_inbin
 
-    return Sigma, DSigma_t, DSigma_x 
+    # return Sigma, DSigma_t, DSigma_x 
 
-def main(profile_args, lens_args, source_args, cosmo_params):
+def main(profile_args, lens_args, source_args):
     # only declare global when intending to modify them
 
 
