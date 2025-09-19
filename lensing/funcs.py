@@ -43,7 +43,7 @@ def eq2p2(ra_gal, dec_gal, RA0,DEC0):
 ## agregar de nuevo option for octant
 def lenscat_load(name,
                  Rv_min, Rv_max, z_min, z_max, delta_min, delta_max, rho1_min=-1.0, rho1_max=0.0, flag=2,
-                 ncores:int=1, Nk:int=1, octant=False, MICE=False, fullshape=True):
+                 NCORES:int=1, NK:int=1, octant=False, MICE=False, fullshape=True):
 
     if MICE:
         RV,RA,DEC,Z,R1,R2 = 1,2,3,4,8,9
@@ -63,21 +63,21 @@ def lenscat_load(name,
         eps = 6.0 ## sale de tomar el angulo substendido por el void más grande al redshift más bajo
         L = L[:, (L[RA] >= 0.0+eps) & (L[RA] <= 90.0-eps) & (L[DEC]>= 0.0+eps) & (L[DEC] <= 90.0-eps)]
 
-    sqrt_Nk = int(np.sqrt(Nk))
+    sqrt_NK = int(np.sqrt(NK))
     NNN = len(L[0]) ##total number of voids
     ra,dec = L[RA],L[DEC]
-    K    = np.zeros((Nk+1,NNN))
+    K    = np.zeros((NK+1,NNN))
     K[0] = np.ones(NNN).astype(bool)
 
     ramin  = np.min(ra)
     cdec   = np.sin(np.deg2rad(dec))
     decmin = np.min(cdec)
-    dra    = ((np.max(ra)+1.e-5) - ramin)/sqrt_Nk
-    ddec   = ((np.max(cdec)+1.e-5) - decmin)/sqrt_Nk
+    dra    = ((np.max(ra)+1.e-5) - ramin)/sqrt_NK
+    ddec   = ((np.max(cdec)+1.e-5) - decmin)/sqrt_NK
 
     c = 1
-    for a in range(sqrt_Nk): 
-        for d in range(sqrt_Nk): 
+    for a in range(sqrt_NK): 
+        for d in range(sqrt_NK): 
             mra  = (ra  >= ramin + a*dra)&(ra < ramin + (a+1)*dra) 
             mdec = (cdec >= decmin + d*ddec)&(cdec < decmin + (d+1)*ddec) 
             K[c] = ~(mra&mdec)
@@ -92,11 +92,11 @@ def lenscat_load(name,
     else:
         L = L[[RV,RA,DEC,Z]]
 
-    if bool(ncores-1):
-        if ncores > nvoids:
-            ncores = nvoids
-        lbins = round(nvoids/ncores)
-        slices = (np.arange(lbins)+1)*ncores
+    if bool(NCORES-1):
+        if NCORES > nvoids:
+            NCORES = nvoids
+        lbins = round(nvoids/NCORES)
+        slices = (np.arange(lbins)+1)*NCORES
         slices = slices[(slices < nvoids)]
         L = np.split(L.T, slices)
         K = np.split(K.T, slices)
