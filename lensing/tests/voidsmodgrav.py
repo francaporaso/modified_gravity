@@ -7,6 +7,8 @@ from tqdm import tqdm
 
 from funcs import eq2p2, lenscat_load, sourcecat_load
 
+SC_CONSTANT : float = (c.value**2.0/(4.0*np.pi*G.value))*(pc.value/M_sun.value)*1.0e-6
+
 _RIN : float    = None
 _ROUT : float   = None
 _N : int        = None
@@ -15,12 +17,20 @@ _NCORES : int   = None
 _S : Table      = None
 _binspace = None
 
-SC_CONSTANT : float = (c.value**2.0/(4.0*np.pi*G.value))*(pc.value/M_sun.value)*1.0e-6
-
 def init_worker(source_args, profile_args):
+    
     global _S
+    global _RIN, _ROUT, _N, _NK, _NCORES, _binspace
+
+    _RIN    = profile_args['RIN']
+    _ROUT   = profile_args['ROUT']
+    _N      = profile_args['N']
+    _NK     = profile_args['NK']
+    _NCORES = profile_args['NCORES']
+    _binspace = np.linspace if profile_args['binning']=='lin' else np.logspace
     _S = sourcecat_load(**source_args)
-    print(f'worker initialized: \n{_S.info()}', flush=True)
+
+    print(f'worker initialized: {type(_S)}', flush=True)
 
 def sigma_crit(z_l, z_s):
     
@@ -50,7 +60,7 @@ def get_masked_data(psi, ra0, dec0, z0):
 ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
 def partial_profile(inp):    
     
-    print('calculating partial_profile', flush=True)
+    print(f'calculating partial_profile: {type(_S)}', flush=True)
     return np.NaN
 
     Sigma_wsum    = np.zeros(N)
@@ -102,31 +112,35 @@ def partial_profile(inp):
 
 def stacking(source_args, lens_args, profile_args):
 
-    N_inbin = np.zeros((_NK+1, _N))
-    Sigma_wsum = np.zeros((_NK+1, _N))
-    DSigma_t_wsum = np.zeros((_NK+1, _N))
-    DSigma_x_wsum = np.zeros((_NK+1, _N))
+    N = profile_args['N']
+    NK = profile_args['NK']
+    NCORES = profile_args['NCORES']
+
+    N_inbin       = np.zeros((NK+1, N))
+    Sigma_wsum    = np.zeros((NK+1, N))
+    DSigma_t_wsum = np.zeros((NK+1, N))
+    DSigma_x_wsum = np.zeros((NK+1, N))
 
     L, K, nvoids = lenscat_load(**lens_args)
     print(f'Nvoids: {nvoids}', flush=True)
 
-    # with Pool(processes=ncores, initializer=init_worker, 
-    #           initargs=(source_args, profile_args, cosmo_params)) as pool:
-        
-    #     resmap = np.array(pool.map(partial_profile, L.T))
-    #     pool.close()
-    #     pool.join()
+    with Pool(processes=NCORES, initializer=init_worker, 
+              initargs=(source_args, profile_args)) as pool:
 
-    for i, Li in enumerate(tqdm(L)):
-        num = len(Li)
-        inp = np.array([Li.T[1], Li.T[2], Li.T[3], Li.T[0]]).T
-        with Pool(processes=num, 
-                  initializer=init_worker, 
-                  initargs=(source_args, profile_args)) as pool:
-            pool.map(partial_profile, inp)
-            # resmap = np.array(pool.map(partial_profile, inp))
-            # pool.close()
-            # pool.join()
+        pool.map(partial_profile, L.T)
+        #resmap = np.array(pool.map(partial_profile, L.T))
+        pool.close()
+        pool.join()
+
+    # for i, Li in enumerate(tqdm(L)):
+    #     num = len(Li)
+    #     inp = np.array([Li.T[1], Li.T[2], Li.T[3], Li.T[0]]).T
+    #     with Pool(processes=num, 
+    #               initializer=init_worker, 
+    #               initargs=(source_args, profile_args)) as pool:
+    #         resmap = np.array(pool.map(partial_profile, inp))
+    #         pool.close()
+    #         pool.join()
 
         # for j,r in enumerate(resmap):
         #     km = np.tile(K[i][j], (_N,1)).T
@@ -144,14 +158,6 @@ def stacking(source_args, lens_args, profile_args):
 def main(source_args, lens_args, profile_args):
     # only declare global when intending to modify them
 
-    global _RIN, _ROUT, _N, _NK, _NCORES, _binspace
-
-    _RIN    = profile_args['RIN']
-    _ROUT   = profile_args['ROUT']
-    _N      = profile_args['N']
-    _NK     = profile_args['NK']
-    _NCORES = profile_args['NCORES']
-    _binspace = np.linspace if profile_args['binning']=='lin' else np.logspace
 
     stacking(source_args, lens_args, profile_args)
 
