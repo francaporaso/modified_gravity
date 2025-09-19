@@ -43,7 +43,7 @@ def eq2p2(ra_gal, dec_gal, RA0,DEC0):
 ## agregar de nuevo option for octant
 def lenscat_load(name,
                  Rv_min, Rv_max, z_min, z_max, delta_min, delta_max, rho1_min=-1.0, rho1_max=0.0, flag=2,
-                 NCORES:int=1, NK:int=1, octant=False, MICE=False, fullshape=True):
+                 NCHUNKS:int=1, NK:int=1, octant=False, MICE=False, fullshape=True):
 
     if MICE:
         RV,RA,DEC,Z,R1,R2 = 1,2,3,4,8,9
@@ -88,15 +88,15 @@ def lenscat_load(name,
 
     nvoids = mask.sum()
     if fullshape:
-        L = L[:,mask]
+        L = L[:, mask]
     else:
-        L = L[[RV,RA,DEC,Z]]
+        L = L[[RV,RA,DEC,Z], mask]
 
-    if bool(NCORES-1):
-        if NCORES > nvoids:
-            NCORES = nvoids
-        lbins = round(nvoids/NCORES)
-        slices = (np.arange(lbins)+1)*NCORES
+    if bool(NCHUNKS-1):
+        if NCHUNKS > nvoids:
+            NCHUNKS = nvoids
+        lbins = round(nvoids/NCHUNKS)
+        slices = (np.arange(lbins)+1)*NCHUNKS
         slices = slices[(slices < nvoids)]
         L = np.split(L.T, slices)
         K = np.split(K.T, slices)
