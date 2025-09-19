@@ -68,7 +68,7 @@ def partial_profile(inp):
     N_inbin       = np.zeros(N)
     
     ra0, dec0, z0, Rv0 = inp
-    print(f'ra0:{ra0}, dec0:{dec0}, z0:{z0}, rv0:{Rv0}')
+    print(f'N: {_N:5d}, NK: {_NK:5d}, NCORES: {_NCORES:5d}, RIN-ROUT: {_RIN:3d}-{_ROUT:3d}')
     return np.NaN
 
     # for ni in range(N):
