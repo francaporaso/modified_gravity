@@ -60,7 +60,7 @@ def get_masked_data(psi, ra0, dec0, z0):
 ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
 def partial_profile(inp):    
     
-    print(f'calculating partial_profile: {type(_S)}', flush=True)
+    assert type(_S) == Table
     return np.NaN
 
     Sigma_wsum    = np.zeros(N)
