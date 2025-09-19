@@ -190,7 +190,7 @@ if __name__ == '__main__':
         z_max = z_max,
         delta_min = delta_min, # void type
         delta_max = delta_max, # void type
-        NCORES = 1,
+        NCHUNKS = 1,
         NK = NK,
         fullshape=False,
     )
@@ -218,4 +218,4 @@ if __name__ == '__main__':
     t1=time.time()
     main(source_args, lens_args, profile_args)
     print('End!')
-    print(f'took {(time.time()-t1)/60.0} s')
+    print(f'took {(time.time()-t1)/60.0} min')
