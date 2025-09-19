@@ -18,12 +18,9 @@ _binspace = None
 SC_CONSTANT : float = (c.value**2.0/(4.0*np.pi*G.value))*(pc.value/M_sun.value)*1.0e-6
 
 def init_worker(source_args, profile_args):
-    
-    global _binspace, _S
-
+    global _S
     _S = sourcecat_load(**source_args)
-
-    _binspace = np.linspace if profile_args['binning']=='lin' else np.logspace
+    print(f'worker initialized: \n{_S.info()}', flush=True)
 
 def sigma_crit(z_l, z_s):
     
@@ -52,7 +49,9 @@ def get_masked_data(psi, ra0, dec0, z0):
 
 ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
 def partial_profile(inp):    
-    assert len(inp) == 4
+    
+    print('calculating partial_profile', flush=True)
+    return np.NaN
 
     Sigma_wsum    = np.zeros(N)
     DSigma_t_wsum = np.zeros(N)
@@ -124,10 +123,7 @@ def stacking(source_args, lens_args, profile_args):
         with Pool(processes=num, 
                   initializer=init_worker, 
                   initargs=(source_args, profile_args)) as pool:
-            print(inp, flush=True)
-            print(type(_S), flush=True)
-            print(_S.info(), flush=True)
-            print('-'.center(10,'#'))
+            pool.map(partial_profile, inp)
             # resmap = np.array(pool.map(partial_profile, inp))
             # pool.close()
             # pool.join()
@@ -148,13 +144,14 @@ def stacking(source_args, lens_args, profile_args):
 def main(source_args, lens_args, profile_args):
     # only declare global when intending to modify them
 
-    global _RIN, _ROUT, _N, _NK, _NCORES
+    global _RIN, _ROUT, _N, _NK, _NCORES, _binspace
 
     _RIN    = profile_args['RIN']
     _ROUT   = profile_args['ROUT']
     _N      = profile_args['N']
     _NK     = profile_args['NK']
     _NCORES = profile_args['NCORES']
+    _binspace = np.linspace if profile_args['binning']=='lin' else np.logspace
 
     stacking(source_args, lens_args, profile_args)
 
