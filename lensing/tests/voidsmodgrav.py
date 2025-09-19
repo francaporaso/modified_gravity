@@ -30,7 +30,7 @@ def init_worker(source_args, profile_args):
     _binspace = np.linspace if profile_args['binning']=='lin' else np.logspace
     _S = sourcecat_load(**source_args)
 
-    print(f'worker initialized: {type(_S)}', flush=True)
+    #print(f'worker initialized: {type(_S)}', flush=True)
 
 def sigma_crit(z_l, z_s):
     
@@ -61,7 +61,6 @@ def get_masked_data(psi, ra0, dec0, z0):
 def partial_profile(inp):    
     
     assert type(_S) == Table
-    return np.NaN
 
     Sigma_wsum    = np.zeros(N)
     DSigma_t_wsum = np.zeros(N)
@@ -69,6 +68,11 @@ def partial_profile(inp):
     N_inbin       = np.zeros(N)
     
     ra0, dec0, z0, Rv0 = inp
+    print(ra0.shape)
+    print(dec0.shape)
+    print(z0.shape)
+    print(Rv0.shape)
+    return np.NaN
 
     # for ni in range(N):
     # adentro del for, mask depende de n... solo quiero las gx en un anillo
