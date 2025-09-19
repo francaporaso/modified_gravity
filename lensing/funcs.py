@@ -90,7 +90,7 @@ def lenscat_load(name,
     if fullshape:
         L = L[:, mask]
     else:
-        L = L[[RV,RA,DEC,Z], mask]
+        L = L[[RV,RA,DEC,Z]][:, mask]
 
     if bool(NCHUNKS-1):
         if NCHUNKS > nvoids:
