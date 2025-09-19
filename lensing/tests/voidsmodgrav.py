@@ -154,7 +154,7 @@ def main(source_args, lens_args, profile_args):
     _ROUT   = profile_args['ROUT']
     _N      = profile_args['N']
     _NK     = profile_args['NK']
-    _NCORES = profile_args['ncores']
+    _NCORES = profile_args['NCORES']
 
     stacking(source_args, lens_args, profile_args)
 
