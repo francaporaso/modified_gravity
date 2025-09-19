@@ -13,7 +13,7 @@ _N : int        = None
 _NK : int       = None
 _NCORES : int   = None
 _S : Table      = None
-_binspace : function = None
+_binspace = None
 
 SC_CONSTANT : float = (c.value**2.0/(4.0*np.pi*G.value))*(pc.value/M_sun.value)*1.0e-6
 
