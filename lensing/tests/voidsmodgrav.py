@@ -60,15 +60,13 @@ def get_masked_data(psi, ra0, dec0, z0):
 ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
 def partial_profile(inp):    
     
-    assert type(_S) == Table
-
     Sigma_wsum    = np.zeros(N)
     DSigma_t_wsum = np.zeros(N)
     DSigma_x_wsum = np.zeros(N)
     N_inbin       = np.zeros(N)
     
     ra0, dec0, z0, Rv0 = inp
-    print(f'N: {_N:5d}, NK: {_NK:5d}, NCORES: {_NCORES:5d}, RIN-ROUT: {_RIN:3d}-{_ROUT:3d}')
+    print(f'N: {_N:5d}, NK: {_NK:5d}, NCORES: {_NCORES:5d}, RIN-ROUT: {_RIN:3f}-{_ROUT:3f}')
     return np.NaN
 
     # for ni in range(N):
