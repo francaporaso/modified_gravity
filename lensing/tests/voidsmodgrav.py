@@ -152,11 +152,11 @@ def stacking(source_args, lens_args, profile_args):
 
     # return Sigma, DSigma_t, DSigma_x 
 
-def main(profile_args, lens_args, source_args):
+def main(source_args, lens_args, profile_args):
     # only declare global when intending to modify them
 
 
-    stacking(lens_args)
+    stacking(source_args, lens_args, profile_args)
 
 
 if __name__ == '__main__':
@@ -213,6 +213,6 @@ if __name__ == '__main__':
 
     print('Start!')
     t1=time.time()
-    main(profile_args, lens_args, source_args)
+    main(source_args, lens_args, profile_args)
     print('End!')
     print(f'took {(time.time()-t1)/60.0} s')
