@@ -153,7 +153,7 @@ def main(source_args, lens_args, profile_args):
     _RIN    = profile_args['RIN']
     _ROUT   = profile_args['ROUT']
     _N      = profile_args['N']
-    _NK     = profile_args['Nk']
+    _NK     = profile_args['NK']
     _NCORES = profile_args['ncores']
 
     stacking(source_args, lens_args, profile_args)
