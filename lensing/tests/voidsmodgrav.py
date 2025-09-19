@@ -104,6 +104,8 @@ def partial_profile(inp):
         DSigma_x_wsum[nbin] = ex[mbin].sum()
         N_inbin[nbin]       = np.count_nonzero(mbin) ## idem mbin.sum(), faster
     
+    print(N_inbin.sum(), flush=True)
+
     return Sigma_wsum, DSigma_t_wsum, DSigma_x_wsum, N_inbin
 
 def stacking(source_args, lens_args, profile_args):
