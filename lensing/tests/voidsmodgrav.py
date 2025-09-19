@@ -19,14 +19,7 @@ SC_CONSTANT : float = (c.value**2.0/(4.0*np.pi*G.value))*(pc.value/M_sun.value)*
 
 def init_worker(source_args, profile_args):
     
-    global _RIN, _ROUT, _N, _NK, _NCORES, _S
-    global _binspace
-
-    _RIN    = profile_args['RIN']
-    _ROUT   = profile_args['ROUT']
-    _N      = profile_args['N']
-    _NK     = profile_args['Nk']
-    _NCORES = profile_args['ncores']
+    global _binspace, _S
 
     _S = sourcecat_load(**source_args)
 
@@ -155,6 +148,13 @@ def stacking(source_args, lens_args, profile_args):
 def main(source_args, lens_args, profile_args):
     # only declare global when intending to modify them
 
+    global _RIN, _ROUT, _N, _NK, _NCORES
+
+    _RIN    = profile_args['RIN']
+    _ROUT   = profile_args['ROUT']
+    _N      = profile_args['N']
+    _NK     = profile_args['Nk']
+    _NCORES = profile_args['ncores']
 
     stacking(source_args, lens_args, profile_args)
 
