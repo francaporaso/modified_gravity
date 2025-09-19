@@ -190,7 +190,7 @@ if __name__ == '__main__':
         z_max = z_max,
         delta_min = delta_min, # void type
         delta_max = delta_max, # void type
-        NCORES = NCORES,
+        NCORES = 1,
         NK = NK,
         fullshape=False,
     )
