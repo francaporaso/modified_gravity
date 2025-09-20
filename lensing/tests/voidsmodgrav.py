@@ -42,7 +42,7 @@ def sigma_crit(z_l, z_s):
 ## Cuentas en drive 'IATE/sphere_plane_cut.pdf'
 def get_masked_data(psi, ra0, dec0, z0):
     '''
-    objects are selected by intersecting a sphere and a plane
+    objects are selected by intersecting the sphere with a plane
     and keeping those inside the spherical cap.
     '''
 
@@ -73,6 +73,9 @@ def partial_profile(inp):
     psi = DEGxMPC*ROUT*Rv0
     
     catdata = get_masked_data(psi, ra0, dec0, z0)
+    print(catdata.info())
+    return np.NaN
+
     sigma_c = sigma_crit(z0, catdata['true_redshift_gal'])/Rv0
 
     rads, theta = eq2p2(
@@ -104,8 +107,6 @@ def partial_profile(inp):
         DSigma_x_wsum[nbin] = ex[mbin].sum()
         N_inbin[nbin]       = np.count_nonzero(mbin) ## idem mbin.sum(), faster
     
-    print(N_inbin.sum(), flush=True)
-
     return Sigma_wsum, DSigma_t_wsum, DSigma_x_wsum, N_inbin
 
 def stacking(source_args, lens_args, profile_args):
