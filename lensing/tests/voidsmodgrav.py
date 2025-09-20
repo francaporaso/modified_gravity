@@ -75,7 +75,7 @@ def partial_profile(inp):
     psi = DEGxMPC*ROUT*Rv0
     
     catdata = get_masked_data(psi, ra0, dec0, z0)
-    print(catdata.info(), flush=True)
+    print(catdata.info, flush=True)
     return np.NaN
 
     sigma_c = sigma_crit(z0, catdata['true_redshift_gal'])/Rv0
