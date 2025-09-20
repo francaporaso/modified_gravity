@@ -62,10 +62,10 @@ def partial_profile(inp):
     
     print('partial init', flush=True)
 
-    Sigma_wsum    = np.zeros(N)
-    DSigma_t_wsum = np.zeros(N)
-    DSigma_x_wsum = np.zeros(N)
-    N_inbin       = np.zeros(N)
+    # Sigma_wsum    = np.zeros(N)
+    # DSigma_t_wsum = np.zeros(N)
+    # DSigma_x_wsum = np.zeros(N)
+    # N_inbin       = np.zeros(N)
     
     Rv0, ra0, dec0, z0 = inp
     # for ni in range(N):
