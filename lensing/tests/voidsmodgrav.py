@@ -60,6 +60,8 @@ def get_masked_data(psi, ra0, dec0, z0):
 ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
 def partial_profile(inp):    
     
+    print('partial init', flush=True)
+
     Sigma_wsum    = np.zeros(N)
     DSigma_t_wsum = np.zeros(N)
     DSigma_x_wsum = np.zeros(N)
@@ -73,7 +75,7 @@ def partial_profile(inp):
     psi = DEGxMPC*ROUT*Rv0
     
     catdata = get_masked_data(psi, ra0, dec0, z0)
-    print(catdata.info())
+    print(catdata.info(), flush=True)
     return np.NaN
 
     sigma_c = sigma_crit(z0, catdata['true_redshift_gal'])/Rv0
