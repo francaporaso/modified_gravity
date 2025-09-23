@@ -1,10 +1,12 @@
-import numpy as np
+from argparse import ArgumentParser
 from astropy.cosmology import Planck18 as cosmo
 from astropy.constants import G,c,M_sun,pc
 from astropy.table import Table
-from multiprocessing import Pool
-from tqdm import tqdm
 import healpy as hp
+from multiprocessing import Pool
+import numpy as np
+import time
+from tqdm import tqdm
 
 from funcs import eq2p2, lenscat_load, sourcecat_load
 
@@ -163,13 +165,89 @@ def stacking(source_args, lens_args, profile_args):
 
 def main(source_args, lens_args, profile_args):
 
+    parser = ArgumentParser()
+    parser.add_argument('--lens_name', type=str, default='voids_LCDM_09.dat', action='store')
+    parser.add_argument('--source_name', type=str, default='l768_gr_z04-07_for02-03_w-pix_19304.fits', action='store')
+    parser.add_argument('--sample', type=str, default='TEST_LCDM_', action='store')
+    parser.add_argument('-c','--NCORES', type=int, default=2, action='store')
+    parser.add_argument('--Rv_min', type=float, default=1.0, action='store')
+    parser.add_argument('--Rv_max', type=float, default=50.0, action='store')
+    parser.add_argument('--z_min', type=float, default=0.0, action='store')
+    parser.add_argument('--z_max', type=float, default=0.6, action='store')
+    parser.add_argument('--delta_min', type=float, default=-1.0, action='store')
+    parser.add_argument('--delta_max', type=float, default=100.0, action='store')
+    parser.add_argument('--flag', type=float, default=2.0, action='store')
+    parser.add_argument('--RIN', type=float, default=0.05, action='store')
+    parser.add_argument('--ROUT', type=float, default=5.0, action='store')    
+    parser.add_argument('-N','--ndots', type=int, default=22, action='store')    
+    parser.add_argument('-K','--NK', type=int, default=100, action='store')    
+    parser.add_argument('--addnoise', action='store_true')
+    parser.add_argument('--binning', type='str', default='lin', action='store', choices=['lin', 'log'])
+    args = parser.parse_args()
+
+    lens_args = dict(
+        name = args.lens_name,
+        Rv_min = args.Rv_min,
+        Rv_max = args.Rv_max,
+        z_min = args.z_min,
+        z_max = args.z_max,
+        delta_min = args.delta_min, # void type
+        delta_max = args.delta_max, # void type
+        NK = args.NK,
+        fullshape=False,
+    )
+
+    source_args = dict(
+        name = args.source_name,
+    )
+
+    profile_args = dict(
+        RIN = args.RIN,
+        ROUT = args.ROUT,
+        N = args.N,
+        NK = args.NK,
+        NSIDE = 64,
+        NCORES = args.NCORES,
+        binning = args.binning,
+        name = args.sample,
+        noise = args.addnoise
+    )
+
+    if lens_args['delta_max']<=0:
+        voidtype = 'R'
+    elif lens_args['delta_min']>=0:
+        voidtype = 'S'
+    else:
+        voidtype = 'all'
+
+    # program arguments
+    print(f' {" Program arguments ":=^60}')
+    print(' Lens cat '+f'{": ":.>10}{lens_args["name"]}')
+    print(' Source cat '+f'{": ":.>8}{source_args["name"]}')
+    print(' Output file '+f'{": ":.>7}{profile_args["name"]}')
+    print(' NCORES '+f'{": ":.>12}{profile_args["NCORES"]}\n')
+    
+    # lens arguments
+    print(f' {" Void sample ":=^60}')
+    print(' Radii '+f'{": ":.>13}[{lens_args["Rv_min"]:.2f}, {lens_args["Rv_max"]:.2f}) Mpc/h')
+    print(' Redshift '+f'{": ":.>10}[{lens_args["z_min"]:.2f}, {lens_args["z_max"]:.2f})')
+    print(' Type '+f'{": ":.>14}[{lens_args["delta_min"]},{lens_args["delta_max"]}) => {voidtype}\n')
+    # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
+    #print('N voids: '.ljust(15,'.'), f' {nvoids}'.rjust(15,'.'),sep='')
+
+    # profile arguments
+    print(f'{" Profile arguments ":=^60}')
+    print(' RMIN '+f'{": ":.>14}{profile_args["RIN"]:.2f}')
+    print(' RMAX '+f'{": ":.>14}{profile_args["ROUT"]:.2f}')
+    print(' N '+f'{": ":.>17}{profile_args["N"]:<2d}')
+    print(' NK '+f'{": ":.>16}{profile_args["NK"]:<2d}')
+    print(' Shape Noise '+f'{": ":.>7}{profile_args["noise"]}\n')
+
     res = Table(dict(zip(('Sigma','DSigma_t','DSigma_x'),stacking(source_args, lens_args, profile_args))))
     res.write('test.fits', format='fits', overwrite=True)
     print('Saved in "test.fits"', flush=True)
 
 if __name__ == '__main__':
-
-    import time
 
     lens_name = 'voids_LCDM_09.dat'
     Rv_min = 10.0
