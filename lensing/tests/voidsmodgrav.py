@@ -167,6 +167,8 @@ def stacking(source_args, lens_args, profile_args):
         DSigma_t_wsum += np.tile(r[1], (NK+1,1))*km
         DSigma_x_wsum += np.tile(r[2], (NK+1,1))*km
 
+    print(N_inbin)
+    return np.nan
     Sigma = Sigma_wsum/N_inbin
     DSigma_t = DSigma_t_wsum/N_inbin
     DSigma_x = DSigma_x_wsum/N_inbin
