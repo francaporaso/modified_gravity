@@ -189,7 +189,7 @@ if __name__ == '__main__':
     delta_min = -1.0 # void type
     delta_max = -0.1 # void type
 
-    source_name = 'l768_gr_z04-07_for02-03_w_trig_19304.fits'
+    source_name = 'l768_gr_z04-07_for02-03_w-pix_19304.fits'
     NSIDE = 64
 
     RIN = 0.1
