@@ -74,7 +74,7 @@ def get_masked_data(psi, ra0, dec0, z0):
 ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
 def partial_profile(inp):    
     
-    print('partial init', flush=True)
+    #print('partial init', flush=True)
 
     Sigma_wsum    = np.zeros(_N)
     DSigma_t_wsum = np.zeros(_N)
@@ -89,7 +89,7 @@ def partial_profile(inp):
     psi = DEGxMPC*_ROUT*Rv0
     
     catdata = get_masked_data(psi, ra0, dec0, z0)
-    print(catdata.info, flush=True)
+    #print(catdata.info, flush=True)
 
     sigma_c = sigma_crit(z0, catdata['true_redshift_gal'])/Rv0
 
@@ -136,6 +136,7 @@ def stacking(source_args, lens_args, profile_args):
     DSigma_x_wsum = np.zeros((NK+1, N))
 
     L, K, nvoids = lenscat_load(**lens_args)
+    K = K[:, :nvoids] # me quedo con los que voy a usar
     print(f'Nvoids: {nvoids}', flush=True)
 
     with Pool(processes=NCORES, initializer=init_worker, 
@@ -156,12 +157,15 @@ def stacking(source_args, lens_args, profile_args):
     #         pool.close()
     #         pool.join()
 
+    print(type(resmap))
+    print(resmap.shape)
+
     for j,r in enumerate(resmap):
-        km = np.tile(K[j], (_N,1)).T
-        N_inbin += np.tile(r[-1], (_NK+1,1))*km
-        Sigma_wsum += np.tile(r[0], (_NK+1,1))*km
-        DSigma_t_wsum += np.tile(r[1], (_NK+1,1))*km
-        DSigma_x_wsum += np.tile(r[2], (_NK+1,1))*km
+        km = np.tile(K[:,j], (N,1)).T
+        N_inbin += np.tile(r[-1], (NK+1,1))*km
+        Sigma_wsum += np.tile(r[0], (NK+1,1))*km
+        DSigma_t_wsum += np.tile(r[1], (NK+1,1))*km
+        DSigma_x_wsum += np.tile(r[2], (NK+1,1))*km
 
     Sigma = Sigma_wsum/N_inbin
     DSigma_t = DSigma_t_wsum/N_inbin
