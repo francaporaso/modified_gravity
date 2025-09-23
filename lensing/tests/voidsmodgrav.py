@@ -144,7 +144,7 @@ def stacking(source_args, lens_args, profile_args):
               initargs=(source_args, profile_args)) as pool:
 
         #pool.map(partial_profile, L.T)
-        resmap = np.array(pool.map(partial_profile, L.T))
+        resmap = np.array(tqdm.tqdm(pool.map(partial_profile, L.T), total=nvoids))
         pool.close()
         pool.join()
 
