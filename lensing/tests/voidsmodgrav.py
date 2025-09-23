@@ -76,21 +76,20 @@ def partial_profile(inp):
     
     print('partial init', flush=True)
 
-    # Sigma_wsum    = np.zeros(N)
-    # DSigma_t_wsum = np.zeros(N)
-    # DSigma_x_wsum = np.zeros(N)
-    # N_inbin       = np.zeros(N)
+    Sigma_wsum    = np.zeros(_N)
+    DSigma_t_wsum = np.zeros(_N)
+    DSigma_x_wsum = np.zeros(_N)
+    N_inbin       = np.zeros(_N)
     
     Rv0, ra0, dec0, z0 = inp
     # for ni in range(N):
     # adentro del for, mask depende de n... solo quiero las gx en un anillo
 
     DEGxMPC = cosmo.arcsec_per_kpc_proper(z0).to('deg/Mpc').value
-    psi = DEGxMPC*ROUT*Rv0
+    psi = DEGxMPC*_ROUT*Rv0
     
     catdata = get_masked_data(psi, ra0, dec0, z0)
     print(catdata.info, flush=True)
-    return np.NaN
 
     sigma_c = sigma_crit(z0, catdata['true_redshift_gal'])/Rv0
 
@@ -142,8 +141,8 @@ def stacking(source_args, lens_args, profile_args):
     with Pool(processes=NCORES, initializer=init_worker, 
               initargs=(source_args, profile_args)) as pool:
 
-        pool.map(partial_profile, L.T)
-        #resmap = np.array(pool.map(partial_profile, L.T))
+        #pool.map(partial_profile, L.T)
+        resmap = np.array(pool.map(partial_profile, L.T))
         pool.close()
         pool.join()
 
@@ -157,24 +156,24 @@ def stacking(source_args, lens_args, profile_args):
     #         pool.close()
     #         pool.join()
 
-        # for j,r in enumerate(resmap):
-        #     km = np.tile(K[i][j], (_N,1)).T
-        #     N_inbin += np.tile(r[-1], (_NK+1,1))*km
-        #     Sigma_wsum += np.tile(r[0], (_NK+1,1))*km
-        #     DSigma_t_wsum += np.tile(r[1], (_NK+1,1))*km
-        #     DSigma_x_wsum += np.tile(r[2], (_NK+1,1))*km
+    for j,r in enumerate(resmap):
+        km = np.tile(K[j], (_N,1)).T
+        N_inbin += np.tile(r[-1], (_NK+1,1))*km
+        Sigma_wsum += np.tile(r[0], (_NK+1,1))*km
+        DSigma_t_wsum += np.tile(r[1], (_NK+1,1))*km
+        DSigma_x_wsum += np.tile(r[2], (_NK+1,1))*km
 
-    # Sigma = Sigma_wsum/N_inbin
-    # DSigma_t = DSigma_t_wsum/N_inbin
-    # DSigma_x = DSigma_x_wsum/N_inbin
+    Sigma = Sigma_wsum/N_inbin
+    DSigma_t = DSigma_t_wsum/N_inbin
+    DSigma_x = DSigma_x_wsum/N_inbin
 
-    # return Sigma, DSigma_t, DSigma_x 
+    return Sigma, DSigma_t, DSigma_x 
 
 def main(source_args, lens_args, profile_args):
     # only declare global when intending to modify them
 
 
-    stacking(source_args, lens_args, profile_args)
+    print(stacking(source_args, lens_args, profile_args))
 
 
 if __name__ == '__main__':
