@@ -141,10 +141,11 @@ def stacking(source_args, lens_args, profile_args):
 
     print('Starting pool...', flush=True)
     with Pool(processes=NCORES, initializer=init_worker, 
-              initargs=(source_args, profile_args)) as pool:
+              initargs=(source_args, profile_args)) as pool, tqdm(total=nvoids) as pbar:
 
-        #pool.map(partial_profile, L.T)
-        resmap = np.array(tqdm(pool.map(partial_profile, L.T), total=nvoids))
+        resmap = np.array(pool.map(partial_profile, L.T))
+        pbar.update()
+        pbar.refresh()
         pool.close()
         pool.join()
 
