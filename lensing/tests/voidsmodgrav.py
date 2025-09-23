@@ -135,7 +135,7 @@ def stacking(source_args, lens_args, profile_args):
     DSigma_t_wsum = np.zeros((NK+1, N))
     DSigma_x_wsum = np.zeros((NK+1, N))
 
-    L, K, nvoids = lenscat_load(**lens_args)
+    L, K, nvoids = lenscat_load(**lens_args)*km
     K = K[:, :nvoids] # me quedo con los que voy a usar
     print(f'Nvoids: {nvoids}', flush=True)
 
@@ -144,7 +144,7 @@ def stacking(source_args, lens_args, profile_args):
               initargs=(source_args, profile_args)) as pool:
 
         #pool.map(partial_profile, L.T)
-        resmap = np.array(tqdm.tqdm(pool.map(partial_profile, L.T), total=nvoids))
+        resmap = np.array(tqdm(pool.map(partial_profile, L.T), total=nvoids))
         pool.close()
         pool.join()
 
