@@ -141,11 +141,9 @@ def stacking(source_args, lens_args, profile_args):
 
     print('Starting pool...', flush=True)
     with Pool(processes=NCORES, initializer=init_worker, 
-              initargs=(source_args, profile_args)) as pool, tqdm(total=nvoids) as pbar:
+              initargs=(source_args, profile_args)) as pool:
 
-        resmap = np.array(pool.map(partial_profile, L.T))
-        pbar.update()
-        pbar.refresh()
+        resmap = np.array(tqdm(pool.imap_unordered(partial_profile, L.T), total=nvoids))
         pool.close()
         pool.join()
 
@@ -166,7 +164,7 @@ def stacking(source_args, lens_args, profile_args):
 def main(source_args, lens_args, profile_args):
 
     res = Table(dict(zip(('Sigma','DSigma_t','DSigma_x'),stacking(source_args, lens_args, profile_args))))
-    res.write('test.fits', format='fits')
+    res.write('test.fits', format='fits', overwrite=True)
     print('Saved in "test.fits"', flush=True)
 
 if __name__ == '__main__':
