@@ -192,7 +192,7 @@ if __name__ == '__main__':
     z_min = 0.2
     z_max = 0.22
     delta_min = -1.0 # void type
-    delta_max = -0.1 # void type
+    delta_max = -0.2 # void type
 
     source_name = 'l768_gr_z04-07_for02-03_w-pix_19304.fits'
     NSIDE = 64
