@@ -4,6 +4,7 @@ from astropy.constants import G,c,M_sun,pc
 from astropy.table import Table
 from multiprocessing import Pool
 from tqdm import tqdm
+import healpy as hp
 
 from funcs import eq2p2, lenscat_load, sourcecat_load
 
@@ -17,9 +18,11 @@ _NCORES : int   = None
 _S : Table      = None
 _binspace = None
 
+_NSIDE : int = None
+
 def init_worker(source_args, profile_args):
     
-    global _S
+    global _S, _NSIDE
     global _RIN, _ROUT, _N, _NK, _NCORES, _binspace
 
     _RIN    = profile_args['RIN']
@@ -28,8 +31,8 @@ def init_worker(source_args, profile_args):
     _NK     = profile_args['NK']
     _NCORES = profile_args['NCORES']
     _binspace = np.linspace if profile_args['binning']=='lin' else np.logspace
+    _NSIDE = source_args['NSIDE']
     _S = sourcecat_load(**source_args)
-
     #print(f'worker initialized: {type(_S)}', flush=True)
 
 def sigma_crit(z_l, z_s):
@@ -39,22 +42,33 @@ def sigma_crit(z_l, z_s):
     d_ls = cosmo.angular_diameter_distance_z1z2(z_l, z_s).value
     return SC_CONSTANT*(d_s/(d_ls*d_l))
 
-## Cuentas en drive 'IATE/sphere_plane_cut.pdf'
+# ## Cuentas en drive 'IATE/sphere_plane_cut.pdf'
+# def get_masked_data_intersection(psi, ra0, dec0, z0):
+#     '''
+#     objects are selected by intersecting the sphere with a plane
+#     and keeping those inside the spherical cap.
+#     '''
+
+#     ra0_rad = np.deg2rad(ra0)
+#     dec0_rad = np.deg2rad(dec0)
+#     cos_dec0 = np.cos(dec0_rad)
+
+#     mask_z = _S['true_redshift_gal']>z0+0.1
+#     mask_field = (cos_dec0*np.cos(ra0_rad)*_S['cos_dec_gal']*_S['cos_ra_gal']
+#                 + cos_dec0*np.sin(ra0_rad)*_S['cos_dec_gal']*_S['sin_ra_gal'] 
+#                 + np.sin(dec0_rad)*_S['sin_dec_gal'] >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
+    
+#     return _S[mask_field&mask_z]
+
 def get_masked_data(psi, ra0, dec0, z0):
     '''
-    objects are selected by intersecting the sphere with a plane
-    and keeping those inside the spherical cap.
+    objects are selected by pixel on a disc of rad=psi+pad.
     '''
 
-    ra0_rad = np.deg2rad(ra0)
-    dec0_rad = np.deg2rad(dec0)
-    cos_dec0 = np.cos(dec0_rad)
-
     mask_z = _S['true_redshift_gal']>z0+0.1
-    mask_field = (cos_dec0*np.cos(ra0_rad)*_S['cos_dec_gal']*_S['cos_ra_gal']
-                + cos_dec0*np.sin(ra0_rad)*_S['cos_dec_gal']*_S['sin_ra_gal'] 
-                + np.sin(dec0_rad)*_S['sin_dec_gal'] >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
-    
+    pix_idx = hp.query(_NSIDE, vec=hp.ang2vec(ra0, dec0, lonlat=True), radius=np.deg2rad(psi+0.5))
+    mask_field = np.isin(_S['pix'], pix_idx)
+
     return _S[mask_field&mask_z]
 
 ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
@@ -176,6 +190,7 @@ if __name__ == '__main__':
     delta_max = -0.1 # void type
 
     source_name = 'l768_gr_z04-07_for02-03_w_trig_19304.fits'
+    NSIDE = 64
 
     RIN = 0.1
     ROUT = 1.0
@@ -197,7 +212,8 @@ if __name__ == '__main__':
     )
 
     source_args = dict(
-        name = source_name
+        name = source_name,
+        NSIDE = NSIDE
     )
 
     profile_args = dict(
