@@ -4,6 +4,7 @@ from astropy.coordinates import angular_separation, position_angle
 #from astropy.constants import G,c,M_sun,pc
 #from astropy.io import fits
 from astropy.table import Table
+import healpy as hp
 #parameters
 # cvel = c.value;    # Speed of light (m.s-1)
 # G    = G.value;    # Gravitational constant (m3.kg-1.s-2)
@@ -103,9 +104,11 @@ def lenscat_load(name,
 
     return L, K, nvoids
 
-def sourcecat_load(name):
+def sourcecat_load(name, NSIDE):
     folder = '/home/fcaporaso/cats/L768/'
     S = Table.read(folder+name, memmap=True, format='fits')
+    S['pix'] = hp.ang2pix(NSIDE, S['ra_gal'], S['dec_gal'], lonlat=True)
+    S.sort('pix')
     return S
 
     # ra_gal_rad  = np.deg2rad(S['ra_gal'])
