@@ -107,8 +107,6 @@ def lenscat_load(name,
 def sourcecat_load(name, NSIDE):
     folder = '/home/fcaporaso/cats/L768/'
     S = Table.read(folder+name, memmap=True, format='fits')
-    S['pix'] = hp.ang2pix(NSIDE, S['ra_gal'], S['dec_gal'], lonlat=True)
-    S.sort('pix')
     return S
 
     # ra_gal_rad  = np.deg2rad(S['ra_gal'])
