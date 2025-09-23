@@ -135,7 +135,7 @@ def stacking(source_args, lens_args, profile_args):
     DSigma_t_wsum = np.zeros((NK+1, N))
     DSigma_x_wsum = np.zeros((NK+1, N))
 
-    L, K, nvoids = lenscat_load(**lens_args)*km
+    L, K, nvoids = lenscat_load(**lens_args)
     K = K[:, :nvoids] # me quedo con los que voy a usar
     print(f'Nvoids: {nvoids}', flush=True)
 
