@@ -163,7 +163,7 @@ def stacking(source_args, lens_args, profile_args):
 
     return Sigma, DSigma_t, DSigma_x 
 
-def main(source_args, lens_args, profile_args):
+def main():
 
     parser = ArgumentParser()
     parser.add_argument('--lens_name', type=str, default='voids_LCDM_09.dat', action='store')
@@ -301,6 +301,6 @@ if __name__ == '__main__':
 
     print('Start!')
     t1=time.time()
-    main(source_args, lens_args, profile_args)
+    main()
     print('End!')
     print(f'took {(time.time()-t1)/60.0} min')
