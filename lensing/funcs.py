@@ -104,15 +104,7 @@ def lenscat_load(name,
 
     return L, K, nvoids
 
-def sourcecat_load(name, NSIDE):
+def sourcecat_load(name):
     folder = '/home/fcaporaso/cats/L768/'
     S = Table.read(folder+name, memmap=True, format='fits')
     return S
-
-    # ra_gal_rad  = np.deg2rad(S['ra_gal'])
-    # dec_gal_rad = np.deg2rad(S['dec_gal'])
-    # S['cos_ra_gal']  = np.cos(ra_gal_rad)
-    # S['sin_ra_gal']  = np.sin(ra_gal_rad)
-    # S['cos_dec_gal'] = np.cos(dec_gal_rad)
-    # S['sin_dec_gal'] = np.sin(dec_gal_rad)
-
