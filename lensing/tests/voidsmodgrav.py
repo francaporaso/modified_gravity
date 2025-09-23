@@ -30,8 +30,8 @@ def init_worker(source_args, profile_args):
     _N      = profile_args['N']
     _NK     = profile_args['NK']
     _NCORES = profile_args['NCORES']
+    _NSIDE = profile_args['NSIDE']
     _binspace = np.linspace if profile_args['binning']=='lin' else np.logspace
-    _NSIDE = source_args['NSIDE']
     _S = sourcecat_load(**source_args)
     #print(f'worker initialized: {type(_S)}', flush=True)
 
@@ -218,7 +218,6 @@ if __name__ == '__main__':
 
     source_args = dict(
         name = source_name,
-        NSIDE = NSIDE
     )
 
     profile_args = dict(
@@ -226,6 +225,7 @@ if __name__ == '__main__':
         ROUT = ROUT,
         N = N,
         NK = NK,
+        NSIDE = NSIDE,
         NCORES = NCORES,
         binning = 'lin'
     )
