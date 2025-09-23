@@ -25,7 +25,7 @@ def get_masked_data(psi, ra0, dec0, z0):
 #S = Table.read('/home/fcaporaso/cats/L768/l768_gr_z04-07_for02-3_w_trig_19304.fits', format='fits', memmap=True)
 rng = np.random.default_rng(1)
 N = int(1e8)
-
+print(f'{N=}')
 S = Table({
     'ra_gal':360.0*rng.random(N),
     'dec_gal':90.0*rng.random(N),
@@ -44,41 +44,41 @@ S['cos_ra_gal'] = np.cos(np.deg2rad(S['ra_gal']))
 S['cos_dec_gal'] = np.cos(np.deg2rad(S['dec_gal']))
 S['sin_ra_gal'] = np.sin(np.deg2rad(S['ra_gal']))
 S['sin_dec_gal'] = np.sin(np.deg2rad(S['dec_gal']))
-print(f'Trig calcs took {time.time()-t1}')
+print(f'Trig calcs took {time.time()-t1:.5f} s')
 
 NSIDE = 2**6
 print(f'{NSIDE=}')
 t1=time.time()
 S['pix'] = hp.ang2pix(NSIDE, S['ra_gal'], S['dec_gal'], lonlat=True)
-print(f'Healpy pixelation took {time.time()-t1}')
+print(f'Healpy pixelation took {time.time()-t1:.5f} s')
 
-# # === test 1
-# # === healpy
-# t1 = time.time()
-# pix_idx = hp.query_disc(nside=NSIDE, vec=hp.ang2vec(ra0, dec0, lonlat=True), radius=np.deg2rad(psi+pad))
-# mask = np.isin(S['pix'], pix_idx)
-# t_hp = time.time() - t1
+# === test 1
+# === healpy
+t1 = time.time()
+pix_idx = hp.query_disc(nside=NSIDE, vec=hp.ang2vec(ra0, dec0, lonlat=True), radius=np.deg2rad(psi+pad))
+mask = np.isin(S['pix'], pix_idx)
+t_hp = time.time() - t1
 
-# print(f'Healpy took {t_hp} s')
+print(f'Healpy took {t_hp} s')
 
-# # === test 2
-# # === sphere+plane intersection
+# === test 2
+# === sphere+plane intersection
 
-# t1 = time.time()
-# mask2 = get_masked_data(psi, ra0, dec0, 0.0)
-# t_intrsc = time.time()- t1
+t1 = time.time()
+mask2 = get_masked_data(psi, ra0, dec0, 0.0)
+t_intrsc = time.time()- t1
 
-# print(f'Intersection took {t_intrsc} s')
+print(f'Intersection took {t_intrsc} s')
 
-# print(f'Healpy is {t_intrsc/t_hp} times faster than intersect')
+print(f'Healpy is {t_intrsc/t_hp} times faster than intersect')
 
-# # === consistency check
-# # === are the masks similar?
+# === consistency check
+# === are the masks similar?
 
-# plt.scatter(ra0, dec0, s=10, c='r')
-# #plt.scatter(S['ra_gal'], S['dec_gal'], s=1, alpha=0.3, c='dimgray')
-# plt.scatter(S['ra_gal'][mask2], S['dec_gal'][mask2], s=5, marker='s', alpha=0.5, facecolor='none', c='C1')
-# plt.scatter(S['ra_gal'][mask], S['dec_gal'][mask], s=2, alpha=0.5, c='C0')
-# # for p in pix_idx:
-# #     plt.scatter(S['ra_gal'][S['pix']==p], S['dec_gal'][S['pix']==p], s=5, alpha=0.5, c='C0')
-# plt.show()
+plt.scatter(ra0, dec0, s=10, c='r')
+#plt.scatter(S['ra_gal'], S['dec_gal'], s=1, alpha=0.3, c='dimgray')
+plt.scatter(S['ra_gal'][mask2], S['dec_gal'][mask2], s=5, marker='s', alpha=0.5, facecolor='none', c='C1')
+plt.scatter(S['ra_gal'][mask], S['dec_gal'][mask], s=2, alpha=0.5, c='C0')
+# for p in pix_idx:
+#     plt.scatter(S['ra_gal'][S['pix']==p], S['dec_gal'][S['pix']==p], s=5, alpha=0.5, c='C0')
+plt.show()
