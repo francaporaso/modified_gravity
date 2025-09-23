@@ -21,7 +21,7 @@ _binspace = None
 _NSIDE : int = None
 
 def init_worker(source_args, profile_args):
-    
+
     global _S, _NSIDE
     global _RIN, _ROUT, _N, _NK, _NCORES, _binspace
 
@@ -139,6 +139,7 @@ def stacking(source_args, lens_args, profile_args):
     K = K[:, :nvoids] # me quedo con los que voy a usar
     print(f'Nvoids: {nvoids}', flush=True)
 
+    print('Starting pool...', flush=True)
     with Pool(processes=NCORES, initializer=init_worker, 
               initargs=(source_args, profile_args)) as pool:
 
@@ -147,19 +148,7 @@ def stacking(source_args, lens_args, profile_args):
         pool.close()
         pool.join()
 
-    # for i, Li in enumerate(tqdm(L)):
-    #     num = len(Li)
-    #     inp = np.array([Li.T[1], Li.T[2], Li.T[3], Li.T[0]]).T
-    #     with Pool(processes=num, 
-    #               initializer=init_worker, 
-    #               initargs=(source_args, profile_args)) as pool:
-    #         resmap = np.array(pool.map(partial_profile, inp))
-    #         pool.close()
-    #         pool.join()
-
-    print(type(resmap))
-    print(resmap.shape)
-
+    print('Pool ended, stacking...', flush=True)
     for j,r in enumerate(resmap):
         km = np.tile(K[:,j], (N,1)).T
         N_inbin += np.tile(r[-1], (NK+1,1))*km
@@ -167,8 +156,6 @@ def stacking(source_args, lens_args, profile_args):
         DSigma_t_wsum += np.tile(r[1], (NK+1,1))*km
         DSigma_x_wsum += np.tile(r[2], (NK+1,1))*km
 
-    print(N_inbin)
-    return np.nan
     Sigma = Sigma_wsum/N_inbin
     DSigma_t = DSigma_t_wsum/N_inbin
     DSigma_x = DSigma_x_wsum/N_inbin
@@ -176,11 +163,10 @@ def stacking(source_args, lens_args, profile_args):
     return Sigma, DSigma_t, DSigma_x 
 
 def main(source_args, lens_args, profile_args):
-    # only declare global when intending to modify them
 
-
-    print(stacking(source_args, lens_args, profile_args))
-
+    res = Table(dict(zip(('Sigma','DSigma_t','DSigma_x'),stacking(source_args, lens_args, profile_args))))
+    res.write('test.fits', format='fits')
+    print('Saved in "test.fits"', flush=True)
 
 if __name__ == '__main__':
 
@@ -200,7 +186,7 @@ if __name__ == '__main__':
     RIN = 0.1
     ROUT = 1.0
     N = 10
-    NK = 25
+    NK = 25 ## Debe ser siempre un cuadrado!
     NCORES = 8
 
     lens_args = dict(
