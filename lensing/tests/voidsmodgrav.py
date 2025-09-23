@@ -139,7 +139,7 @@ def stacking(source_args, lens_args, profile_args):
 
     L, K, nvoids = lenscat_load(**lens_args)
     K = K[:, :nvoids] # me quedo con los que voy a usar
-    print(f'Nvoids: {nvoids}', flush=True)
+    print(' nvoids '+f'{": ":.<15}{nvoids}', flush=True)
 
     print('Starting pool...', flush=True)
     with Pool(processes=NCORES, initializer=init_worker, 
@@ -169,7 +169,7 @@ def main():
     parser.add_argument('--lens_name', type=str, default='voids_LCDM_09.dat', action='store')
     parser.add_argument('--source_name', type=str, default='l768_gr_z04-07_for02-03_w-pix_19304.fits', action='store')
     parser.add_argument('--sample', type=str, default='TEST_LCDM_', action='store')
-    parser.add_argument('-c','--NCORES', type=int, default=2, action='store')
+    parser.add_argument('-c','--NCORES', type=int, default=8, action='store')
     parser.add_argument('--Rv_min', type=float, default=1.0, action='store')
     parser.add_argument('--Rv_max', type=float, default=50.0, action='store')
     parser.add_argument('--z_min', type=float, default=0.0, action='store')
@@ -218,7 +218,7 @@ def main():
     elif lens_args['delta_min']>=0:
         voidtype = 'S'
     else:
-        voidtype = 'all'
+        voidtype = 'mixed'
 
     # program arguments
     print(f' {" Program arguments ":=^60}')
@@ -241,6 +241,7 @@ def main():
     print(' RMAX '+f'{": ":.>14}{profile_args["ROUT"]:.2f}')
     print(' N '+f'{": ":.>17}{profile_args["N"]:<2d}')
     print(' NK '+f'{": ":.>16}{profile_args["NK"]:<2d}')
+    print(' Binning '+f'{": ":.>11}{profile_args["binning"]}')
     print(' Shape Noise '+f'{": ":.>7}{profile_args["noise"]}\n')
 
     res = Table(dict(zip(('Sigma','DSigma_t','DSigma_x'),stacking(source_args, lens_args, profile_args))))
@@ -284,13 +285,15 @@ if __name__ == '__main__':
     )
 
     profile_args = dict(
+        name = 'test.fits',
         RIN = RIN,
         ROUT = ROUT,
         N = N,
         NK = NK,
         NSIDE = NSIDE,
         NCORES = NCORES,
-        binning = 'lin'
+        binning = 'lin',
+        noise = False
     )
 
     # cosmo_params = dict(
