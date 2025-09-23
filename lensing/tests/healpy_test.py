@@ -40,12 +40,12 @@ dec0 = 30.0 # deg
 
 # == catalog generation
 
-t1 = time.time()
-S['cos_ra_gal'] = np.cos(np.deg2rad(S['ra_gal']))
-S['cos_dec_gal'] = np.cos(np.deg2rad(S['dec_gal']))
-S['sin_ra_gal'] = np.sin(np.deg2rad(S['ra_gal']))
-S['sin_dec_gal'] = np.sin(np.deg2rad(S['dec_gal']))
-print(f'Trig calcs took {time.time()-t1:.5f} s')
+# t1 = time.time()
+# S['cos_ra_gal'] = np.cos(np.deg2rad(S['ra_gal']))
+# S['cos_dec_gal'] = np.cos(np.deg2rad(S['dec_gal']))
+# S['sin_ra_gal'] = np.sin(np.deg2rad(S['ra_gal']))
+# S['sin_dec_gal'] = np.sin(np.deg2rad(S['dec_gal']))
+# print(f'Trig calcs took {time.time()-t1:.5f} s')
 
 NSIDE = 2**6
 print(f'{NSIDE=}')
