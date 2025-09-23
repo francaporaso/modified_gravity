@@ -182,7 +182,7 @@ def main():
     parser.add_argument('-N','--ndots', type=int, default=22, action='store')    
     parser.add_argument('-K','--NK', type=int, default=100, action='store')    
     parser.add_argument('--addnoise', action='store_true')
-    parser.add_argument('--binning', type='str', default='lin', action='store', choices=['lin', 'log'])
+    parser.add_argument('--binning', type=str, default='lin', action='store', choices=['lin', 'log'])
     args = parser.parse_args()
 
     lens_args = dict(
