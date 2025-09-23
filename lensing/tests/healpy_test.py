@@ -65,13 +65,25 @@ print(f'Healpy took {t_hp} s')
 # === test 2
 # === sphere+plane intersection
 
+# t1 = time.time()
+# mask2 = get_masked_data(psi, ra0, dec0, 0.0)
+# t_intrsc = time.time()- t1
+
+# print(f'Intersection took {t_intrsc} s')
+
+# print(f'Healpy is {t_intrsc/t_hp} times faster than intersect')
+
+# === test 3
+# === healpy ordered pix col
+S.sort('pix')
 t1 = time.time()
-mask2 = get_masked_data(psi, ra0, dec0, 0.0)
-t_intrsc = time.time()- t1
+pix_idx = hp.query_disc(nside=NSIDE, vec=hp.ang2vec(ra0, dec0, lonlat=True), radius=np.deg2rad(psi+pad))
+mask = np.isin(S['pix'], pix_idx)
+t_hp_ord = time.time() - t1
 
-print(f'Intersection took {t_intrsc} s')
+print(f'Healpy ordered took {t_hp_ord} s')
+print(f'Healpy ordered is {t_hp/t_hp_ord} times faster than unordered healpy')
 
-print(f'Healpy is {t_intrsc/t_hp} times faster than intersect')
 
 # === consistency check
 # === are the masks similar?
