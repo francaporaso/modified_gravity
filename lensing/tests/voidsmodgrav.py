@@ -179,7 +179,7 @@ def main():
     parser.add_argument('--flag', type=float, default=2.0, action='store')
     parser.add_argument('--RIN', type=float, default=0.05, action='store')
     parser.add_argument('--ROUT', type=float, default=5.0, action='store')    
-    parser.add_argument('-N','--ndots', type=int, default=22, action='store')    
+    parser.add_argument('-N','--NDOTS', type=int, default=22, action='store')    
     parser.add_argument('-K','--NK', type=int, default=100, action='store')    
     parser.add_argument('--addnoise', action='store_true')
     parser.add_argument('--binning', type=str, default='lin', action='store', choices=['lin', 'log'])
@@ -204,7 +204,7 @@ def main():
     profile_args = dict(
         RIN = args.RIN,
         ROUT = args.ROUT,
-        N = args.N,
+        N = args.NDOTS,
         NK = args.NK,
         NSIDE = 64,
         NCORES = args.NCORES,
