@@ -200,7 +200,7 @@ if __name__ == '__main__':
     RIN = 0.1
     ROUT = 1.0
     N = 10
-    NK = 10
+    NK = 25
     NCORES = 8
 
     lens_args = dict(
