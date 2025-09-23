@@ -143,12 +143,12 @@ def stacking(source_args, lens_args, profile_args):
     with Pool(processes=NCORES, initializer=init_worker, 
               initargs=(source_args, profile_args)) as pool:
 
-        resmap = np.array(tqdm(pool.imap_unordered(partial_profile, L.T), total=nvoids))
+        resmap = list(tqdm(pool.imap_unordered(partial_profile, L.T), total=nvoids))
         pool.close()
         pool.join()
 
     print('Pool ended, stacking...', flush=True)
-    for j,r in enumerate(resmap):
+    for j,r in enumerate(np.array(resmap)):
         km = np.tile(K[:,j], (N,1)).T
         N_inbin += np.tile(r[-1], (NK+1,1))*km
         Sigma_wsum += np.tile(r[0], (NK+1,1))*km
