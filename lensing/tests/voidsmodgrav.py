@@ -118,7 +118,7 @@ def partial_profile(inp):
     bines = _binspace(_RIN, _ROUT, _N+1)
     dig = np.digitize((np.rad2deg(rads)/DEGxMPC)/Rv0, bines)
 
-    for nbin in range(N):
+    for nbin in range(_N):
         mbin = dig == nbin+1              
         Sigma_wsum[nbin]    = k[mbin].sum()
         DSigma_t_wsum[nbin] = et[mbin].sum()
