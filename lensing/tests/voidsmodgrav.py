@@ -290,8 +290,8 @@ def main():
     table_hdu = fits.BinTableHDU(table, name='profiles') 
  
     output_file = (f'results/{profile_args["name"]}_L{lens_args["name"][11:-4]}_'
-                    f'Rv{lens_args["Rv_min"]:02.0f}-{lens_args["Rv_max"]:02.0f}_'
-                    f'z{100*lens_args["z_min"]:03.0f}-{100*lens_args["z_max"]:03.0f}_type{voidtype}.fits')
+                   f'Rv{lens_args["Rv_min"]:02.0f}-{lens_args["Rv_max"]:02.0f}_'
+                   f'z{100*lens_args["z_min"]:03.0f}-{100*lens_args["z_max"]:03.0f}_type{voidtype}.fits')
 
     hdul = fits.HDUList([primary_hdu, table_hdu] + cov_hdu)
     hdul.writeto(output_file, overwrite=False)
