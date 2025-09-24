@@ -174,8 +174,8 @@ def stacking(source_args, lens_args, profile_args):
             DSigma_t_wsum += np.tile(res[1], (NK+1,1))*km
             DSigma_x_wsum += np.tile(res[2], (NK+1,1))*km
                 
-        pool.close()
-        pool.join()
+        # pool.close()
+        # pool.join()
 
     print('Pool ended, stacking...', flush=True)
 
@@ -280,7 +280,7 @@ def main():
     head=fits.Header()
     head['nvoids']=extradata['nvoids']
     head['lenscat']=lens_args['name']
-    head['sourcecat']=source_args['name']
+    head['sourcat']=source_args['name']
     head['Rv_min']=lens_args['Rv_min']
     head['Rv_max']=lens_args['Rv_max']
     head['Rv_mean']=extradata['Rv_mean']
@@ -288,8 +288,8 @@ def main():
     head['z_max']=lens_args['z_max']
     head['z_mean']=extradata['z_mean']
     head['voidtype']=voidtype
-    head['delta_min']=lens_args['delta_min']
-    head['delta_max']=lens_args['delta_max']
+    head['deltamin']=lens_args['delta_min']
+    head['deltamax']=lens_args['delta_max']
     head['RIN']=profile_args['RIN']
     head['ROUT']=profile_args['ROUT']
     head['N']=profile_args['N']
