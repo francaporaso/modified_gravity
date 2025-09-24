@@ -310,7 +310,7 @@ if __name__ == '__main__':
     t1=time.time()
     main()
     print('End!')
-    print(f'took {(time.time()-t1)/60.0} min')
+    print(f'took {(time.time()-t1)/60.0:5.2f} min')
 
     # lens_name = 'voids_LCDM_09.dat'
     # Rv_min = 10.0
