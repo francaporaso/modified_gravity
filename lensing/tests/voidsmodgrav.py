@@ -139,9 +139,9 @@ def stacking(source_args, lens_args, profile_args):
 
     L, K, nvoids = lenscat_load(**lens_args)
     K = K[:, :nvoids] # me quedo con los que voy a usar
-    print(' nvoids '+f'{": ":.>9}{nvoids}', flush=True)
+    print(' nvoids '+f'{": ":.>9}{nvoids}\n', flush=True)
 
-    print('Starting pool...', flush=True)
+    #print('Starting pool...', flush=True)
     with Pool(processes=NCORES, initializer=init_worker, 
               initargs=(source_args, profile_args)) as pool:
 
@@ -228,7 +228,7 @@ def main():
     print(' NCORES '+f'{": ":.>12}{profile_args["NCORES"]}\n')
 
     # profile arguments
-    print(f'{" Profile arguments ":=^60}')
+    print(f' {" Profile arguments ":=^60}')
     print(' RMIN '+f'{": ":.>14}{profile_args["RIN"]:.2f}')
     print(' RMAX '+f'{": ":.>14}{profile_args["ROUT"]:.2f}')
     print(' N '+f'{": ":.>17}{profile_args["N"]:<2d}')
