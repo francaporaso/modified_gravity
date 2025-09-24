@@ -139,7 +139,7 @@ def stacking(source_args, lens_args, profile_args):
 
     L, K, nvoids = lenscat_load(**lens_args)
     K = K[:, :nvoids] # me quedo con los que voy a usar
-    print(' nvoids '+f'{": ":.<15}{nvoids}', flush=True)
+    print(' nvoids '+f'{": ":.>9}{nvoids}', flush=True)
 
     print('Starting pool...', flush=True)
     with Pool(processes=NCORES, initializer=init_worker, 
@@ -226,14 +226,6 @@ def main():
     print(' Source cat '+f'{": ":.>8}{source_args["name"]}')
     print(' Output file '+f'{": ":.>7}{profile_args["name"]}')
     print(' NCORES '+f'{": ":.>12}{profile_args["NCORES"]}\n')
-    
-    # lens arguments
-    print(f' {" Void sample ":=^60}')
-    print(' Radii '+f'{": ":.>13}[{lens_args["Rv_min"]:.2f}, {lens_args["Rv_max"]:.2f}) Mpc/h')
-    print(' Redshift '+f'{": ":.>10}[{lens_args["z_min"]:.2f}, {lens_args["z_max"]:.2f})')
-    print(' Type '+f'{": ":.>14}[{lens_args["delta_min"]},{lens_args["delta_max"]}) => {voidtype}\n')
-    # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
-    #print('N voids: '.ljust(15,'.'), f' {nvoids}'.rjust(15,'.'),sep='')
 
     # profile arguments
     print(f'{" Profile arguments ":=^60}')
@@ -243,6 +235,14 @@ def main():
     print(' NK '+f'{": ":.>16}{profile_args["NK"]:<2d}')
     print(' Binning '+f'{": ":.>11}{profile_args["binning"]}')
     print(' Shape Noise '+f'{": ":.>7}{profile_args["noise"]}\n')
+    
+    # lens arguments
+    print(f' {" Void sample ":=^60}')
+    print(' Radii '+f'{": ":.>13}[{lens_args["Rv_min"]:.2f}, {lens_args["Rv_max"]:.2f}) Mpc/h')
+    print(' Redshift '+f'{": ":.>10}[{lens_args["z_min"]:.2f}, {lens_args["z_max"]:.2f})')
+    print(' Type '+f'{": ":.>14}[{lens_args["delta_min"]},{lens_args["delta_max"]}) => {voidtype}')
+    # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
+    #print('N voids: '.ljust(15,'.'), f' {nvoids}'.rjust(15,'.'),sep='')
 
     res = Table(dict(zip(('Sigma','DSigma_t','DSigma_x'),stacking(source_args, lens_args, profile_args))))
     res.write('test.fits', format='fits', overwrite=True)
