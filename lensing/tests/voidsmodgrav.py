@@ -34,7 +34,7 @@ def init_worker(source_args, profile_args):
     _NCORES = profile_args['NCORES']
     _NSIDE = profile_args['NSIDE']
     _binspace = {"lin": lambda s, e, n: np.linspace(s, e, n),
-                "log": lambda s, e, n: np.logspace(np.log10(s), np.log10(e), n)}[profile_args['binning']]
+                 "log": lambda s, e, n: np.logspace(np.log10(s), np.log10(e), n)}[profile_args['binning']]
     _S = sourcecat_load(**source_args)
     #print(f'worker initialized: {type(_S)}', flush=True)
 
@@ -209,7 +209,7 @@ def main():
         name = args.source_name,
     )
 
-    # TODO implementar pixelation cuando no exista creado en archivos de antemano
+    # TODO implementar pixelation cuando no exista creado de antemano
     profile_args = dict(
         RIN = args.RIN,
         ROUT = args.ROUT,
