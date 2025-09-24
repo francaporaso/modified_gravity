@@ -140,7 +140,7 @@ def stacking(source_args, lens_args, profile_args):
 
     L, K, nvoids = lenscat_load(**lens_args)
     K = K[:, :nvoids] # me quedo con los que voy a usar
-    print(' nvoids '+f'{": ":.>11}{nvoids}\n', flush=True)
+    print(' nvoids '+f'{": ":.>12}{nvoids}\n', flush=True)
 
     extradata = dict(
         nvoids=nvoids,
@@ -230,14 +230,14 @@ def main():
         voidtype = 'mixed'
 
     # program arguments
-    print(f' {" Program arguments ":=^60}')
+    print(f' {" Settings ":=^60}')
     print(' Lens cat '+f'{": ":.>10}{lens_args["name"]}')
     print(' Source cat '+f'{": ":.>8}{source_args["name"]}')
     print(' Output file '+f'{": ":.>7}{profile_args["name"]}')
     print(' NCORES '+f'{": ":.>12}{profile_args["NCORES"]}\n')
 
     # profile arguments
-    print(f' {" Profile arguments ":=^60}')
+    #print(f' {" Profile arguments ":=^60}')
     print(' RMIN '+f'{": ":.>14}{profile_args["RIN"]:.2f}')
     print(' RMAX '+f'{": ":.>14}{profile_args["ROUT"]:.2f}')
     print(' N '+f'{": ":.>17}{profile_args["N"]:<2d}')
@@ -305,7 +305,7 @@ if __name__ == '__main__':
     ▐▌▐▛▀▀▘█   █ ▀▄▄  ▄ █   █ ▐▌   
     ▐▌▝▚▄▄▖█   █ ▄▄▄▀ █ █   █ ▐▌▝▜▌
     ▐▙▄▄▖             █       ▝▚▄▞▘
-    ''',
+    '''.center(60,' '),
     flush=True)
     t1=time.time()
     main()
