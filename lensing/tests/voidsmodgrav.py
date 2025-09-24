@@ -300,60 +300,66 @@ def main():
 
 if __name__ == '__main__':
 
-    lens_name = 'voids_LCDM_09.dat'
-    Rv_min = 10.0
-    Rv_max = 11.0
-    z_min = 0.2
-    z_max = 0.22
-    delta_min = -1.0 # void type
-    delta_max = -0.2 # void type
+    print('''
+    ▗▖▗▞▀▚▖▄▄▄▄   ▄▄▄ ▄ ▄▄▄▄   ▗▄▄▖
+    ▐▌▐▛▀▀▘█   █ ▀▄▄  ▄ █   █ ▐▌   
+    ▐▌▝▚▄▄▖█   █ ▄▄▄▀ █ █   █ ▐▌▝▜▌
+    ▐▙▄▄▖             █       ▝▚▄▞▘
+    ''',
+    flush=True)
+    t1=time.time()
+    main()
+    print('End!')
+    print(f'took {(time.time()-t1)/60.0} min')
 
-    source_name = 'l768_gr_z04-07_for02-03_w-pix_19304.fits'
-    NSIDE = 64
+    # lens_name = 'voids_LCDM_09.dat'
+    # Rv_min = 10.0
+    # Rv_max = 11.0
+    # z_min = 0.2
+    # z_max = 0.22
+    # delta_min = -1.0 # void type
+    # delta_max = -0.2 # void type
 
-    RIN = 0.1
-    ROUT = 1.0
-    N = 10
-    NK = 25 ## Debe ser siempre un cuadrado!
-    NCORES = 8
+    # source_name = 'l768_gr_z04-07_for02-03_w-pix_19304.fits'
+    # NSIDE = 64
 
-    lens_args = dict(
-        name = lens_name,
-        Rv_min = Rv_min,
-        Rv_max = Rv_max,
-        z_min = z_min,
-        z_max = z_max,
-        delta_min = delta_min, # void type
-        delta_max = delta_max, # void type
-        NCHUNKS = 1,
-        NK = NK,
-        fullshape=False,
-    )
+    # RIN = 0.1
+    # ROUT = 1.0
+    # N = 10
+    # NK = 25 ## Debe ser siempre un cuadrado!
+    # NCORES = 8
 
-    source_args = dict(
-        name = source_name,
-    )
+    # lens_args = dict(
+    #     name = lens_name,
+    #     Rv_min = Rv_min,
+    #     Rv_max = Rv_max,
+    #     z_min = z_min,
+    #     z_max = z_max,
+    #     delta_min = delta_min, # void type
+    #     delta_max = delta_max, # void type
+    #     NCHUNKS = 1,
+    #     NK = NK,
+    #     fullshape=False,
+    # )
 
-    profile_args = dict(
-        name = 'test',
-        RIN = RIN,
-        ROUT = ROUT,
-        N = N,
-        NK = NK,
-        NSIDE = NSIDE,
-        NCORES = NCORES,
-        binning = 'lin',
-        noise = False
-    )
+    # source_args = dict(
+    #     name = source_name,
+    # )
+
+    # profile_args = dict(
+    #     name = 'test',
+    #     RIN = RIN,
+    #     ROUT = ROUT,
+    #     N = N,
+    #     NK = NK,
+    #     NSIDE = NSIDE,
+    #     NCORES = NCORES,
+    #     binning = 'lin',
+    #     noise = False
+    # )
 
     # cosmo_params = dict(
     #     Om0 = 0.3089,
     #     Ode0 = 0.6911,
     #     H0 = 100.0
     # )
-
-    print('Start!')
-    t1=time.time()
-    main()
-    print('End!')
-    print(f'took {(time.time()-t1)/60.0} min')
