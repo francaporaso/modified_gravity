@@ -142,11 +142,18 @@ def stacking(source_args, lens_args, profile_args):
     K = K[:, :nvoids] # me quedo con los que voy a usar
     print(' nvoids '+f'{": ":.>11}{nvoids}\n', flush=True)
 
+    extradata = dict(
+        nvoids=nvoids,
+        z_mean=L[2].mean(),
+        Rv_mean=L[0].mean(),
+        delta_mean=L[8].mean()
+    )
+
     #print('Starting pool...', flush=True)
     with Pool(processes=NCORES, initializer=init_worker, 
               initargs=(source_args, profile_args)) as pool:
 
-        resmap = list(tqdm(pool.imap_unordered(partial_profile, L.T), total=nvoids))
+        resmap = list(tqdm(pool.imap_unordered(partial_profile, L[[0,1,2,3]].T), total=nvoids))
         pool.close()
         pool.join()
 
@@ -161,13 +168,6 @@ def stacking(source_args, lens_args, profile_args):
     Sigma = Sigma_wsum/N_inbin
     DSigma_t = DSigma_t_wsum/N_inbin
     DSigma_x = DSigma_x_wsum/N_inbin
-
-    extradata = dict(
-        nvoids=nvoids,
-        z_mean=L[2].mean(),
-        Rv_mean=L[0].mean(),
-        delta_mean=L[8].mean()
-    )
 
     return Sigma, DSigma_t, DSigma_x, extradata
 
@@ -202,7 +202,7 @@ def main():
         delta_min = args.delta_min, # void type
         delta_max = args.delta_max, # void type
         NK = args.NK, # Debe ser siempre un cuadrado!
-        fullshape=False,
+        fullshape=True,
     )
 
     source_args = dict(
