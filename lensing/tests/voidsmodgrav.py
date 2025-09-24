@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from astropy.cosmology import Planck18 as cosmo
 from astropy.constants import G,c,M_sun,pc
+from astropy.io import fits
 from astropy.table import Table
 import healpy as hp
 from multiprocessing import Pool
@@ -8,7 +9,7 @@ import numpy as np
 import time
 from tqdm import tqdm
 
-from funcs import eq2p2, lenscat_load, sourcecat_load
+from funcs import eq2p2, lenscat_load, sourcecat_load, cov_matrix
 
 SC_CONSTANT : float = (c.value**2.0/(4.0*np.pi*G.value))*(pc.value/M_sun.value)*1.0e-6
 
@@ -68,7 +69,7 @@ def get_masked_data(psi, ra0, dec0, z0):
     '''
 
     mask_z = _S['true_redshift_gal']>z0+0.1
-    pix_idx = hp.query_disc(_NSIDE, vec=hp.ang2vec(ra0, dec0, lonlat=True), radius=np.deg2rad(psi+0.5))
+    pix_idx = hp.query_disc(_NSIDE, vec=hp.ang2vec(ra0, dec0, lonlat=True), radius=np.deg2rad(psi+1.0))
     mask_field = np.isin(_S['pix'], pix_idx)
 
     return _S[mask_field&mask_z]
@@ -161,7 +162,14 @@ def stacking(source_args, lens_args, profile_args):
     DSigma_t = DSigma_t_wsum/N_inbin
     DSigma_x = DSigma_x_wsum/N_inbin
 
-    return Sigma, DSigma_t, DSigma_x 
+    extradata = dict(
+        nvoids=nvoids,
+        z_mean=L[2].mean(),
+        Rv_mean=L[0].mean(),
+        delta_mean=L[8].mean()
+    )
+
+    return Sigma, DSigma_t, DSigma_x, extradata
 
 def main():
 
@@ -193,7 +201,7 @@ def main():
         z_max = args.z_max,
         delta_min = args.delta_min, # void type
         delta_max = args.delta_max, # void type
-        NK = args.NK,
+        NK = args.NK, # Debe ser siempre un cuadrado!
         fullshape=False,
     )
 
@@ -201,16 +209,17 @@ def main():
         name = args.source_name,
     )
 
+    # TODO implementar pixelation cuando no exista creado en archivos de antemano
     profile_args = dict(
         RIN = args.RIN,
         ROUT = args.ROUT,
         N = args.NDOTS,
         NK = args.NK,
-        NSIDE = 64,
+        NSIDE = 64, # No tocar! depende del source file...
         NCORES = args.NCORES,
         binning = args.binning,
         name = args.sample,
-        noise = args.addnoise
+        noise = args.addnoise   
     )
 
     if lens_args['delta_max']<=0:
@@ -241,12 +250,53 @@ def main():
     print(' Radii '+f'{": ":.>13}[{lens_args["Rv_min"]:.2f}, {lens_args["Rv_max"]:.2f}) Mpc/h')
     print(' Redshift '+f'{": ":.>10}[{lens_args["z_min"]:.2f}, {lens_args["z_max"]:.2f})')
     print(' Type '+f'{": ":.>14}[{lens_args["delta_min"]},{lens_args["delta_max"]}) => {voidtype}')
-    # print('Octante: '.ljust(15,'.'), f' {args.octant}'.rjust(15,'.'),sep='')
-    #print('N voids: '.ljust(15,'.'), f' {nvoids}'.rjust(15,'.'),sep='')
 
-    res = Table(dict(zip(('Sigma','DSigma_t','DSigma_x'),stacking(source_args, lens_args, profile_args))))
-    res.write('test.fits', format='fits', overwrite=True)
-    print('Saved in "test.fits"', flush=True)
+    # res = Table(dict(zip(('Sigma','DSigma_t','DSigma_x'),)))
+    # res.write('test.fits', format='fits', overwrite=True)
+    # print('Saved in "test.fits"', flush=True)
+    Sigma, DSigma_t, DSigma_x, extradata = stacking(source_args, lens_args, profile_args)
+    cov_S = cov_matrix(Sigma[1:,:])
+    cov_DSx = cov_matrix(DSigma_t[1:,:])
+    cov_DSt = cov_matrix(DSigma_x[1:,:])
+
+    head=fits.Header()
+    head['nvoids']=extradata['nvoids']
+    head['lenscat']=lens_args['name']
+    head['sourcecat']=source_args['name']
+    head['Rv_min']=lens_args['Rv_min']
+    head['Rv_max']=lens_args['Rv_max']
+    head['Rv_mean']=extradata['Rv_mean']
+    head['z_min']=lens_args['z_min']
+    head['z_max']=lens_args['z_max']
+    head['z_mean']=extradata['z_mean']
+    head['voidtype']=voidtype
+    head['delta_min']=lens_args['delta_min']
+    head['delta_max']=lens_args['delta_max']
+    head['RIN']=profile_args['RIN']
+    head['ROUT']=profile_args['ROUT']
+    head['N']=profile_args['N']
+    head['NK']=profile_args['NK']
+    head['binning']=profile_args['binning']
+    head['HISTORY'] = f'{time.asctime()}'
+
+    table = Table({'Sigma':Sigma[0],'DSigma_t':DSigma_t[0],'DSigma_x':DSigma_x[0]})
+    cov_hdu = [
+        fits.ImageHDU(cov_S, name='cov_Sigma'),
+        fits.ImageHDU(cov_DSt, name='cov_DSigma_t'),
+        fits.ImageHDU(cov_DSx, name='cov_DSigma_x'),
+    ]
+
+    primary_hdu = fits.PrimaryHDU(header=head)
+    table_hdu = fits.BinTableHDU(table, name='profiles') 
+ 
+    output_file = (f'results/{profile_args["name"]}_L{lens_args["name"][11:-4]}_'
+                    f'Rv{lens_args["Rv_min"]:02.0f}-{lens_args["Rv_max"]:02.0f}_'
+                    f'z{100*lens_args["z_min"]:03.0f}-{100*lens_args["z_max"]:03.0f}_type{voidtype}.fits')
+
+    hdul = fits.HDUList([primary_hdu, table_hdu] + cov_hdu)
+    hdul.writeto(output_file, overwrite=False)
+    
+    print(f' File saved in: {output_file}', flush=True)
 
 if __name__ == '__main__':
 
@@ -285,7 +335,7 @@ if __name__ == '__main__':
     )
 
     profile_args = dict(
-        name = 'test.fits',
+        name = 'test',
         RIN = RIN,
         ROUT = ROUT,
         N = N,
