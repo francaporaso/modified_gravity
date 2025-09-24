@@ -149,21 +149,35 @@ def stacking(source_args, lens_args, profile_args):
         delta_mean=L[8].mean()
     )
 
-    #print('Starting pool...', flush=True)
+    # with Pool(processes=NCORES, initializer=init_worker, 
+    #           initargs=(source_args, profile_args)) as pool:
+
+    #     resmap = list(tqdm(pool.imap_unordered(partial_profile, L[[0,1,2,3]].T), total=nvoids))
+    #     pool.close()
+    #     pool.join()
+
+    # print('Pool ended, stacking...', flush=True)
+    # for j,r in enumerate(np.array(resmap)):
+    #     km = np.tile(K[:,j], (N,1)).T
+    #     N_inbin += np.tile(r[-1], (NK+1,1))*km
+    #     Sigma_wsum += np.tile(r[0], (NK+1,1))*km
+    #     DSigma_t_wsum += np.tile(r[1], (NK+1,1))*km
+    #     DSigma_x_wsum += np.tile(r[2], (NK+1,1))*km
+
     with Pool(processes=NCORES, initializer=init_worker, 
               initargs=(source_args, profile_args)) as pool:
 
-        resmap = list(tqdm(pool.imap_unordered(partial_profile, L[[0,1,2,3]].T), total=nvoids))
+        for j, res in enumerate(tqdm(pool.imap_unordered(partial_profile, L[[0,1,2,3]].T), total=nvoids)):
+            km = np.tile(K[:,j], (N,1)).T
+            N_inbin += np.tile(res[-1], (NK+1,1))*km
+            Sigma_wsum += np.tile(res[0], (NK+1,1))*km
+            DSigma_t_wsum += np.tile(res[1], (NK+1,1))*km
+            DSigma_x_wsum += np.tile(res[2], (NK+1,1))*km
+                
         pool.close()
         pool.join()
 
     print('Pool ended, stacking...', flush=True)
-    for j,r in enumerate(np.array(resmap)):
-        km = np.tile(K[:,j], (N,1)).T
-        N_inbin += np.tile(r[-1], (NK+1,1))*km
-        Sigma_wsum += np.tile(r[0], (NK+1,1))*km
-        DSigma_t_wsum += np.tile(r[1], (NK+1,1))*km
-        DSigma_x_wsum += np.tile(r[2], (NK+1,1))*km
 
     Sigma = Sigma_wsum/N_inbin
     DSigma_t = DSigma_t_wsum/N_inbin
@@ -228,12 +242,16 @@ def main():
         voidtype = 'S'
     else:
         voidtype = 'mixed'
+    
+    output_file = (f'results/{profile_args["name"]}_L{lens_args["name"][11:-4]}_'
+                   f'Rv{lens_args["Rv_min"]:02.0f}-{lens_args["Rv_max"]:02.0f}_'
+                   f'z{100*lens_args["z_min"]:03.0f}-{100*lens_args["z_max"]:03.0f}_type{voidtype}.fits')
 
     # program arguments
     print(f' {" Settings ":=^60}')
     print(' Lens cat '+f'{": ":.>10}{lens_args["name"]}')
     print(' Source cat '+f'{": ":.>8}{source_args["name"]}')
-    print(' Output file '+f'{": ":.>7}{profile_args["name"]}')
+    print(' Output file '+f'{": ":.>7}{output_file}')
     print(' NCORES '+f'{": ":.>12}{profile_args["NCORES"]}\n')
 
     # profile arguments
@@ -289,10 +307,6 @@ def main():
     primary_hdu = fits.PrimaryHDU(header=head)
     table_hdu = fits.BinTableHDU(table, name='profiles') 
  
-    output_file = (f'results/{profile_args["name"]}_L{lens_args["name"][11:-4]}_'
-                   f'Rv{lens_args["Rv_min"]:02.0f}-{lens_args["Rv_max"]:02.0f}_'
-                   f'z{100*lens_args["z_min"]:03.0f}-{100*lens_args["z_max"]:03.0f}_type{voidtype}.fits')
-
     hdul = fits.HDUList([primary_hdu, table_hdu] + cov_hdu)
     hdul.writeto(output_file, overwrite=False)
     
