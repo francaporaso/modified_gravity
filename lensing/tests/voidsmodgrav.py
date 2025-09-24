@@ -19,7 +19,6 @@ _NK : int       = None
 _NCORES : int   = None
 _S : Table      = None
 _binspace = None
-
 _NSIDE : int = None
 
 def init_worker(source_args, profile_args):
@@ -33,7 +32,8 @@ def init_worker(source_args, profile_args):
     _NK     = profile_args['NK']
     _NCORES = profile_args['NCORES']
     _NSIDE = profile_args['NSIDE']
-    _binspace = np.linspace if profile_args['binning']=='lin' else np.logspace
+    _binspace = {"lin": lambda s, e, n: np.linspace(s, e, n),
+                "log": lambda s, e, n: np.logspace(np.log10(s), np.log10(e), n)}[profile_args['binning']]
     _S = sourcecat_load(**source_args)
     #print(f'worker initialized: {type(_S)}', flush=True)
 
