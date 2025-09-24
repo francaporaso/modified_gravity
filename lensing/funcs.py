@@ -47,8 +47,6 @@ def eq2p2(ra_gal, dec_gal, RA0,DEC0):
 
     return rad, theta
 
-## TODO
-## agregar de nuevo option for octant
 def lenscat_load(name,
                  Rv_min, Rv_max, z_min, z_max, delta_min, delta_max, rho1_min=-1.0, rho1_max=0.0, flag=2,
                  NCHUNKS:int=1, NK:int=1, octant=False, MICE=False, fullshape=True):
@@ -111,7 +109,19 @@ def lenscat_load(name,
 
     return L, K, nvoids
 
-def sourcecat_load(name):
+def sourcecat_load(name,NSIDE=64):
     folder = '/home/fcaporaso/cats/L768/'
     S = Table.read(folder+name, memmap=True, format='fits')
+    if 'pix' not in S.columns:
+        print(' Source does not have pixels\n Calculating...')
+        *newname, cosmohub_id = name.split('.')[0].split('_')
+        newname = '_'.join(newname)+f'_w-pix{NSIDE}_{cosmohub_id}.fits'
+        S = cat_with_pix(name, newname, NSIDE)
+    return S
+
+def cat_with_pix(S, newfile_name, NSIDE=64):
+    S['pix'] = hp.ang2pix(NSIDE, S['ra_gal'], S['dec_gal'], lonlat=True)
+    S.sort('pix')
+    S.write(newfile_name, format='fits')
+    print('Source w pix in ', newfile_name, '!')
     return S
