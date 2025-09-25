@@ -9,6 +9,7 @@ import numpy as np
 import time
 from tqdm import tqdm
 
+import os
 import sys
 sys.path.append('../')
 
@@ -242,7 +243,7 @@ def main():
     if lens_args['delta_max']<=0:
         voidtype = 'R'
     elif lens_args['delta_min']>=0:
-        voidtype = 'S'
+        voidtype = 'Scheck'
     else:
         voidtype = 'mixed'
     
@@ -252,18 +253,23 @@ def main():
                    f'type{voidtype}_bin{profile_args["binning"]}.fits')
 
     # check if pix exist
-    S = sourcecat_load(**source_args)
-    if 'pix' not in S.columns:
-        print(f'{"":#^50}')
-        print(' Source does not have pixels\n Calculating...', flush=True)
-        *newname, cosmohub_id = source_args['name'].split('.')[0].split('_')
-        newname = '_'.join(newname)+f'_w-pix{profile_args["NSIDE"]}_{cosmohub_id}.fits'
-        S['pix'] = hp.ang2pix(profile_args["NSIDE"], S['ra_gal'], S['dec_gal'], lonlat=True)
-        S.sort('pix')
-        S.write(newname, format='fits')
-        print('Source w pix in ', newname, '!', flush=True)
-        print(f'{"":#^50}\n')
-        source_args['name'] = newname
+    Scheck = sourcecat_load(**source_args)
+    if 'pix' not in Scheck.columns:
+        *source_name_wpix, cosmohub_id = source_args['name'].split('.')[0].split('_')
+        source_name_wpix = '_'.join(source_name_wpix)+f'_w-pix{profile_args["NSIDE"]}_{cosmohub_id}.fits'
+        if os.path.isfile('/home/fcaporaso/cats/L768/'+source_name_wpix):
+            source_args['name'] = source_name_wpix
+        else:
+            print(f'{"":#^50}')
+            print(' Source does not have pixels\n Calculating...', flush=True)
+            *newname, cosmohub_id = source_args['name'].split('.')[0].split('_')
+            newname = '_'.join(newname)+f'_w-pix{profile_args["NSIDE"]}_{cosmohub_id}.fits'
+            Scheck['pix'] = hp.ang2pix(profile_args["NSIDE"], Scheck['ra_gal'], Scheck['dec_gal'], lonlat=True)
+            Scheck.sort('pix')
+            Scheck.write(newname, format='fits')
+            print('Source w pix in ', newname, '!', flush=True)
+            print(f'{"":#^50}\n')
+            source_args['name'] = newname
 
     # program arguments
     print(f' {" Settings ":=^60}')
