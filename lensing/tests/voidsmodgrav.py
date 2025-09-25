@@ -193,7 +193,7 @@ def main():
 
     parser = ArgumentParser()
     parser.add_argument('--lens_name', type=str, default='voids_LCDM_09.dat', action='store')
-    parser.add_argument('--source_name', type=str, default='l768_gr_z04-07_for02-03_w-pix_19304.fits', action='store')
+    parser.add_argument('--source_name', type=str, default='l768_gr_z04-07_for02-03_w-pix64_19304.fits', action='store')
     parser.add_argument('--sample', type=str, default='TEST_LCDM_', action='store')
     parser.add_argument('-c','--NCORES', type=int, default=8, action='store')
     parser.add_argument('--Rv_min', type=float, default=1.0, action='store')
