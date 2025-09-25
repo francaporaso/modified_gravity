@@ -114,13 +114,4 @@ def sourcecat_load(name,NSIDE=64):
     folder = '/home/fcaporaso/cats/L768/'
     S = Table.read(folder+name, memmap=True, format='fits')
     
-    if 'pix' not in S.columns:
-        print(' Source does not have pixels\n Calculating...', flush=True)
-        *newname, cosmohub_id = name.split('.')[0].split('_')
-        newname = '_'.join(newname)+f'_w-pix{NSIDE}_{cosmohub_id}.fits'
-        S['pix'] = hp.ang2pix(NSIDE, S['ra_gal'], S['dec_gal'], lonlat=True)
-        S.sort('pix')
-        S.write(newname, format='fits')
-        print('Source w pix in ', newname, '!', flush=True)
-    
     return S

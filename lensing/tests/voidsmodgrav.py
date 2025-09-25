@@ -9,6 +9,9 @@ import numpy as np
 import time
 from tqdm import tqdm
 
+import sys
+sys.path.append('../')
+
 from funcs import eq2p2, lenscat_load, sourcecat_load, cov_matrix
 
 SC_CONSTANT : float = (c.value**2.0/(4.0*np.pi*G.value))*(pc.value/M_sun.value)*1.0e-6
@@ -245,7 +248,22 @@ def main():
     
     output_file = (f'results/{profile_args["name"]}_L{lens_args["name"][11:-4]}_'
                    f'Rv{lens_args["Rv_min"]:02.0f}-{lens_args["Rv_max"]:02.0f}_'
-                   f'z{100*lens_args["z_min"]:03.0f}-{100*lens_args["z_max"]:03.0f}_type{voidtype}.fits')
+                   f'z{100*lens_args["z_min"]:03.0f}-{100*lens_args["z_max"]:03.0f}_'
+                   f'type{voidtype}_bin{profile_args["binning"]}.fits')
+
+    # check if pix exist
+    S = sourcecat_load(**source_args)
+    if 'pix' not in S.columns:
+        print(f'{"":#^50}')
+        print(' Source does not have pixels\n Calculating...', flush=True)
+        *newname, cosmohub_id = source_args['name'].split('.')[0].split('_')
+        newname = '_'.join(newname)+f'_w-pix{profile_args["NSIDE"]}_{cosmohub_id}.fits'
+        S['pix'] = hp.ang2pix(profile_args["NSIDE"], S['ra_gal'], S['dec_gal'], lonlat=True)
+        S.sort('pix')
+        S.write(newname, format='fits')
+        print('Source w pix in ', newname, '!', flush=True)
+        print(f'{"":#^50}\n')
+        source_args['name'] = newname
 
     # program arguments
     print(f' {" Settings ":=^60}')
