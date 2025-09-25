@@ -266,7 +266,7 @@ def main():
             newname = '_'.join(newname)+f'_w-pix{profile_args["NSIDE"]}_{cosmohub_id}.fits'
             Scheck['pix'] = hp.ang2pix(profile_args["NSIDE"], Scheck['ra_gal'], Scheck['dec_gal'], lonlat=True)
             Scheck.sort('pix')
-            Scheck.write(newname, format='fits')
+            Scheck.write('/home/fcaporaso/cats/L768/'+newname, format='fits')
             print('Source w pix in ', newname, '!', flush=True)
             print(f'{"":#^50}\n')
             source_args['name'] = newname
@@ -292,6 +292,8 @@ def main():
     print(' Radii '+f'{": ":.>13}[{lens_args["Rv_min"]:.2f}, {lens_args["Rv_max"]:.2f}) Mpc/h')
     print(' Redshift '+f'{": ":.>10}[{lens_args["z_min"]:.2f}, {lens_args["z_max"]:.2f})')
     print(' Type '+f'{": ":.>14}[{lens_args["delta_min"]},{lens_args["delta_max"]}) => {voidtype}')
+
+    return np.nan
 
     # res = Table(dict(zip(('Sigma','DSigma_t','DSigma_x'),)))
     # res.write('test.fits', format='fits', overwrite=True)
