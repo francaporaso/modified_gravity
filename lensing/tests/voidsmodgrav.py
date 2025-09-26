@@ -243,7 +243,7 @@ def main():
     if lens_args['delta_max']<=0:
         voidtype = 'R'
     elif lens_args['delta_min']>=0:
-        voidtype = 'Scheck'
+        voidtype = 'S'
     else:
         voidtype = 'mixed'
     
