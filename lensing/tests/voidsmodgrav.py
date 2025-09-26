@@ -170,6 +170,8 @@ def stacking(source_args, lens_args, profile_args):
     #     DSigma_x_wsum += np.tile(r[2], (NK+1,1))*km
 
     ## ======= for loop version
+    ## mucho overhead debido al llamado de init_worker en cada loop nuevo
+    ## sin embargo, es mas estable...
     # with Pool(processes=NCORES, initializer=init_worker, 
     #           initargs=(source_args, profile_args)) as pool:
 
@@ -194,10 +196,10 @@ def stacking(source_args, lens_args, profile_args):
         
         for j, res in enumerate(resmap):
             km      = np.tile(K[i][j],(N,1)).T
-            SIGMAwsum    += np.tile(res[0],(NK+1,1))*km
-            DSIGMAwsum_T += np.tile(res[1],(NK+1,1))*km
-            DSIGMAwsum_X += np.tile(res[2],(NK+1,1))*km
-            Ninbin += np.tile(res[3],(NK+1,1))*km
+            Sigma_wsum    += np.tile(res[0],(NK+1,1))*km
+            DSigma_t_wsum += np.tile(res[1],(NK+1,1))*km
+            DSigma_x_wsum += np.tile(res[2],(NK+1,1))*km
+            N_inbin += np.tile(res[3],(NK+1,1))*km
 
     print('Pool ended, stacking...', flush=True)
 
