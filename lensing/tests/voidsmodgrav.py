@@ -153,13 +153,17 @@ def stacking(source_args, lens_args, profile_args):
         delta_mean=L[8].mean()
     )
 
-    ## ======= resmap version
-    with Pool(processes=NCORES, initializer=init_worker, 
-              initargs=(source_args, profile_args)) as pool:
+    # ## ======= resmap version
+    # with Pool(processes=NCORES, initializer=init_worker, 
+    #           initargs=(source_args, profile_args)) as pool:
 
+    #     resmap = list(tqdm(pool.imap_unordered(partial_profile, L[[0,1,2,3]].T), total=nvoids))
+
+    ## testing if init_worker makes uses of global constants 
+    ## and not needing to make copies
+    init_worker()
+    with Pool(processes=NCORES) as pool:
         resmap = list(tqdm(pool.imap_unordered(partial_profile, L[[0,1,2,3]].T), total=nvoids))
-        pool.close()
-        pool.join()
 
     print('Pool ended, stacking...', flush=True)
     for j,r in enumerate(np.array(resmap)):
