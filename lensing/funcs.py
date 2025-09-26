@@ -72,8 +72,8 @@ def lenscat_load(name,
     sqrt_NK = int(np.sqrt(NK))
     NNN = len(L[0]) ##total number of voids
     ra,dec = L[RA],L[DEC]
-    K    = np.zeros((NK+1,NNN))
-    K[0] = np.ones(NNN).astype(bool)
+    K    = np.zeros((NK+1,NNN), dtype=bool)
+    K[0] = np.ones(NNN, dtype=bool)
 
     ramin  = np.min(ra)
     cdec   = np.sin(np.deg2rad(dec))
