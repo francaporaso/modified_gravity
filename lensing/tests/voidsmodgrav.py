@@ -26,7 +26,7 @@ _S : Table      = None
 _binspace = None
 _NSIDE : int = None
 
-def init_worker(source_args, profile_args):
+def init_globals(source_args, profile_args):
 
     global _S, _NSIDE
     global _RIN, _ROUT, _N, _NK, _NCORES, _binspace
@@ -72,11 +72,10 @@ def get_masked_data(psi, ra0, dec0, z0):
     objects are selected by pixel on a disc of rad=psi+pad.
     '''
 
-    mask_z = _S['true_redshift_gal']>z0+0.1
+    #mask_z = _S['true_redshift_gal']>z0+0.1
     pix_idx = hp.query_disc(_NSIDE, vec=hp.ang2vec(ra0, dec0, lonlat=True), radius=np.deg2rad(psi+1.0))
-    mask_field = np.isin(_S['pix'], pix_idx)
-
-    return _S[mask_field&mask_z]
+    mask = np.isin(_S[_S['true_redshift_gal']>z0+0.1]['pix'], pix_idx)
+    return _S[mask]
 
 ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
 def partial_profile(inp):    
@@ -154,15 +153,8 @@ def stacking(source_args, lens_args, profile_args):
         delta_mean=L[8].mean()
     )
 
-    # ## ======= resmap version
-    # with Pool(processes=NCORES, initializer=init_worker, 
-    #           initargs=(source_args, profile_args)) as pool:
+    init_globals(source_args=source_args, profile_args=profile_args)
 
-    #     resmap = list(tqdm(pool.imap_unordered(partial_profile, L[[0,1,2,3]].T), total=nvoids))
-
-    ## testing if init_worker makes uses of global constants 
-    ## and not needing to make copies
-    init_worker(source_args=source_args, profile_args=profile_args)
     with Pool(processes=NCORES) as pool:
         resmap = list(tqdm(pool.imap_unordered(partial_profile, L[[0,1,2,3]].T), total=nvoids))
 
@@ -174,45 +166,11 @@ def stacking(source_args, lens_args, profile_args):
         DSigma_t_wsum += np.tile(r[1], (NK+1,1))*km
         DSigma_x_wsum += np.tile(r[2], (NK+1,1))*km
 
-    print('Pool ended, stacking...', flush=True)
-
     Sigma = Sigma_wsum/N_inbin
     DSigma_t = DSigma_t_wsum/N_inbin
     DSigma_x = DSigma_x_wsum/N_inbin
 
     return Sigma, DSigma_t, DSigma_x, extradata
-
-    ## ======= for loop version
-    # with Pool(processes=NCORES, initializer=init_worker, 
-    #           initargs=(source_args, profile_args)) as pool:
-
-    #     for j, res in enumerate(tqdm(pool.imap_unordered(partial_profile, L[[0,1,2,3]].T), total=nvoids)):
-    #         km = np.tile(K[:,j], (N,1)).T
-    #         N_inbin += np.tile(res[-1], (NK+1,1))*km
-    #         Sigma_wsum += np.tile(res[0], (NK+1,1))*km
-    #         DSigma_t_wsum += np.tile(res[1], (NK+1,1))*km
-    #         DSigma_x_wsum += np.tile(res[2], (NK+1,1))*km
-
-    ## ======= lens chunck version
-    ## mucho overhead debido al llamado de init_worker en cada loop nuevo
-    ## sin embargo, es mas estable...
-    # for i, Li in enumerate(tqdm(L)):
-    #     num = len(Li)
-    #     if num == 1:
-    #         init_worker(source_args, profile_args)
-    #         resmap = np.array([partial_profile(*Li[0,[0,1,2,3]])])
-    #     else:
-    #         with Pool(processes=num, 
-    #                   initializer=init_worker, 
-    #                   initargs=(source_args,profile_args)) as pool:
-    #             resmap = np.array(pool.map(partial_profile, Li[:,[0,1,2,3]]))
-        
-    #     for j, res in enumerate(resmap):
-    #         km      = np.tile(K[i][j],(N,1)).T
-    #         Sigma_wsum    += np.tile(res[0],(NK+1,1))*km
-    #         DSigma_t_wsum += np.tile(res[1],(NK+1,1))*km
-    #         DSigma_x_wsum += np.tile(res[2],(NK+1,1))*km
-    #         N_inbin += np.tile(res[3],(NK+1,1))*km
 
 def main():
 
