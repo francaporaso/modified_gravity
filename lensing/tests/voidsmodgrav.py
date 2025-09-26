@@ -154,24 +154,22 @@ def stacking(source_args, lens_args, profile_args):
     )
 
     ## ======= resmap version
-    # with Pool(processes=NCORES, initializer=init_worker, 
-    #           initargs=(source_args, profile_args)) as pool:
+    with Pool(processes=NCORES, initializer=init_worker, 
+              initargs=(source_args, profile_args)) as pool:
 
-    #     resmap = list(tqdm(pool.imap_unordered(partial_profile, L[[0,1,2,3]].T), total=nvoids))
-    #     pool.close()
-    #     pool.join()
+        resmap = list(tqdm(pool.imap_unordered(partial_profile, L[[0,1,2,3]].T), total=nvoids))
+        pool.close()
+        pool.join()
 
-    # print('Pool ended, stacking...', flush=True)
-    # for j,r in enumerate(np.array(resmap)):
-    #     km = np.tile(K[:,j], (N,1)).T
-    #     N_inbin += np.tile(r[-1], (NK+1,1))*km
-    #     Sigma_wsum += np.tile(r[0], (NK+1,1))*km
-    #     DSigma_t_wsum += np.tile(r[1], (NK+1,1))*km
-    #     DSigma_x_wsum += np.tile(r[2], (NK+1,1))*km
+    print('Pool ended, stacking...', flush=True)
+    for j,r in enumerate(np.array(resmap)):
+        km = np.tile(K[:,j], (N,1)).T
+        N_inbin += np.tile(r[-1], (NK+1,1))*km
+        Sigma_wsum += np.tile(r[0], (NK+1,1))*km
+        DSigma_t_wsum += np.tile(r[1], (NK+1,1))*km
+        DSigma_x_wsum += np.tile(r[2], (NK+1,1))*km
 
     ## ======= for loop version
-    ## mucho overhead debido al llamado de init_worker en cada loop nuevo
-    ## sin embargo, es mas estable...
     # with Pool(processes=NCORES, initializer=init_worker, 
     #           initargs=(source_args, profile_args)) as pool:
 
@@ -183,23 +181,25 @@ def stacking(source_args, lens_args, profile_args):
     #         DSigma_x_wsum += np.tile(res[2], (NK+1,1))*km
 
     ## ======= lens chunck version
-    for i, Li in enumerate(tqdm(L)):
-        num = len(Li)
-        if num == 1:
-            init_worker(source_args, profile_args)
-            resmap = np.array([partial_profile(*Li[0,[0,1,2,3]])])
-        else:
-            with Pool(processes=num, 
-                      initializer=init_worker, 
-                      initargs=(source_args,profile_args)) as pool:
-                resmap = np.array(pool.map(partial_profile, Li[:,[0,1,2,3]]))
+    ## mucho overhead debido al llamado de init_worker en cada loop nuevo
+    ## sin embargo, es mas estable...
+    # for i, Li in enumerate(tqdm(L)):
+    #     num = len(Li)
+    #     if num == 1:
+    #         init_worker(source_args, profile_args)
+    #         resmap = np.array([partial_profile(*Li[0,[0,1,2,3]])])
+    #     else:
+    #         with Pool(processes=num, 
+    #                   initializer=init_worker, 
+    #                   initargs=(source_args,profile_args)) as pool:
+    #             resmap = np.array(pool.map(partial_profile, Li[:,[0,1,2,3]]))
         
-        for j, res in enumerate(resmap):
-            km      = np.tile(K[i][j],(N,1)).T
-            Sigma_wsum    += np.tile(res[0],(NK+1,1))*km
-            DSigma_t_wsum += np.tile(res[1],(NK+1,1))*km
-            DSigma_x_wsum += np.tile(res[2],(NK+1,1))*km
-            N_inbin += np.tile(res[3],(NK+1,1))*km
+    #     for j, res in enumerate(resmap):
+    #         km      = np.tile(K[i][j],(N,1)).T
+    #         Sigma_wsum    += np.tile(res[0],(NK+1,1))*km
+    #         DSigma_t_wsum += np.tile(res[1],(NK+1,1))*km
+    #         DSigma_x_wsum += np.tile(res[2],(NK+1,1))*km
+    #         N_inbin += np.tile(res[3],(NK+1,1))*km
 
     print('Pool ended, stacking...', flush=True)
 
