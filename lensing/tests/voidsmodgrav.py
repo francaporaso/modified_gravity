@@ -143,7 +143,7 @@ def stacking(source_args, lens_args, profile_args):
     DSigma_x_wsum = np.zeros((NK+1, N))
 
     L, K, nvoids = lenscat_load(**lens_args)
-    K = K[:, :nvoids] # me quedo con los que voy a usar
+    #K = K[:, :nvoids] # me quedo con los que voy a usar
     print(' nvoids '+f'{": ":.>12}{nvoids}\n', flush=True)
 
     extradata = dict(
