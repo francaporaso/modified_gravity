@@ -143,7 +143,7 @@ def stacking(source_args, lens_args, profile_args):
     DSigma_x_wsum = np.zeros((NK+1, N))
 
     L, K, nvoids = lenscat_load(**lens_args)
-    #K = K[:, :nvoids] # me quedo con los que voy a usar
+    K = K[:, :nvoids] # me quedo con los que voy a usar
     print(' nvoids '+f'{": ":.>12}{nvoids}\n', flush=True)
 
     extradata = dict(
@@ -168,6 +168,14 @@ def stacking(source_args, lens_args, profile_args):
         Sigma_wsum += np.tile(r[0], (NK+1,1))*km
         DSigma_t_wsum += np.tile(r[1], (NK+1,1))*km
         DSigma_x_wsum += np.tile(r[2], (NK+1,1))*km
+
+    print('Pool ended, stacking...', flush=True)
+
+    Sigma = Sigma_wsum/N_inbin
+    DSigma_t = DSigma_t_wsum/N_inbin
+    DSigma_x = DSigma_x_wsum/N_inbin
+
+    return Sigma, DSigma_t, DSigma_x, extradata
 
     ## ======= for loop version
     # with Pool(processes=NCORES, initializer=init_worker, 
@@ -201,14 +209,6 @@ def stacking(source_args, lens_args, profile_args):
     #         DSigma_x_wsum += np.tile(res[2],(NK+1,1))*km
     #         N_inbin += np.tile(res[3],(NK+1,1))*km
 
-    print('Pool ended, stacking...', flush=True)
-
-    Sigma = Sigma_wsum/N_inbin
-    DSigma_t = DSigma_t_wsum/N_inbin
-    DSigma_x = DSigma_x_wsum/N_inbin
-
-    return Sigma, DSigma_t, DSigma_x, extradata
-
 def main():
 
     parser = ArgumentParser()
@@ -241,7 +241,7 @@ def main():
         delta_max = args.delta_max, # void type
         NK = args.NK, # Debe ser siempre un cuadrado!
         fullshape=True,
-        NCHUNKS=args.NCORES,
+        NCHUNKS=1,
     )
 
     source_args = dict(
