@@ -370,13 +370,13 @@ if __name__ == '__main__':
     print('End!')
     print(f'took {(time.time()-t1)/60.0:5.2f} min')
 
-    lens_name = 'voids_LCDM_09.dat'
-    Rv_min = 10.0
-    Rv_max = 11.0
-    z_min = 0.2
-    z_max = 0.22
-    delta_min = -1.0 # void type
-    delta_max = -0.2 # void type
+    # lens_name = 'voids_LCDM_09.dat'
+    # Rv_min = 10.0
+    # Rv_max = 11.0
+    # z_min = 0.2
+    # z_max = 0.22
+    # delta_min = -1.0 # void type
+    # delta_max = -0.2 # void type
 
     # source_name = 'l768_gr_z04-07_for02-03_w-pix_19304.fits'
     # NSIDE = 64
@@ -387,18 +387,18 @@ if __name__ == '__main__':
     # NK = 25 ## Debe ser siempre un cuadrado!
     # NCORES = 8
 
-    lens_args = dict(
-        name = lens_name,
-        Rv_min = Rv_min,
-        Rv_max = Rv_max,
-        z_min = z_min,
-        z_max = z_max,
-        delta_min = delta_min, # void type
-        delta_max = delta_max, # void type
-        NCHUNKS = 1,
-        NK = NK,
-        fullshape=False,
-    )
+    # lens_args = dict(
+    #     name = lens_name,
+    #     Rv_min = Rv_min,
+    #     Rv_max = Rv_max,
+    #     z_min = z_min,
+    #     z_max = z_max,
+    #     delta_min = delta_min, # void type
+    #     delta_max = delta_max, # void type
+    #     NCHUNKS = 1,
+    #     NK = NK,
+    #     fullshape=False,
+    # )
 
     # source_args = dict(
     #     name = source_name,
