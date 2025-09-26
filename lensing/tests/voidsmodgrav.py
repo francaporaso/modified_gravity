@@ -161,7 +161,7 @@ def stacking(source_args, lens_args, profile_args):
 
     ## testing if init_worker makes uses of global constants 
     ## and not needing to make copies
-    init_worker()
+    init_worker(source_args=source_args, profile_args=profile_args)
     with Pool(processes=NCORES) as pool:
         resmap = list(tqdm(pool.imap_unordered(partial_profile, L[[0,1,2,3]].T), total=nvoids))
 
