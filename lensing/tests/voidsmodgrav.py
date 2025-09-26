@@ -72,9 +72,9 @@ def get_masked_data(psi, ra0, dec0, z0):
     objects are selected by pixel on a disc of rad=psi+pad.
     '''
 
-    #mask_z = _S['true_redshift_gal']>z0+0.1
+    mask_z = _S['true_redshift_gal']>z0+0.1
     pix_idx = hp.query_disc(_NSIDE, vec=hp.ang2vec(ra0, dec0, lonlat=True), radius=np.deg2rad(psi+1.0))
-    mask = np.isin(_S[_S['true_redshift_gal']>z0+0.1]['pix'], pix_idx)
+    mask = np.isin(_S['pix'][mask_z], pix_idx)
     return _S[mask]
 
 ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
