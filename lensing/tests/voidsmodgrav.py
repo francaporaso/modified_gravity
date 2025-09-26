@@ -153,6 +153,7 @@ def stacking(source_args, lens_args, profile_args):
         delta_mean=L[8].mean()
     )
 
+    ## ======= resmap version
     # with Pool(processes=NCORES, initializer=init_worker, 
     #           initargs=(source_args, profile_args)) as pool:
 
@@ -168,18 +169,35 @@ def stacking(source_args, lens_args, profile_args):
     #     DSigma_t_wsum += np.tile(r[1], (NK+1,1))*km
     #     DSigma_x_wsum += np.tile(r[2], (NK+1,1))*km
 
-    with Pool(processes=NCORES, initializer=init_worker, 
-              initargs=(source_args, profile_args)) as pool:
+    ## ======= for loop version
+    # with Pool(processes=NCORES, initializer=init_worker, 
+    #           initargs=(source_args, profile_args)) as pool:
 
-        for j, res in enumerate(tqdm(pool.imap_unordered(partial_profile, L[[0,1,2,3]].T), total=nvoids)):
-            km = np.tile(K[:,j], (N,1)).T
-            N_inbin += np.tile(res[-1], (NK+1,1))*km
-            Sigma_wsum += np.tile(res[0], (NK+1,1))*km
-            DSigma_t_wsum += np.tile(res[1], (NK+1,1))*km
-            DSigma_x_wsum += np.tile(res[2], (NK+1,1))*km
-                
-        # pool.close()
-        # pool.join()
+    #     for j, res in enumerate(tqdm(pool.imap_unordered(partial_profile, L[[0,1,2,3]].T), total=nvoids)):
+    #         km = np.tile(K[:,j], (N,1)).T
+    #         N_inbin += np.tile(res[-1], (NK+1,1))*km
+    #         Sigma_wsum += np.tile(res[0], (NK+1,1))*km
+    #         DSigma_t_wsum += np.tile(res[1], (NK+1,1))*km
+    #         DSigma_x_wsum += np.tile(res[2], (NK+1,1))*km
+
+    ## ======= lens chunck version
+    for i, Li in enumerate(tqdm(L)):
+        num = len(Li)
+        if num == 1:
+            init_worker(source_args, profile_args)
+            resmap = np.array([partial_profile(*Li[0,[0,1,2,3]])])
+        else:
+            with Pool(processes=num, 
+                      initializer=init_worker, 
+                      initargs=(source_args,profile_args)) as pool:
+                resmap = np.array(pool.map(partial_profile, Li[:,[0,1,2,3]]))
+        
+        for j, res in enumerate(resmap):
+            km      = np.tile(K[i][j],(N,1)).T
+            SIGMAwsum    += np.tile(res[0],(NK+1,1))*km
+            DSIGMAwsum_T += np.tile(res[1],(NK+1,1))*km
+            DSIGMAwsum_X += np.tile(res[2],(NK+1,1))*km
+            Ninbin += np.tile(res[3],(NK+1,1))*km
 
     print('Pool ended, stacking...', flush=True)
 
@@ -221,6 +239,7 @@ def main():
         delta_max = args.delta_max, # void type
         NK = args.NK, # Debe ser siempre un cuadrado!
         fullshape=True,
+        NCHUNKS=args.NCORES,
     )
 
     source_args = dict(
@@ -293,15 +312,12 @@ def main():
     print(' Redshift '+f'{": ":.>10}[{lens_args["z_min"]:.2f}, {lens_args["z_max"]:.2f})')
     print(' Type '+f'{": ":.>14}[{lens_args["delta_min"]},{lens_args["delta_max"]}) => {voidtype}')
 
-    return np.nan
-
-    # res = Table(dict(zip(('Sigma','DSigma_t','DSigma_x'),)))
-    # res.write('test.fits', format='fits', overwrite=True)
-    # print('Saved in "test.fits"', flush=True)
+    ## ==== Processing of data
     Sigma, DSigma_t, DSigma_x, extradata = stacking(source_args, lens_args, profile_args)
     cov_S = cov_matrix(Sigma[1:,:])
     cov_DSx = cov_matrix(DSigma_t[1:,:])
     cov_DSt = cov_matrix(DSigma_x[1:,:])
+    ## =======================
 
     head=fits.Header()
     head['nvoids']=extradata['nvoids']
@@ -352,13 +368,13 @@ if __name__ == '__main__':
     print('End!')
     print(f'took {(time.time()-t1)/60.0:5.2f} min')
 
-    # lens_name = 'voids_LCDM_09.dat'
-    # Rv_min = 10.0
-    # Rv_max = 11.0
-    # z_min = 0.2
-    # z_max = 0.22
-    # delta_min = -1.0 # void type
-    # delta_max = -0.2 # void type
+    lens_name = 'voids_LCDM_09.dat'
+    Rv_min = 10.0
+    Rv_max = 11.0
+    z_min = 0.2
+    z_max = 0.22
+    delta_min = -1.0 # void type
+    delta_max = -0.2 # void type
 
     # source_name = 'l768_gr_z04-07_for02-03_w-pix_19304.fits'
     # NSIDE = 64
@@ -369,18 +385,18 @@ if __name__ == '__main__':
     # NK = 25 ## Debe ser siempre un cuadrado!
     # NCORES = 8
 
-    # lens_args = dict(
-    #     name = lens_name,
-    #     Rv_min = Rv_min,
-    #     Rv_max = Rv_max,
-    #     z_min = z_min,
-    #     z_max = z_max,
-    #     delta_min = delta_min, # void type
-    #     delta_max = delta_max, # void type
-    #     NCHUNKS = 1,
-    #     NK = NK,
-    #     fullshape=False,
-    # )
+    lens_args = dict(
+        name = lens_name,
+        Rv_min = Rv_min,
+        Rv_max = Rv_max,
+        z_min = z_min,
+        z_max = z_max,
+        delta_min = delta_min, # void type
+        delta_max = delta_max, # void type
+        NCHUNKS = 1,
+        NK = NK,
+        fullshape=False,
+    )
 
     # source_args = dict(
     #     name = source_name,
