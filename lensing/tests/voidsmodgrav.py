@@ -7,6 +7,7 @@ import healpy as hp
 from multiprocessing import Pool
 import numpy as np
 import time
+import toml
 from tqdm import tqdm
 
 import os
@@ -70,10 +71,11 @@ def sigma_crit(z_l, z_s):
 def get_masked_data(psi, ra0, dec0, z0):
     '''
     objects are selected by pixel on a disc of rad=psi+pad.
+    pad = 0.1*psi
     '''
 
     mask_z = _S['true_redshift_gal']>z0+0.1
-    pix_idx = hp.query_disc(_NSIDE, vec=hp.ang2vec(ra0, dec0, lonlat=True), radius=np.deg2rad(psi+1.0))
+    pix_idx = hp.query_disc(_NSIDE, vec=hp.ang2vec(ra0, dec0, lonlat=True), radius=np.deg2rad(psi*1.1))
     mask = np.isin(_S['pix'][mask_z], pix_idx)
     return _S[mask]
 
@@ -172,51 +174,40 @@ def stacking(source_args, lens_args, profile_args):
 def main():
 
     parser = ArgumentParser()
-    parser.add_argument('--lens_name', type=str, default='voids_LCDM_09.dat', action='store')
-    parser.add_argument('--source_name', type=str, default='l768_gr_z04-07_for02-03_w-pix64_19304.fits', action='store')
     parser.add_argument('--sample', type=str, default='TEST_LCDM_', action='store')
     parser.add_argument('-c','--NCORES', type=int, default=8, action='store')
-    parser.add_argument('--Rv_min', type=float, default=1.0, action='store')
-    parser.add_argument('--Rv_max', type=float, default=50.0, action='store')
-    parser.add_argument('--z_min', type=float, default=0.0, action='store')
-    parser.add_argument('--z_max', type=float, default=0.6, action='store')
-    parser.add_argument('--delta_min', type=float, default=-1.0, action='store')
-    parser.add_argument('--delta_max', type=float, default=100.0, action='store')
-    parser.add_argument('--flag', type=float, default=2.0, action='store')
-    parser.add_argument('--RIN', type=float, default=0.05, action='store')
-    parser.add_argument('--ROUT', type=float, default=5.0, action='store')    
-    parser.add_argument('-N','--NDOTS', type=int, default=22, action='store')    
-    parser.add_argument('-K','--NK', type=int, default=100, action='store')    
+    parser.add_argument('--config', type=str, default='config.toml', action='store')
+    parser.add_argument('--use08', action='store_true')
     parser.add_argument('--addnoise', action='store_true')
-    parser.add_argument('--binning', type=str, default='lin', action='store', choices=['lin', 'log'])
     args = parser.parse_args()
 
+    config = toml.load(args.config)
+
     lens_args = dict(
-        name = args.lens_name,
-        Rv_min = args.Rv_min,
-        Rv_max = args.Rv_max,
-        z_min = args.z_min,
-        z_max = args.z_max,
-        delta_min = args.delta_min, # void type
-        delta_max = args.delta_max, # void type
-        NK = args.NK, # Debe ser siempre un cuadrado!
+        name = config['sim']['GR']['lens']['void08'] if args.use08 else config['sim']['GR']['lens']['void09'] ,
+        Rv_min = config['void']['Rv_min'],
+        Rv_max = config['void']['Rv_max'],
+        z_min = config['void']['z_min'],
+        z_max = config['void']['z_max'],
+        delta_min = config['void']['delta_min'], # void type
+        delta_max = config['void']['delta_min'], # void type
+        NK = config['NK'], # Debe ser siempre un cuadrado!
         fullshape=True,
         NCHUNKS=1,
     )
 
     source_args = dict(
-        name = args.source_name,
+        name = config['sim']['GR']['source'],
     )
 
-    # TODO implementar pixelation cuando no exista creado de antemano
     profile_args = dict(
-        RIN = args.RIN,
-        ROUT = args.ROUT,
-        N = args.NDOTS,
-        NK = args.NK,
+        RIN = config['prof']['RIN'],
+        ROUT = config['prof']['ROUT'],
+        N = config['prof']['NDOTS'],
+        NK = config['NK'],
         NSIDE = 64, # No tocar! depende del source file...
-        NCORES = args.NCORES,
-        binning = args.binning,
+        NCORES = config ['NCORES'],
+        binning = config['BIN'],
         name = args.sample,
         noise = args.addnoise   
     )
@@ -233,24 +224,24 @@ def main():
                    f'z{100*lens_args["z_min"]:03.0f}-{100*lens_args["z_max"]:03.0f}_'
                    f'type{voidtype}_bin{profile_args["binning"]}.fits')
 
-    # check if pix exist
-    Scheck = sourcecat_load(**source_args)
-    if 'pix' not in Scheck.columns:
-        *source_name_wpix, cosmohub_id = source_args['name'].split('.')[0].split('_')
-        source_name_wpix = '_'.join(source_name_wpix)+f'_w-pix{profile_args["NSIDE"]}_{cosmohub_id}.fits'
-        if os.path.isfile('/home/fcaporaso/cats/L768/'+source_name_wpix):
-            source_args['name'] = source_name_wpix
-        else:
-            print(f'{"":#^50}')
-            print(' Source does not have pixels\n Calculating...', flush=True)
-            *newname, cosmohub_id = source_args['name'].split('.')[0].split('_')
-            newname = '_'.join(newname)+f'_w-pix{profile_args["NSIDE"]}_{cosmohub_id}.fits'
-            Scheck['pix'] = hp.ang2pix(profile_args["NSIDE"], Scheck['ra_gal'], Scheck['dec_gal'], lonlat=True)
-            Scheck.sort('pix')
-            Scheck.write('/home/fcaporaso/cats/L768/'+newname, format='fits')
-            print('Source w pix in ', newname, '!', flush=True)
-            print(f'{"":#^50}\n')
-            source_args['name'] = newname
+    # # check if pix exist
+    # Scheck = sourcecat_load(**source_args)
+    # if 'pix' not in Scheck.columns:
+    #     *source_name_wpix, cosmohub_id = source_args['name'].split('.')[0].split('_')
+    #     source_name_wpix = '_'.join(source_name_wpix)+f'_w-pix{profile_args["NSIDE"]}_{cosmohub_id}.fits'
+    #     if os.path.isfile('/home/fcaporaso/cats/L768/'+source_name_wpix):
+    #         source_args['name'] = source_name_wpix
+    #     else:
+    #         print(f'{"":#^50}')
+    #         print(' Source does not have pixels\n Calculating...', flush=True)
+    #         *newname, cosmohub_id = source_args['name'].split('.')[0].split('_')
+    #         newname = '_'.join(newname)+f'_w-pix{profile_args["NSIDE"]}_{cosmohub_id}.fits'
+    #         Scheck['pix'] = hp.ang2pix(profile_args["NSIDE"], Scheck['ra_gal'], Scheck['dec_gal'], lonlat=True)
+    #         Scheck.sort('pix')
+    #         Scheck.write('/home/fcaporaso/cats/L768/'+newname, format='fits')
+    #         print('Source w pix in ', newname, '!', flush=True)
+    #         print(f'{"":#^50}\n')
+    #         source_args['name'] = newname
 
     # program arguments
     print(f' {" Settings ":=^60}')
