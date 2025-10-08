@@ -1,0 +1,26 @@
+NCORES = 16
+NK = 100
+BIN = 'log'
+
+[prof]
+NDOTS = 20
+RIN = 0.5
+ROUT = 1.5
+
+[void]
+Rv_min = 10.0
+Rv_max = 15.0
+z_min = 0.2
+z_max = 0.3
+delta_min = -1.0
+delta_max = 0.0
+
+[sim.GR]
+lens.void09='voids_LCDM_09.dat'
+lens.void08='voids_LCDM_08.dat'
+source='l768_gr_z04-07_for02-03_w-pix64_19304.fits'
+
+[sim.fR]
+lens.void09='voids_fR_09.dat'
+lens.void08='voids_fR_08.dat'
+source='l768_mg_z04-07_for02-03_w-pix64_19260.fits'
