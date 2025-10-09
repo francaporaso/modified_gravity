@@ -180,7 +180,7 @@ def execute_single_simu(config, args, gravity):
         z_min = config['void']['z_min'],
         z_max = config['void']['z_max'],
         delta_min = config['void']['delta_min'], # void type
-        delta_max = config['void']['delta_min'], # void type
+        delta_max = config['void']['delta_max'], # void type
         NK = config['NK'], # Debe ser siempre un cuadrado!
         fullshape=True,
         NCHUNKS=1,
