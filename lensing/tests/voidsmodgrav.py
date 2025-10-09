@@ -181,7 +181,7 @@ def execute_single_simu(config, args, gravity):
         z_max = config['void']['z_max'],
         delta_min = config['void']['delta_min'], # void type
         delta_max = config['void']['delta_max'], # void type
-        NK = config['NK'], # Debe ser siempre un cuadrado!
+        NK = config['NK'], 
         fullshape=True,
         NCHUNKS=1,
     )
@@ -233,15 +233,15 @@ def execute_single_simu(config, args, gravity):
     #         print(f'{"":#^50}\n')
     #         source_args['name'] = newname
 
-    # program arguments
+    # === program arguments
     print(f' {" Settings ":=^60}')
     print(' Lens cat '+f'{": ":.>10}{lens_args["name"]}')
     print(' Source cat '+f'{": ":.>8}{source_args["name"]}')
     print(' Output file '+f'{": ":.>7}{output_file}')
     print(' NCORES '+f'{": ":.>12}{profile_args["NCORES"]}\n')
 
-    # profile arguments
-    #print(f' {" Profile arguments ":=^60}')
+    # === profile arguments
+    # print(f' {" Profile arguments ":=^60}')
     print(' RMIN '+f'{": ":.>14}{profile_args["RIN"]:.2f}')
     print(' RMAX '+f'{": ":.>14}{profile_args["ROUT"]:.2f}')
     print(' N '+f'{": ":.>17}{profile_args["N"]:<2d}')
@@ -249,20 +249,20 @@ def execute_single_simu(config, args, gravity):
     print(' Binning '+f'{": ":.>11}{profile_args["binning"]}')
     print(' Shape Noise '+f'{": ":.>7}{profile_args["noise"]}\n')
     
-    # lens arguments
+    # === lens arguments
     print(f' {" Void sample ":=^60}')
     print(' Radii '+f'{": ":.>13}[{lens_args["Rv_min"]:.2f}, {lens_args["Rv_max"]:.2f}) Mpc/h')
     print(' Redshift '+f'{": ":.>10}[{lens_args["z_min"]:.2f}, {lens_args["z_max"]:.2f})')
     print(' Type '+f'{": ":.>14}[{lens_args["delta_min"]},{lens_args["delta_max"]}) => {voidtype}')
 
-    return np.nan
-    ## ==== Processing of data
+    # ==== Calculating profiles
     Sigma, DSigma_t, DSigma_x, extradata = stacking(source_args, lens_args, profile_args)
     cov_S = cov_matrix(Sigma[1:,:])
     cov_DSx = cov_matrix(DSigma_t[1:,:])
     cov_DSt = cov_matrix(DSigma_x[1:,:])
-    ## =======================
+    # =======================
 
+    # ==== Saving
     head=fits.Header()
     head['nvoids']=extradata['nvoids']
     head['lenscat']=lens_args['name']
@@ -311,7 +311,7 @@ def main():
     config = toml.load(args.config)
 
     for gravity in ['GR','fR']:
-        print(f'executing {gravity}'.center(60, '$'))
+        print(' '+f' EXECUTING {gravity} '.center(60, '$')+' ')
         execute_single_simu(config, args, gravity)
 
 if __name__ == '__main__':

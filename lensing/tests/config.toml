@@ -1,5 +1,5 @@
 NCORES = 16
-NK = 100
+NK = 100 # Debe ser siempre un cuadrado!
 BIN = 'log'
 
 [prof]
