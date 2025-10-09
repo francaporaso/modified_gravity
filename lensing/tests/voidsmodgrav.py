@@ -301,7 +301,7 @@ def execute_single_simu(config, args, gravity):
 def main():
 
     parser = ArgumentParser()
-    parser.add_argument('--sample', type=str, default='TEST_LCDM', action='store')
+    parser.add_argument('--sample', type=str, default='TEST', action='store')
     parser.add_argument('-c','--NCORES', type=int, default=8, action='store')
     parser.add_argument('--config', type=str, default='config.toml', action='store')
     parser.add_argument('--use08', action='store_true')
