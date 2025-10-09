@@ -171,20 +171,10 @@ def stacking(source_args, lens_args, profile_args):
 
     return Sigma, DSigma_t, DSigma_x, extradata
 
-def main():
-
-    parser = ArgumentParser()
-    parser.add_argument('--sample', type=str, default='TEST_LCDM_', action='store')
-    parser.add_argument('-c','--NCORES', type=int, default=8, action='store')
-    parser.add_argument('--config', type=str, default='config.toml', action='store')
-    parser.add_argument('--use08', action='store_true')
-    parser.add_argument('--addnoise', action='store_true')
-    args = parser.parse_args()
-
-    config = toml.load(args.config)
+def execute_single_simu(config, args, gravity):
 
     lens_args = dict(
-        name = config['sim']['GR']['lens']['void08'] if args.use08 else config['sim']['GR']['lens']['void09'] ,
+        name = config['sim'][gravity]['lens']['void08'] if args.use08 else config['sim'][gravity]['lens']['void09'] ,
         Rv_min = config['void']['Rv_min'],
         Rv_max = config['void']['Rv_max'],
         z_min = config['void']['z_min'],
@@ -197,7 +187,7 @@ def main():
     )
 
     source_args = dict(
-        name = config['sim']['GR']['source'],
+        name = config['sim'][gravity]['source'],
     )
 
     profile_args = dict(
@@ -219,7 +209,7 @@ def main():
     else:
         voidtype = 'mixed'
     
-    output_file = (f'results/{profile_args["name"]}_L{lens_args["name"].split("_")[-1][:-4]}_'
+    output_file = (f'results/{profile_args["name"]}-{gravity}_L{lens_args["name"].split("_")[-1][:-4]}_'
                    f'Rv{lens_args["Rv_min"]:02.0f}-{lens_args["Rv_max"]:02.0f}_'
                    f'z{100*lens_args["z_min"]:03.0f}-{100*lens_args["z_max"]:03.0f}_'
                    f'type{voidtype}_bin{profile_args["binning"]}.fits')
@@ -265,6 +255,7 @@ def main():
     print(' Redshift '+f'{": ":.>10}[{lens_args["z_min"]:.2f}, {lens_args["z_max"]:.2f})')
     print(' Type '+f'{": ":.>14}[{lens_args["delta_min"]},{lens_args["delta_max"]}) => {voidtype}')
 
+    return np.nan
     ## ==== Processing of data
     Sigma, DSigma_t, DSigma_x, extradata = stacking(source_args, lens_args, profile_args)
     cov_S = cov_matrix(Sigma[1:,:])
@@ -306,6 +297,22 @@ def main():
     hdul.writeto(output_file, overwrite=False)
     
     print(f' File saved in: {output_file}', flush=True)
+
+def main():
+
+    parser = ArgumentParser()
+    parser.add_argument('--sample', type=str, default='TEST_LCDM', action='store')
+    parser.add_argument('-c','--NCORES', type=int, default=8, action='store')
+    parser.add_argument('--config', type=str, default='config.toml', action='store')
+    parser.add_argument('--use08', action='store_true')
+    parser.add_argument('--addnoise', action='store_true')
+    args = parser.parse_args()
+
+    config = toml.load(args.config)
+
+    for gravity in ['GR','fR']:
+        print(f'executing {gravity}'.center(60, '$'))
+        execute_single_simu(config, args, gravity)
 
 if __name__ == '__main__':
 
