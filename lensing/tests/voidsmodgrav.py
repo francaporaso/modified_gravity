@@ -258,8 +258,8 @@ def execute_single_simu(config, args, gravity):
     # ==== Calculating profiles
     Sigma, DSigma_t, DSigma_x, extradata = stacking(source_args, lens_args, profile_args)
     cov_S = cov_matrix(Sigma[1:,:])
-    cov_DSx = cov_matrix(DSigma_t[1:,:])
-    cov_DSt = cov_matrix(DSigma_x[1:,:])
+    cov_DSt = cov_matrix(DSigma_t[1:,:])
+    cov_DSx = cov_matrix(DSigma_x[1:,:])
     # =======================
 
     # ==== Saving
