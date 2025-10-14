@@ -115,3 +115,22 @@ def sourcecat_load(name,NSIDE=64):
     S = Table.read(folder+name, memmap=True, format='fits')
     
     return S
+
+
+# ## Cuentas en drive 'IATE/sphere_plane_cut.pdf'
+# def get_masked_data_intersection(psi, ra0, dec0, z0):
+#     '''
+#     objects are selected by intersecting the sphere with a plane
+#     and keeping those inside the spherical cap.
+#     '''
+
+#     ra0_rad = np.deg2rad(ra0)
+#     dec0_rad = np.deg2rad(dec0)
+#     cos_dec0 = np.cos(dec0_rad)
+
+#     mask_z = _S['true_redshift_gal']>z0+0.1
+#     mask_field = (cos_dec0*np.cos(ra0_rad)*_S['cos_dec_gal']*_S['cos_ra_gal']
+#                 + cos_dec0*np.sin(ra0_rad)*_S['cos_dec_gal']*_S['sin_ra_gal'] 
+#                 + np.sin(dec0_rad)*_S['sin_dec_gal'] >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
+    
+#     return _S[mask_field&mask_z]

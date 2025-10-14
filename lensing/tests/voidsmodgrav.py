@@ -10,7 +10,6 @@ import time
 import toml
 from tqdm import tqdm
 
-import os
 import sys
 sys.path.append('../')
 
@@ -18,16 +17,16 @@ from funcs import eq2p2, lenscat_load, sourcecat_load, cov_matrix
 
 SC_CONSTANT : float = (c.value**2.0/(4.0*np.pi*G.value))*(pc.value/M_sun.value)*1.0e-6
 
-_RIN : float    = None
-_ROUT : float   = None
-_N : int        = None
-_NK : int       = None
-_NCORES : int   = None
-_S : Table      = None
+_RIN : float  = None
+_ROUT : float = None
+_N : int      = None
+_NK : int     = None
+_NCORES : int = None
+_S : Table    = None
 _binspace = None
 _NSIDE : int = None
 
-def init_globals(source_args, profile_args):
+def _init_globals(source_args, profile_args):
 
     global _S, _NSIDE
     global _RIN, _ROUT, _N, _NK, _NCORES, _binspace
@@ -41,7 +40,6 @@ def init_globals(source_args, profile_args):
     _binspace = {"lin": lambda s, e, n: np.linspace(s, e, n),
                  "log": lambda s, e, n: np.logspace(np.log10(s), np.log10(e), n)}[profile_args['binning']]
     _S = sourcecat_load(**source_args)
-    #print(f'worker initialized: {type(_S)}', flush=True)
 
 def sigma_crit(z_l, z_s):
     
@@ -49,24 +47,6 @@ def sigma_crit(z_l, z_s):
     d_s  = cosmo.angular_diameter_distance(z_s).value
     d_ls = cosmo.angular_diameter_distance_z1z2(z_l, z_s).value
     return SC_CONSTANT*(d_s/(d_ls*d_l))
-
-# ## Cuentas en drive 'IATE/sphere_plane_cut.pdf'
-# def get_masked_data_intersection(psi, ra0, dec0, z0):
-#     '''
-#     objects are selected by intersecting the sphere with a plane
-#     and keeping those inside the spherical cap.
-#     '''
-
-#     ra0_rad = np.deg2rad(ra0)
-#     dec0_rad = np.deg2rad(dec0)
-#     cos_dec0 = np.cos(dec0_rad)
-
-#     mask_z = _S['true_redshift_gal']>z0+0.1
-#     mask_field = (cos_dec0*np.cos(ra0_rad)*_S['cos_dec_gal']*_S['cos_ra_gal']
-#                 + cos_dec0*np.sin(ra0_rad)*_S['cos_dec_gal']*_S['sin_ra_gal'] 
-#                 + np.sin(dec0_rad)*_S['sin_dec_gal'] >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
-    
-#     return _S[mask_field&mask_z]
 
 def get_masked_data(psi, ra0, dec0, z0):
     '''
@@ -152,7 +132,7 @@ def stacking(source_args, lens_args, profile_args):
         delta_mean=L[8].mean()
     )
 
-    init_globals(source_args=source_args, profile_args=profile_args)
+    _init_globals(source_args=source_args, profile_args=profile_args)
 
     with Pool(processes=NCORES) as pool:
         resmap = list(tqdm(pool.imap_unordered(partial_profile, L[[0,1,2,3]].T), total=nvoids))
@@ -213,25 +193,6 @@ def execute_single_simu(config, args, gravity):
                    f'Rv{lens_args["Rv_min"]:02.0f}-{lens_args["Rv_max"]:02.0f}_'
                    f'z{100*lens_args["z_min"]:03.0f}-{100*lens_args["z_max"]:03.0f}_'
                    f'type{voidtype}_bin{profile_args["binning"]}.fits')
-
-    # # check if pix exist
-    # Scheck = sourcecat_load(**source_args)
-    # if 'pix' not in Scheck.columns:
-    #     *source_name_wpix, cosmohub_id = source_args['name'].split('.')[0].split('_')
-    #     source_name_wpix = '_'.join(source_name_wpix)+f'_w-pix{profile_args["NSIDE"]}_{cosmohub_id}.fits'
-    #     if os.path.isfile('/home/fcaporaso/cats/L768/'+source_name_wpix):
-    #         source_args['name'] = source_name_wpix
-    #     else:
-    #         print(f'{"":#^50}')
-    #         print(' Source does not have pixels\n Calculating...', flush=True)
-    #         *newname, cosmohub_id = source_args['name'].split('.')[0].split('_')
-    #         newname = '_'.join(newname)+f'_w-pix{profile_args["NSIDE"]}_{cosmohub_id}.fits'
-    #         Scheck['pix'] = hp.ang2pix(profile_args["NSIDE"], Scheck['ra_gal'], Scheck['dec_gal'], lonlat=True)
-    #         Scheck.sort('pix')
-    #         Scheck.write('/home/fcaporaso/cats/L768/'+newname, format='fits')
-    #         print('Source w pix in ', newname, '!', flush=True)
-    #         print(f'{"":#^50}\n')
-    #         source_args['name'] = newname
 
     # === program arguments
     print(f' {" Settings ":=^60}')
@@ -327,55 +288,3 @@ if __name__ == '__main__':
     main()
     print('End!')
     print(f'took {(time.time()-t1)/60.0:5.2f} min')
-
-    # lens_name = 'voids_LCDM_09.dat'
-    # Rv_min = 10.0
-    # Rv_max = 11.0
-    # z_min = 0.2
-    # z_max = 0.22
-    # delta_min = -1.0 # void type
-    # delta_max = -0.2 # void type
-
-    # source_name = 'l768_gr_z04-07_for02-03_w-pix_19304.fits'
-    # NSIDE = 64
-
-    # RIN = 0.1
-    # ROUT = 1.0
-    # N = 10
-    # NK = 25 ## Debe ser siempre un cuadrado!
-    # NCORES = 8
-
-    # lens_args = dict(
-    #     name = lens_name,
-    #     Rv_min = Rv_min,
-    #     Rv_max = Rv_max,
-    #     z_min = z_min,
-    #     z_max = z_max,
-    #     delta_min = delta_min, # void type
-    #     delta_max = delta_max, # void type
-    #     NCHUNKS = 1,
-    #     NK = NK,
-    #     fullshape=False,
-    # )
-
-    # source_args = dict(
-    #     name = source_name,
-    # )
-
-    # profile_args = dict(
-    #     name = 'test',
-    #     RIN = RIN,
-    #     ROUT = ROUT,
-    #     N = N,
-    #     NK = NK,
-    #     NSIDE = NSIDE,
-    #     NCORES = NCORES,
-    #     binning = 'lin',
-    #     noise = False
-    # )
-
-    # cosmo_params = dict(
-    #     Om0 = 0.3089,
-    #     Ode0 = 0.6911,
-    #     H0 = 100.0
-    # )
