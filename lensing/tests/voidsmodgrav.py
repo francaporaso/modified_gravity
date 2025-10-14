@@ -272,7 +272,7 @@ def main():
     config = toml.load(args.config)
 
     for gravity in ['GR','fR']:
-        print(' '+f' EXECUTING {gravity} '.center(60, '$')+' ')
+        print(' '+f' EXECUTING {gravity} '.center(60, '$')+' \n')
         execute_single_simu(config, args, gravity)
 
 if __name__ == '__main__':
