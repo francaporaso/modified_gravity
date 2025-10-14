@@ -56,8 +56,8 @@ def get_masked_data(psi, ra0, dec0, z0):
 
     mask_z = _S['true_redshift_gal']>z0+0.1
     pix_idx = hp.query_disc(_NSIDE, vec=hp.ang2vec(ra0, dec0, lonlat=True), radius=np.deg2rad(psi*1.1))
-    mask = np.isin(_S['pix'][mask_z], pix_idx)
-    return _S[mask]
+    mask = np.isin(_S['pix'], pix_idx, assume_unique=True)
+    return _S[mask&mask_z]
 
 ## TODO :: descargar el catalogo de nuevo... no tengo guardados los valores de redshift observado (ie con vel peculiares ie RSD)
 def partial_profile(inp):
