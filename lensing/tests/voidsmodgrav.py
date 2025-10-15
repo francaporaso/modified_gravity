@@ -282,14 +282,13 @@ def main():
     if args.GROnly:
         print(' '+f' EXECUTING -GR- ONLY '.center(60, '$')+' \n')
         execute_single_simu(config, args, 'GR')
-
-    if args.fROnly:
+    elif args.fROnly:
         print(' '+f' EXECUTING -f(R)- ONLY '.center(60, '$')+' \n')
         execute_single_simu(config, args, 'fR')
-
-    for gravity in ['GR','fR']:
-        print(' '+f' EXECUTING -{gravity}- '.center(60, '$')+' \n')
-        execute_single_simu(config, args, gravity)
+    else:
+        for gravity in ['GR','fR']:
+            print(' '+f' EXECUTING -{gravity}- '.center(60, '$')+' \n')
+            execute_single_simu(config, args, gravity)
 
 if __name__ == '__main__':
 
