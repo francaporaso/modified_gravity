@@ -166,7 +166,7 @@ def execute_single_simu(config, args, gravity):
         NCHUNKS=1,
     )
 
-    if config['void']['z_min']>0.1 and config['void']['z_max']<0.2:
+    if (config['void']['z_min']>=0.1) and (config['void']['z_max']<=0.2):
         sourcename = config['sim'][gravity]['source'][f'z01-02']
     else:
         sourcename = config['sim'][gravity]['source'][f'z02-03']
