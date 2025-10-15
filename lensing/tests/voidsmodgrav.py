@@ -293,6 +293,7 @@ def main():
 if __name__ == '__main__':
 
     print('''
+          
     ▗▖▗▞▀▚▖▄▄▄▄   ▄▄▄ ▄ ▄▄▄▄   ▗▄▄▖
     ▐▌▐▛▀▀▘█   █ ▀▄▄  ▄ █   █ ▐▌   
     ▐▌▝▚▄▄▖█   █ ▄▄▄▀ █ █   █ ▐▌▝▜▌
@@ -301,5 +302,5 @@ if __name__ == '__main__':
     flush=True)
     t1=time.time()
     main()
-    print('End!')
-    print(f'took {(time.time()-t1)/60.0:5.2f} min')
+    print(' End!')
+    print(f' Took {(time.time()-t1)/60.0:5.2f} min')
