@@ -273,8 +273,9 @@ def main():
     parser.add_argument('--config', type=str, default='config.toml', action='store')
     parser.add_argument('--use08', action='store_true')
     parser.add_argument('--addnoise', action='store_true')
-    parser.add_argument('--fROnly', action='store_true')
-    parser.add_argument('--GROnly', action='store_true')
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--fROnly', action='store_true')
+    group.add_argument('--GROnly', action='store_true')
     args = parser.parse_args()
 
     config = toml.load(args.config)
