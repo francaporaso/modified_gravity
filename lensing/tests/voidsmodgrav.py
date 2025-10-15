@@ -127,7 +127,7 @@ def stacking(source_args, lens_args, profile_args):
 
     extradata = dict(
         nvoids=nvoids,
-        z_mean=L[2].mean(),
+        z_mean=L[3].mean(),
         Rv_mean=L[0].mean(),
         delta_mean=L[8].mean()
     )
@@ -267,7 +267,7 @@ def execute_single_simu(config, args, gravity):
 def main():
 
     parser = ArgumentParser()
-    parser.add_argument('--sample', type=str, default='TEST', action='store')
+    parser.add_argument('--sample', type=str, default='TEST', action='store', required=True)
     parser.add_argument('-c','--NCORES', type=int, default=8, action='store')
     parser.add_argument('--config', type=str, default='config.toml', action='store')
     parser.add_argument('--use08', action='store_true')
