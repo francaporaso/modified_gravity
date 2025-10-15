@@ -125,6 +125,8 @@ def stacking(source_args, lens_args, profile_args):
     K = K[:, :nvoids] # me quedo con los que voy a usar
     print(' nvoids '+f'{": ":.>12}{nvoids}\n', flush=True)
 
+    return
+
     extradata = dict(
         nvoids=nvoids,
         z_mean=L[2].mean(),
@@ -221,10 +223,9 @@ def execute_single_simu(config, args, gravity):
     print(' Redshift '+f'{": ":.>10}[{lens_args["z_min"]:.2f}, {lens_args["z_max"]:.2f})')
     print(' Type '+f'{": ":.>14}[{lens_args["delta_min"]},{lens_args["delta_max"]}) => {voidtype}')
 
-    return np.nan
-
     # ==== Calculating profiles
     Sigma, DSigma_t, DSigma_x, extradata = stacking(source_args, lens_args, profile_args)
+    return
     cov_S = cov_matrix(Sigma[1:,:])
     cov_DSt = cov_matrix(DSigma_t[1:,:])
     cov_DSx = cov_matrix(DSigma_x[1:,:])
