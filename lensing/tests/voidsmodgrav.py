@@ -221,7 +221,6 @@ def execute_single_simu(config, args, gravity):
     print(' Redshift '+f'{": ":.>10}[{lens_args["z_min"]:.2f}, {lens_args["z_max"]:.2f})')
     print(' Type '+f'{": ":.>14}[{lens_args["delta_min"]},{lens_args["delta_max"]}) => {voidtype}')
 
-    return
     # ==== Calculating profiles
     Sigma, DSigma_t, DSigma_x, extradata = stacking(source_args, lens_args, profile_args)
     cov_S = cov_matrix(Sigma[1:,:])
