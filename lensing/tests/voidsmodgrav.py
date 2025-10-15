@@ -221,6 +221,7 @@ def execute_single_simu(config, args, gravity):
     print(' Redshift '+f'{": ":.>10}[{lens_args["z_min"]:.2f}, {lens_args["z_max"]:.2f})')
     print(' Type '+f'{": ":.>14}[{lens_args["delta_min"]},{lens_args["delta_max"]}) => {voidtype}')
 
+    return
     # ==== Calculating profiles
     Sigma, DSigma_t, DSigma_x, extradata = stacking(source_args, lens_args, profile_args)
     cov_S = cov_matrix(Sigma[1:,:])
@@ -272,12 +273,22 @@ def main():
     parser.add_argument('--config', type=str, default='config.toml', action='store')
     parser.add_argument('--use08', action='store_true')
     parser.add_argument('--addnoise', action='store_true')
+    parser.add_argument('--fROnly', action='store_true')
+    parser.add_argument('--GROnly', action='store_true')
     args = parser.parse_args()
 
     config = toml.load(args.config)
 
+    if args.GROnly:
+        print(' '+f' EXECUTING -GR- ONLY '.center(60, '$')+' \n')
+        execute_single_simu(config, args, 'GR')
+
+    if args.fROnly:
+        print(' '+f' EXECUTING -f(R)- ONLY '.center(60, '$')+' \n')
+        execute_single_simu(config, args, 'fR')
+
     for gravity in ['GR','fR']:
-        print(' '+f' EXECUTING {gravity} '.center(60, '$')+' \n')
+        print(' '+f' EXECUTING -{gravity}- '.center(60, '$')+' \n')
         execute_single_simu(config, args, gravity)
 
 if __name__ == '__main__':
