@@ -166,8 +166,13 @@ def execute_single_simu(config, args, gravity):
         NCHUNKS=1,
     )
 
+    if config['void']['z_min']>0.1 and config['void']['z_max']<0.2:
+        sourcename = config['sim'][gravity][f'z01-02']
+    else:
+        sourcename = config['sim'][gravity][f'z02-03']
+
     source_args = dict(
-        name = config['sim'][gravity]['source'],
+        name = sourcename,
     )
 
     profile_args = dict(
@@ -215,6 +220,8 @@ def execute_single_simu(config, args, gravity):
     print(' Radii '+f'{": ":.>13}[{lens_args["Rv_min"]:.2f}, {lens_args["Rv_max"]:.2f}) Mpc/h')
     print(' Redshift '+f'{": ":.>10}[{lens_args["z_min"]:.2f}, {lens_args["z_max"]:.2f})')
     print(' Type '+f'{": ":.>14}[{lens_args["delta_min"]},{lens_args["delta_max"]}) => {voidtype}')
+
+    return np.nan
 
     # ==== Calculating profiles
     Sigma, DSigma_t, DSigma_x, extradata = stacking(source_args, lens_args, profile_args)
