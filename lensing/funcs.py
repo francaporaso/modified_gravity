@@ -47,6 +47,9 @@ def eq2p2(ra_gal, dec_gal, RA0,DEC0):
 
     return rad, theta
 
+def jackknife_equalarea(ramin, ramax, decmin, decmax):
+    pass
+
 def lenscat_load(name,
                  Rv_min, Rv_max, z_min, z_max, delta_min, delta_max, rho1_min=-1.0, rho1_max=0.0, flag=2,
                  NCHUNKS:int=1, NK:int=1, octant=False, MICE=False, fullshape=True):
@@ -109,7 +112,7 @@ def lenscat_load(name,
 
     return L, K, nvoids
 
-def sourcecat_load(name,NSIDE=64):
+def sourcecat_load(name):
     
     folder = '/home/fcaporaso/cats/L768/'
     S = Table.read(folder+name, memmap=True, format='fits')
