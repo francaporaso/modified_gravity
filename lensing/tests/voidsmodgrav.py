@@ -181,7 +181,7 @@ def execute_single_simu(config, args, gravity):
         N = config['prof']['NDOTS'],
         NK = config['NK'],
         NSIDE = 64, # No tocar! depende del source file...
-        NCORES = config ['NCORES'],
+        NCORES = config['NCORES'],
         binning = config['BIN'],
         name = args.sample,
         noise = args.addnoise   
@@ -223,7 +223,7 @@ def execute_single_simu(config, args, gravity):
 
     # ==== Calculating profiles
     Sigma, DSigma_t, DSigma_x, extradata = stacking(source_args, lens_args, profile_args)
-    cov_S = cov_matrix(Sigma[1:,:])
+    cov_S   = cov_matrix(Sigma[1:,:])
     cov_DSt = cov_matrix(DSigma_t[1:,:])
     cov_DSx = cov_matrix(DSigma_x[1:,:])
     # =======================
@@ -267,7 +267,7 @@ def execute_single_simu(config, args, gravity):
 def main():
 
     parser = ArgumentParser()
-    parser.add_argument('--sample', type=str, default='TEST', action='store', required=True)
+    parser.add_argument('--sample', type=str, action='store', required=True)
     parser.add_argument('-c','--NCORES', type=int, default=8, action='store')
     parser.add_argument('--config', type=str, default='config.toml', action='store')
     parser.add_argument('--use08', action='store_true')
@@ -293,7 +293,6 @@ def main():
 if __name__ == '__main__':
 
     print('''
-          
     ▗▖▗▞▀▚▖▄▄▄▄   ▄▄▄ ▄ ▄▄▄▄   ▗▄▄▖
     ▐▌▐▛▀▀▘█   █ ▀▄▄  ▄ █   █ ▐▌   
     ▐▌▝▚▄▄▖█   █ ▄▄▄▀ █ █   █ ▐▌▝▜▌
