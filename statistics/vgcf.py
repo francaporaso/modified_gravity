@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
-from astropy.cosmology import LambdaCDM
+from astropy.cosmology import Planck18 as cosmo
 from astropy.io import fits
+from astropy.table import Table
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -12,10 +13,7 @@ import sys
 sys.path.append('/home/fcaporaso/modified_gravity/')
 from lensing.funcs import lenscat_load
 
-cosmo = LambdaCDM(H0=100.0, Om0=0.3089, Ode0=0.6911)
-
-def ang2xyz(ra, dec, redshift,
-            cosmo=cosmo):
+def ang2xyz(ra, dec, redshift):
 
     comdist = cosmo.comoving_distance(redshift).value #Mpc; Mpc/h si h=1
     x = comdist * np.cos(np.deg2rad(dec)) * np.cos(np.deg2rad(ra))
@@ -24,8 +22,7 @@ def ang2xyz(ra, dec, redshift,
 
     return x,y,z
 
-def d_com(z):
-    global cosmo
+def comoving_distance(z):
     return cosmo.comoving_distance(z).value
 
 def make_randoms(ra, dec, redshift,
@@ -56,63 +53,55 @@ def make_randoms(ra, dec, redshift,
     #return pd.DataFrame({'ra': ra_rand, 'dec': dec_rand, 'redshift':z_rand})
     return np.array([ra_rand, dec_rand, z_rand])
 
-class Catalogos:
-    def __init__(self, cat_config, lens_name, source_name, do_rands=True):
-        path = '/home/fcaporaso/cats/L768/'
+class Catalogs:
+    def __init__(self, lens_args, source_name, do_rands=True):
         
-        self.lenses, _, nvoids = lenscat_load(
-                lens_cat=path+lens_name,
-                Rv_min=cat_config['Rv_min'], 
-                Rv_max=cat_config['Rv_max'], 
-                z_min=cat_config['z_min'], 
-                z_max=cat_config['z_max'], 
-                rho1_min=cat_config['rho1_min'], 
-                rho1_max=cat_config['rho1_max'], 
-                rho2_min=cat_config['rho2_min'], 
-                rho2_max=cat_config['rho1_max'], 
-                flag=cat_config['flag'],
-                octant=cat_config['octant']
-            )
         ## [0]:rv, [1]:ra, [2]:dec, [3]:redshift
+        L, _, self.nvoids = lenscat_load(**lens_args)
+        assert self.nvoids != 0, 'No void found with those parameters!'
+        self.lenses = Table(L.T, names=['Rv', 'ra', 'dec', 'redshift'])
+        self.lenses['dcom'] = comoving_distance(self.lenses['redshift'])
         
-        assert nvoids != 0, 'No void found with those parameters!'
-        print('N voids: '.ljust(20,'.'), f' {nvoids:,}'.rjust(20,'.'),sep='',flush=True)
+        #self.sources = pd.read_parquet(source_name).sample(frac=1.0, random_state=1).to_numpy().T
+        self.sources = Table.read(source_name, format='fits', memmap=True)
+        mask = (self.sources['true_redshift_gal'] < lens_args["z_max"]+0.1) & (self.sources['true_redshift_gal'] >= lens_args["z_min"]-0.1)
+        self.sources = self.sources[mask]
+        self.ngals = len(self.sources)
+        assert self.ngals != 0, 'No tracer found with those parameters!'
         
-        self.sources = pd.read_parquet(path+source_name).sample(frac=1.0, random_state=1).to_numpy().T
-        ### [0]: kind, [1]:r_gal (com dist), [2]:redshift, [3]:ra, [4]:dec
-        mask = (self.sources[2] < cat_config["z_max"]+0.1) & (self.sources[2] >= cat_config["z_min"]-0.1)
-        self.sources = self.sources[:, mask]
-        nsources = len(self.sources.T)
-        assert nsources != 0, 'No tracer found with those parameters!'
-        print('N sources: '.ljust(20,'.'), f' {nsources:,}'.rjust(20,'.'),sep='',flush=True)
-        
-        self.lenses = np.append(self.lenses, [d_com(self.lenses[2])]) ## [4]
+        if 'dcom_gal' not in self.sources:
+            self.sources['dcom_gal'] = comoving_distance(self.sources['true_redshift_gal'])
 
-        self.lenses = np.append(self.lenses, [np.ones(nvoids)]) ## [5]
-        self.sources = np.append(self.sources, [np.ones(nsources)]) ## [5]
+        # self.lenses = np.append(self.lenses, [d_com(self.lenses[2])]) ## [4]
+        # self.lenses = np.append(self.lenses, [np.ones(self.nvoids)]) ## [5]
+        # self.sources = np.append(self.sources, [np.ones(self.ngals)]) ## [5]
 
         if do_rands:
-            self.random_lenses = make_randoms(
-                self.lenses[1],
-                self.lenses[2],
-                self.lenses[3],
-                size_random=nvoids*10
+            self.random_lenses = Table(
+                make_randoms(
+                    self.lenses['ra'],
+                    self.lenses['dec'],
+                    self.lenses['dcom'],
+                    size_random=self.nvoids*10
+                ),
+                names=['ra','dec','dcom']
             )
-            print('N rand voids: '.ljust(20,'.'), f' {nvoids*10:,}'.rjust(20,'.'),sep='',flush=True)
 
-            self.random_sources = make_randoms(
-                self.sources[3],
-                self.sources[4],
-                self.sources[1], ## le paso la dist comovil y samplea de esos como si fuera redshift, así me ahorro el paso de pasar de z a dist com 
-                size_random=nsources*10
+            self.random_sources = Table(
+                make_randoms(
+                    self.sources['ra_gal'],
+                    self.sources['dec_gal'],
+                    self.sources['dcom_gal'], ## le paso la dist comovil y samplea de esos como si fuera redshift, así me ahorro el paso de pasar de z a dist com 
+                    size_random=self.ngals*10
+                ),
+                names=['ra_gal', 'dec_gal', 'dcom_gal']
             )
-            print('N rand sources: '.ljust(20,'.'), f' {nsources*10:,}'.rjust(20,'.'),sep='',flush=True)
 
             ## w=1
-            self.random_lenses = np.append(self.random_lenses, [np.ones(nvoids*10)]) ## [3]
-            self.random_sources = np.append(self.random_sources, [np.ones(nsources*10)]) ## [3]
+            # self.random_lenses = np.append(self.random_lenses, [np.ones(self.nvoids*10)]) ## [3]
+            # self.random_sources = np.append(self.random_sources, [np.ones(self.ngals*10)]) ## [3]
             
-            self.random_lenses = np.append(self.random_lenses, [d_com(self.random_lenses[2])]) ## [4]
+            # self.random_lenses = np.append(self.random_lenses, [d_com(self.random_lenses[2])]) ## [4]
             #self.random_sources.rename(columns={'redshift':'r_com'}, inplace=True)
         
         else: ## cambiar a numpy...
@@ -124,13 +113,18 @@ class Catalogos:
                 'w':np.full(len(self.lenses),np.NaN)
             })
             self.random_sources = pd.DataFrame({
-                'ra':np.full(nsources,np.NaN),
-                'dec':np.full(nsources,np.NaN),
-                'redshift':np.full(nsources,np.NaN),
-                'r_com':np.full(nsources,np.NaN),
-                'w':np.full(nsources,np.NaN)
+                'ra':np.full(self.ngals,np.NaN),
+                'dec':np.full(self.ngals,np.NaN),
+                'redshift':np.full(self.ngals,np.NaN),
+                'r_com':np.full(self.ngals,np.NaN),
+                'w':np.full(self.ngals,np.NaN)
             })
         
+        print('N voids: '.ljust(20,'.'), f' {self.nvoids:,}'.rjust(20,'.'),sep='',flush=True)
+        print('N sources: '.ljust(20,'.'), f' {self.ngals:,}'.rjust(20,'.'), sep='', flush=True)
+        print('N rand voids: '.ljust(20,'.'), f' {self.nvoids*10:,}'.rjust(20,'.'),sep='',flush=True)
+        print('N rand sources: '.ljust(20,'.'), f' {self.ngals*10:,}'.rjust(20,'.'),sep='',flush=True)
+
 class VoidGalaxyCrossCorrelation:
     
     def __init__(self, config_treecorr):
@@ -144,18 +138,18 @@ class VoidGalaxyCrossCorrelation:
         # print('N jackknife: '.ljust(20,'.'), f' {config_treecorr['nk']}'.rjust(20,'.'),sep='')
         # print('Shape Noise: '.ljust(20,'.'), f' {config_treecorr['addnoise}'.rjust(20,'.'),sep='')
 
-    def load_treecorrcatalogs(self, lenses, sources, random_lenses, random_sources):
+    def load_treecorrcatalogs(self, cats):
         print('loading cats w treecorr',flush=True)
-        if len(lenses) <= self.config['NPatches']:
+        if len(cats.lenses) <= self.config['NPatches']:
             print('NPatches < Nvoids..., changing to Nvoids-1',flush=True)
-            self.config['NPatches'] = len(lenses)-1
+            self.config['NPatches'] = len(cats.lenses)-1
 
         ## Voids
         self.dvcat = treecorr.Catalog(
-            ra=lenses[1],
-            dec=lenses[2],
-            w=lenses[5],
-            r=lenses[4],
+            ra=cats.lenses['ra'],
+            dec=cats.lenses['dec'],
+            w=np.ones(cats.nvoids),
+            r=cats.lenses['dcom'],
             npatch=self.config['NPatches'],
             ra_units='deg',
             dec_units='deg',
@@ -164,10 +158,10 @@ class VoidGalaxyCrossCorrelation:
 
         ## Tracers (gx)[1]:comdist, [3]:ra, [4]:dec
         self.dgcat = treecorr.Catalog(
-            ra=sources[3], 
-            dec=sources[4], 
-            w = sources[5], 
-            r=sources[1], 
+            ra=cats.sources['ra_gal'], 
+            dec=cats.sources['dec_gal'], 
+            w=np.ones(cats.ngals), 
+            r=cats.sources['dcom_gal'], 
             patch_centers= self.dvcat.patch_centers,
             ra_units='deg', dec_units='deg'
         )
@@ -175,10 +169,10 @@ class VoidGalaxyCrossCorrelation:
 
         ## Random voids
         self.rvcat = treecorr.Catalog(
-            ra=random_lenses[0], 
-            dec=random_lenses[1], 
-            w = random_lenses[3], 
-            r=random_lenses[4], 
+            ra=cats.random_lenses['ra'], 
+            dec=cats.random_lenses['dec'], 
+            w=np.ones(cats.nvoids*10), 
+            r=cats.random_lenses['dcom'], 
             patch_centers= self.dvcat.patch_centers,
             ra_units='deg', dec_units='deg'
         )
@@ -186,10 +180,10 @@ class VoidGalaxyCrossCorrelation:
 
         ## Random tracers (gx)
         self.rgcat = treecorr.Catalog(
-            ra=random_sources[0], 
-            dec=random_sources[1], 
-            w = random_sources[3], 
-            r=random_sources[2], 
+            ra=cats.random_sources['ra_gal'], 
+            dec=cats.random_sources['dec_gal'], 
+            w=np.ones(self.ngals*10), 
+            r=cats.random_sources['dcom_gal'], 
             patch_centers= self.dvcat.patch_centers,
             ra_units='deg', dec_units='deg'
         )
@@ -251,14 +245,8 @@ class VoidGalaxyCrossCorrelation:
         self.xi, self.varxi = DvDg.calculateXi(dr=DvRg, rd=RvDg, rr=RvRg)
         self.cov = DvDg.cov
     
-    def run(self, cats):
-
-        self.load_treecorrcatalogs(
-            cats.lenses,
-            cats.sources,
-            cats.random_lenses,
-            cats.random_sources
-        )
+    def execute(self, cats):
+        self.load_treecorrcatalogs(cats)
         self.calculate_corr()
 
     def write(self, sample, cat_config, lenscat, sourcecat):
@@ -325,26 +313,42 @@ class VoidGalaxyCrossCorrelation:
         #plt.text(40,-0.6, f'$R_v \\in$ ({Rv_min},{Rv_max})')
         #plt.text(40,-0.65, f'$z \\in$ ({z_min},{z_max})')
 
-def main(tree_config, cat_config, lenscat, sourcecat, sample, ncores):
+def main(tree_config, lens_args, source_name, sample):
     
+    if lens_args['rho2_max']<=0:
+        voidtype = 'R'
+    elif lens_args['rho2_min']>=0:
+        voidtype = 'S'
+    else:
+        voidtype = 'all'
+
     vgcf = VoidGalaxyCrossCorrelation(tree_config)
 
-    # program arguments
-    print(' Catalogs config '.center(40,"="), flush=True)
-    print('Lens cat: '.ljust(20,'.'), f' {lenscat}'.rjust(20,'.'), sep='', flush=True)
-    print('Sour catalog: '.ljust(20,'.'), f' {sourcecat.split("_")[-1][:5]}'.rjust(20,'.'),sep='', flush=True)
-    print('Out: '.ljust(20,'.'), f' {sample}'.rjust(20,'.'),sep='', flush=True)
-    print('N cores: '.ljust(20,'.'), f' {ncores}'.rjust(20,'.'),sep='', flush=True)
-    
-    # lens arguments
-    print(' Void sample '.center(40,"="), flush=True)
-    print('Radii: '.ljust(20,'.'), f' [{cat_config["Rv_min"]}, {cat_config["Rv_max"]})'.rjust(20,'.'), sep='', flush=True)
-    print('Redshift: '.ljust(20,'.'), f' [{cat_config["z_min"]}, {cat_config["z_max"]})'.rjust(20,'.'),sep='', flush=True)
-    print('Tipo: '.ljust(20,'.'), f' {tipo}'.rjust(20,'.'),sep='', flush=True)
+    # === program arguments
+    print(f' {" Settings ":=^60}')
+    print(' Lens cat '+f'{": ":.>10}{lens_args["name"]}')
+    print(' Source cat '+f'{": ":.>8}{source_name}')
+    print(' Output file '+f'{": ":.>7}{output_file}')
+    print(' NCORES '+f'{": ":.>12}{tree_config["ncores"]}\n')
 
-    cats = Catalogos(cat_config, lenscat, sourcecat)
-    vgcf.run(cats)
-    vgcf.write(sample+'_'+lenscat.split('_')[1], cat_config, lenscat, sourcecat)
+    # === profile arguments
+    # print(f' {" Profile arguments ":=^60}')
+    print(' RMIN '+f'{": ":.>14}{tree_config["rmin"]:.2f}')
+    print(' RMAX '+f'{": ":.>14}{tree_config["rmax"]:.2f}')
+    print(' N '+f'{": ":.>17}{tree_config["ndots"]:<2d}')
+    print(' NK '+f'{": ":.>16}{tree_config["NPatches"]:<2d}')
+    print(' Binning '+f'{": ":.>11}{tree_config["binning"]}')
+    print(' Shape Noise '+f'{": ":.>7}{tree_config["noise"]}\n')
+    
+    # === lens arguments
+    print(f' {" Void sample ":=^60}')
+    print(' Radii '+f'{": ":.>13}[{lens_args["Rv_min"]:.2f}, {lens_args["Rv_max"]:.2f}) Mpc/h')
+    print(' Redshift '+f'{": ":.>10}[{lens_args["z_min"]:.2f}, {lens_args["z_max"]:.2f})')
+    print(' Type '+f'{": ":.>14}[{lens_args["delta_min"]},{lens_args["delta_max"]}) => {voidtype}')
+
+    cats = Catalogs(lens_args, lenscat, source_name)
+    vgcf.execute(cats)
+    vgcf.write(sample+'_'+lenscat.split('_')[1], lens_args, lenscat, source_name)
 
 if __name__ == '__main__':
     
@@ -365,7 +369,7 @@ if __name__ == '__main__':
     # parser.add_argument('--lens_cat', type=str, default='voids_LCDM_09.dat', action='store')
     # parser.add_argument('--source_cat', type=str, default='l768_gr_z04-07_for02-03_19304.fits', action='store')
     parser.add_argument('--sample', type=str, default='TEST', action='store')
-    parser.add_argument('--sim', type=str, default='LCDM', action='store', choices=['LCDM','fR','both'])
+    parser.add_argument('--sim', type=str, default='both', action='store', choices=['LCDM','fR','both'])
     parser.add_argument('-c','--ncores', type=int, default=2, action='store')
     # parser.add_argument('-r','--n_runslices', type=int, default=1, action='store')
     # parser.add_argument('--h_cosmo', type=float, default=1.0, action='store')
@@ -375,11 +379,8 @@ if __name__ == '__main__':
     parser.add_argument('--Rv_max', type=float, default=50.0, action='store')
     parser.add_argument('--z_min', type=float, default=0.0, action='store')
     parser.add_argument('--z_max', type=float, default=0.6, action='store')
-    parser.add_argument('--rho1_min', type=float, default=-1.0, action='store')
-    parser.add_argument('--rho1_max', type=float, default=0.0, action='store')
-    parser.add_argument('--rho2_min', type=float, default=-1.0, action='store')
-    parser.add_argument('--rho2_max', type=float, default=100.0, action='store')
-    parser.add_argument('--flag', type=float, default=2.0, action='store')
+    parser.add_argument('--delta_min', type=float, default=-1.0, action='store')
+    parser.add_argument('--delta_max', type=float, default=100.0, action='store')
     # parser.add_argument('--octant', action='store_true') ## 'store_true' guarda True SOLO cuando se da --octant
     parser.add_argument('--RIN', type=float, default=0.05, action='store')
     parser.add_argument('--ROUT', type=float, default=5.0, action='store')    
@@ -388,28 +389,19 @@ if __name__ == '__main__':
     # parser.add_argument('--addnoise', action='store_true')
     args = parser.parse_args()
 
-    ## TODO
-    ## add octant as flag maybe?
     cat_config = {
         'Rv_min':args.Rv_min,
         'Rv_max':args.Rv_max,
         'z_min':args.z_min,
         'z_max':args.z_max,
-        'rho1_min':args.rho1_min,
-        'rho1_max':args.rho1_max,
-        'rho2_min':args.rho2_min,
-        'rho2_max':args.rho2_max,
-        'flag':args.flag,
-        'octant':True,
+        'delta_min':args.delta_min,
+        'delta_max':args.delta_max,
+        'flag':2.0,
+        'octant':False,
+        'fullshape':False,
     }
 
     mean_rv = (cat_config['Rv_min']+cat_config['Rv_max'])*0.5
-    if cat_config['rho2_max']<=0:
-        tipo = 'R'
-    elif cat_config['rho2_min']>=0:
-        tipo = 'S'
-    else:
-        tipo = 'all'
 
     tree_config = {
         'ndots' : args.ndots, # number of radial bins
