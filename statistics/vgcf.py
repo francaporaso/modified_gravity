@@ -63,7 +63,10 @@ class Catalogs:
         self.lenses['dcom'] = comoving_distance(self.lenses['redshift'])
         
         #self.sources = pd.read_parquet(source_name).sample(frac=1.0, random_state=1).to_numpy().T
-        self.sources = Table.read(source_name, format='fits', memmap=True)
+        try:
+            self.sources = Table.read(source_name, format='fits', memmap=True)
+        except FileNotFoundError:
+            self.sources = Table.read('/home/fcaporaso/cats/L768/'+source_name, format='fits', memmap=True)
         mask = (self.sources['true_redshift_gal'] < lens_args["z_max"]+0.1) & (self.sources['true_redshift_gal'] >= lens_args["z_min"]-0.1)
         self.sources = self.sources[mask]
         self.ngals = len(self.sources)
