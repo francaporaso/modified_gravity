@@ -128,7 +128,7 @@ class VoidGalaxyCrossCorrelation:
         self.load_treecorrcatalogs(cats)
         self.calculate_corr()
 
-    def write(self, output_file, lens_args, source_name):
+    def write(self, output_file, lens_args, source_args):
         print('saving init',flush=True)
         if lens_args['rho2_max']<=0:
             tipo = 'R'
@@ -140,7 +140,7 @@ class VoidGalaxyCrossCorrelation:
         head = fits.Header()
         head.append(('nvoids',int(self.dvcat.nobj)))
         head.append(('lens',lens_args['name']))
-        head.append(('sour',source_name.split('_')[-1][:5],'cosmohub stamp'))
+        head.append(('sour',source_args['name'].split('_')[-1][:5],'cosmohub stamp'))
         head.append(('Rv_min',np.round(lens_args['Rv_min'],2)))
         head.append(('Rv_max',np.round(lens_args['Rv_max'],2)))
         # head.append(('Rv_mean',np.round(rvmean,4)))
@@ -178,7 +178,7 @@ class VoidGalaxyCrossCorrelation:
         hdul.writeto(output_file,overwrite=True)
         print('saved in', output_file,flush=True)
 
-def main(tree_config, lens_args, source_name, sample):
+def main(tree_config, lens_args, source_args, sample):
     
     if lens_args['delta_max']<=0:
         voidtype = 'R'
@@ -196,7 +196,7 @@ def main(tree_config, lens_args, source_name, sample):
     # === program arguments
     print(f' {" Settings ":=^60}')
     print(' Lens cat '+f'{": ":.>10}{lens_args["name"]}')
-    print(' Source cat '+f'{": ":.>8}{source_name}')
+    print(' Source cat '+f'{": ":.>8}{source_args["name"]}')
     print(' Output file '+f'{": ":.>7}{output_file}')
     print(' NCORES '+f'{": ":.>12}{tree_config["ncores"]}\n')
 
@@ -215,11 +215,11 @@ def main(tree_config, lens_args, source_name, sample):
     print(' Type '+f'{": ":.>14}[{lens_args["delta_min"]},{lens_args["delta_max"]}) => {voidtype}')
 
     # === executing...
-    cats = Catalogs(lens_args, source_name)
+    cats = Catalogs(lens_args, source_args)
     vgcf = VoidGalaxyCrossCorrelation(tree_config)
     vgcf.execute(cats)
 
-    vgcf.write(output_file, lens_args, source_name)
+    vgcf.write(output_file, lens_args, source_args)
 
 if __name__ == '__main__':    
     print('''
