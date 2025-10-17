@@ -194,7 +194,7 @@ def execute_single_simu(config, args, gravity):
     else:
         voidtype = 'mixed'
     
-    output_file = (f'results/{profile_args["name"]}-{gravity}_L{lens_args["name"].split("_")[-1][:-4]}_'
+    output_file = (f'results/lensing_{profile_args["name"]}-{gravity}_L{lens_args["name"].split("_")[-1][:-4]}_'
                    f'Rv{lens_args["Rv_min"]:02.0f}-{lens_args["Rv_max"]:02.0f}_'
                    f'z{100*lens_args["z_min"]:03.0f}-{100*lens_args["z_max"]:03.0f}_'
                    f'type{voidtype}_bin{profile_args["binning"]}.fits')
