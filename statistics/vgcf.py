@@ -2,9 +2,7 @@ from argparse import ArgumentParser
 from astropy.cosmology import Planck18 as cosmo
 from astropy.io import fits
 from astropy.table import Table
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import time
 import treecorr
 from multiprocessing import Pool
@@ -12,46 +10,17 @@ from multiprocessing import Pool
 import sys
 sys.path.append('/home/fcaporaso/modified_gravity/')
 from lensing.funcs import lenscat_load
+from stattools import make_randoms
+
+def comoving_distance(z):
+    return cosmo.comoving_distance(z).value # Mpc/h
 
 def ang2xyz(ra, dec, redshift):
-
-    comdist = cosmo.comoving_distance(redshift).value #Mpc; Mpc/h si h=1
+    comdist = comoving_distance(redshift)
     x = comdist * np.cos(np.deg2rad(dec)) * np.cos(np.deg2rad(ra))
     y = comdist * np.cos(np.deg2rad(dec)) * np.sin(np.deg2rad(ra))
     z = comdist * np.sin(np.deg2rad(dec))
-
     return x,y,z
-
-def comoving_distance(z):
-    return cosmo.comoving_distance(z).value
-
-def make_randoms(ra, dec, redshift,
-                 size_random = 100):
-
-    rng = np.random.default_rng(0)    
-    dec = np.deg2rad(dec)
-    sindec_rand = rng.uniform(np.sin(dec.min()), np.sin(dec.max()), size_random)
-    dec_rand = np.arcsin(sindec_rand)*(180.0/np.pi)
-    ra_rand  = rng.uniform(ra.min(), ra.max(), size_random)
-
-    y,xbins  = np.histogram(redshift, 25)
-    x  = xbins[:-1]+0.5*np.diff(xbins)
-    ## segun numpy mejor usar la clase numpy.polynomial.Polynomial instead of np.poly1d
-    poly = np.polyfit(x,y,3)
-    # print('polyfit done',flush=True)
-    ## poly = np.polynomial.Polynomial.fit(x,y,deg=3)
-
-    zr = rng.uniform(redshift.min(),redshift.max(),size_random)
-    poly_y = np.poly1d(poly)(zr)
-    # print('poly eval done',flush=True)
-    ## poly_y = np.polynomial.polynomial.polyval(zr, poly.coef) ## no da lo mismo....
-    poly_y[poly_y<0] = 0.
-    peso = poly_y/sum(poly_y)
-    z_rand = rng.choice(zr,size_random,replace=True,p=peso)
-
-    # print('Wii randoms!',flush=True)
-    #return pd.DataFrame({'ra': ra_rand, 'dec': dec_rand, 'redshift':z_rand})
-    return np.array([ra_rand, dec_rand, z_rand])
 
 class Catalogs:
     def __init__(self, lens_args, source_name, do_rands=True):
@@ -75,10 +44,6 @@ class Catalogs:
         if 'dcom_gal' not in self.sources.columns:
             self.sources['dcom_gal'] = comoving_distance(self.sources['true_redshift_gal'])
 
-        # self.lenses = np.append(self.lenses, [d_com(self.lenses[2])]) ## [4]
-        # self.lenses = np.append(self.lenses, [np.ones(self.nvoids)]) ## [5]
-        # self.sources = np.append(self.sources, [np.ones(self.ngals)]) ## [5]
-
         if do_rands:
             print(' Making randoms '.center(60, '.'), flush=True)
             self.random_lenses = Table(
@@ -95,34 +60,14 @@ class Catalogs:
                 make_randoms(
                     self.sources['ra_gal'],
                     self.sources['dec_gal'],
-                    self.sources['dcom_gal'], ## le paso la dist comovil y samplea de esos como si fuera redshift, así me ahorro el paso de pasar de z a dist com 
+                    self.sources['dcom_gal'], 
                     size_random=self.ngals*10
                 ),
                 names=['ra_gal', 'dec_gal', 'dcom_gal']
             )
 
-            ## w=1
-            # self.random_lenses = np.append(self.random_lenses, [np.ones(self.nvoids*10)]) ## [3]
-            # self.random_sources = np.append(self.random_sources, [np.ones(self.ngals*10)]) ## [3]
-            
-            # self.random_lenses = np.append(self.random_lenses, [d_com(self.random_lenses[2])]) ## [4]
-            #self.random_sources.rename(columns={'redshift':'r_com'}, inplace=True)
-        
-        else: ## cambiar a numpy...
-            self.random_lenses = pd.DataFrame({
-                'ra':np.full(len(self.lenses),np.NaN),
-                'dec':np.full(len(self.lenses),np.NaN),
-                'redshift':np.full(len(self.lenses),np.NaN),
-                'r_com':np.full(len(self.lenses),np.NaN),
-                'w':np.full(len(self.lenses),np.NaN)
-            })
-            self.random_sources = pd.DataFrame({
-                'ra':np.full(self.ngals,np.NaN),
-                'dec':np.full(self.ngals,np.NaN),
-                'redshift':np.full(self.ngals,np.NaN),
-                'r_com':np.full(self.ngals,np.NaN),
-                'w':np.full(self.ngals,np.NaN)
-            })
+        else:
+            pass
         
         print('N voids: '.ljust(20,'.'), f' {self.nvoids:,}'.rjust(20,'.'),sep='',flush=True)
         print('N sources: '.ljust(20,'.'), f' {self.ngals:,}'.rjust(20,'.'), sep='', flush=True)
@@ -295,18 +240,6 @@ class VoidGalaxyCrossCorrelation:
 
         hdul.writeto(output_file,overwrite=True)
         print('saved in', output_file,flush=True)
-
-    def plot_corr(self, label):
-
-        fig = plt.figure(figsize=(8,6))
-        ax = fig.add_axes([1,1,1,1])
-        ax.errorbar(self.r, self.xi, self.varxi, fmt='.-', capsize=2, c='purple', label=label)
-        ax.set_xlabel('meanr [Mpc/h]')
-        ax.set_ylabel('$\\xi$')
-        return ax
-        # plt.title('fR')
-        #plt.text(40,-0.6, f'$R_v \\in$ ({Rv_min},{Rv_max})')
-        #plt.text(40,-0.65, f'$z \\in$ ({z_min},{z_max})')
 
 def main(tree_config, lens_args, source_name, sample):
     
