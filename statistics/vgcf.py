@@ -72,7 +72,7 @@ class Catalogs:
         self.ngals = len(self.sources)
         assert self.ngals != 0, 'No tracer found with those parameters!'
         
-        if 'dcom_gal' not in self.sources:
+        if 'dcom_gal' not in self.sources.columns:
             self.sources['dcom_gal'] = comoving_distance(self.sources['true_redshift_gal'])
 
         # self.lenses = np.append(self.lenses, [d_com(self.lenses[2])]) ## [4]
