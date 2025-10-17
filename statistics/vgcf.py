@@ -433,14 +433,17 @@ if __name__ == '__main__':
     }
 
     if args.GROnly:
+        tin = time.time()
         print(' '+f' EXECUTING -GR- ONLY '.center(60, '$')+' \n')
         lens_args['name']=simus['GR']['lens']
         main(tree_config=tree_config, lens_args=lens_args, source_name=simus['GR']['source'])
     elif args.fROnly:
+        tin = time.time()
         print(' '+f' EXECUTING -f(R)- ONLY '.center(60, '$')+' \n')
         lens_args['name']=simus['fR']['lens']
         main(tree_config=tree_config, lens_args=lens_args, source_name=simus['fR']['source'])
     else:
+        tin = time.time()
         for gravity in ['GR','fR']:
             print(' '+f' EXECUTING -{gravity}- '.center(60, '$')+' \n')
             lens_args['name']=simus[gravity]['lens']
