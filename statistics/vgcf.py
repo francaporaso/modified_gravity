@@ -339,7 +339,7 @@ def main(tree_config, lens_args, source_name, sample):
     print(' RMAX '+f'{": ":.>14}{tree_config["rmax"]:.2f}')
     print(' N '+f'{": ":.>17}{tree_config["ndots"]:<2d}')
     print(' NK '+f'{": ":.>16}{tree_config["NPatches"]:<2d}')
-    print(' Binning '+f'{": ":.>11}{tree_config["binning"]}')
+    print(' Binning '+f'{": ":.>11}{tree_config["bin_type"]}')
     print(' Shape Noise '+f'{": ":.>7}{tree_config["noise"]}\n')
     
     # === lens arguments
