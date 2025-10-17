@@ -272,6 +272,8 @@ if __name__ == '__main__':
         'fullshape':False,
     }
 
+    source_args = {}
+
     mean_rv = (lens_args['Rv_min']+lens_args['Rv_max'])*0.5 # Eh ... no es tan así
 
     tree_config = {
@@ -306,12 +308,14 @@ if __name__ == '__main__':
         tin = time.time()
         print(' '+f' EXECUTING -GR- ONLY '.center(60, '$')+' \n')
         lens_args['name']=simus['GR']['lens']
+        source_args['name']=simus['GR']['source']
         main(sample=args.sample, tree_config=tree_config, lens_args=lens_args, source_name=simus['GR']['source'])
 
     elif args.fROnly:
         tin = time.time()
         print(' '+f' EXECUTING -f(R)- ONLY '.center(60, '$')+' \n')
         lens_args['name']=simus['fR']['lens']
+        source_args['name']=simus['fR']['source']
         main(sample=args.sample, tree_config=tree_config, lens_args=lens_args, source_name=simus['fR']['source'])
 
     else:
@@ -319,6 +323,7 @@ if __name__ == '__main__':
         for gravity in ['GR','fR']:
             print(' '+f' EXECUTING -{gravity}- '.center(60, '$')+' \n')
             lens_args['name']=simus[gravity]['lens']
+            source_args['name']=simus[gravity]['source']
             main(sample=args.sample, tree_config=tree_config, lens_args=lens_args, source_name=simus[gravity]['source'])
 
     print(f'Took {(time.time()-tin)/60.0} min'.center(50,':'), flush=True)
