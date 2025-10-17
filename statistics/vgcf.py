@@ -28,7 +28,7 @@ def comoving_distance(z):
 def make_randoms(ra, dec, redshift,
                  size_random = 100):
 
-    rng = np.random.default_rng()    
+    rng = np.random.default_rng(0)    
     dec = np.deg2rad(dec)
     sindec_rand = rng.uniform(np.sin(dec.min()), np.sin(dec.max()), size_random)
     dec_rand = np.arcsin(sindec_rand)*(180.0/np.pi)
@@ -67,7 +67,7 @@ class Catalogs:
             self.sources = Table.read(source_name, format='fits', memmap=True)
         except FileNotFoundError:
             self.sources = Table.read('/home/fcaporaso/cats/L768/'+source_name, format='fits', memmap=True)
-        mask = (self.sources['true_redshift_gal'] < lens_args["z_max"]+0.1) & (self.sources['true_redshift_gal'] >= lens_args["z_min"]-0.1)
+        mask = (self.sources['true_redshift_gal'] < lens_args["z_max"]+0.01) & (self.sources['true_redshift_gal'] >= lens_args["z_min"]-0.01)
         self.sources = self.sources[mask]
         self.ngals = len(self.sources)
         assert self.ngals != 0, 'No tracer found with those parameters!'
@@ -80,6 +80,7 @@ class Catalogs:
         # self.sources = np.append(self.sources, [np.ones(self.ngals)]) ## [5]
 
         if do_rands:
+            print(' Making randoms '.center(60, '.'), flush=True)
             self.random_lenses = Table(
                 make_randoms(
                     self.lenses['ra'],
@@ -134,13 +135,6 @@ class VoidGalaxyCrossCorrelation:
         print('VGCC init',flush=True)
         self.config : dict = config_treecorr
 
-        print(' Profile arguments '.center(40,"="),flush=True)
-        print('RMIN: '.ljust(20,'.'), f' {config_treecorr["rmin"]}'.rjust(20,'.'), sep='',flush=True)
-        print('RMAX: '.ljust(20,'.'), f' {config_treecorr["rmax"]}'.rjust(20,'.'),sep='',flush=True)
-        print('N: '.ljust(20,'.'), f' {config_treecorr["ndots"]}'.rjust(20,'.'),sep='',flush=True)
-        # print('N jackknife: '.ljust(20,'.'), f' {config_treecorr['nk']}'.rjust(20,'.'),sep='')
-        # print('Shape Noise: '.ljust(20,'.'), f' {config_treecorr['addnoise}'.rjust(20,'.'),sep='')
-
     def load_treecorrcatalogs(self, cats):
         print('loading cats w treecorr',flush=True)
         if len(cats.lenses) <= self.config['NPatches']:
@@ -159,7 +153,7 @@ class VoidGalaxyCrossCorrelation:
         )
         print('dvcat done',flush=True)
 
-        ## Tracers (gx)[1]:comdist, [3]:ra, [4]:dec
+        ## Tracers (gx)
         self.dgcat = treecorr.Catalog(
             ra=cats.sources['ra_gal'], 
             dec=cats.sources['dec_gal'], 
