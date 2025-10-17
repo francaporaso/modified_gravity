@@ -340,7 +340,6 @@ def main(tree_config, lens_args, source_name, sample):
     print(' N '+f'{": ":.>17}{tree_config["ndots"]:<2d}')
     print(' NK '+f'{": ":.>16}{tree_config["NPatches"]:<2d}')
     print(' Binning '+f'{": ":.>11}{tree_config["bin_type"]}')
-    print(' Shape Noise '+f'{": ":.>7}{tree_config["noise"]}\n')
     
     # === lens arguments
     print(f' {" Void sample ":=^60}')
@@ -413,7 +412,7 @@ if __name__ == '__main__':
         'rmin' : args.RIN*mean_rv, # minimum value for rp (r in case of the quadrupole)
         'rmax' : args.ROUT*mean_rv, # maximum value for rp (r in case of the quadrupole)
         # Related to JK patches
-        'NPatches' : int(args.ndots**(3./2.)),
+        'NPatches' : 100,
         # Other configuration parameters
         'ncores' : args.ncores, # Number of cores to run in parallel
         'slop' : 0., # Resolution for treecorr
