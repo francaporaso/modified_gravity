@@ -82,7 +82,7 @@ class Catalogs:
                     self.lenses['dec'],
                     self.lenses['dcom'],
                     size_random=self.nvoids*10
-                ),
+                ).T,
                 names=['ra','dec','dcom']
             )
 
@@ -92,7 +92,7 @@ class Catalogs:
                     self.sources['dec_gal'],
                     self.sources['dcom_gal'], 
                     size_random=self.ngals*10
-                ),
+                ).T,
                 names=['ra_gal', 'dec_gal', 'dcom_gal']
             )
 
