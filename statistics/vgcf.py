@@ -61,7 +61,7 @@ class VoidGalaxyCrossCorrelation:
         self.rgcat = treecorr.Catalog(
             ra=cats.random_sources['ra_gal'], 
             dec=cats.random_sources['dec_gal'], 
-            w=np.ones(self.ngals*10), 
+            w=np.ones(cats.ngals*10), 
             r=cats.random_sources['dcom_gal'], 
             patch_centers= self.dvcat.patch_centers,
             ra_units='deg', dec_units='deg'
