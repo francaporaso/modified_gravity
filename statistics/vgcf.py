@@ -249,29 +249,29 @@ class VoidGalaxyCrossCorrelation:
         self.load_treecorrcatalogs(cats)
         self.calculate_corr()
 
-    def write(self, sample, cat_config, lenscat, sourcecat):
+    def write(self, output_file, lens_args, source_name):
         print('saving init',flush=True)
-        if cat_config['rho2_max']<=0:
+        if lens_args['rho2_max']<=0:
             tipo = 'R'
-        elif cat_config['rho2_min']>=0:
+        elif lens_args['rho2_min']>=0:
             tipo = 'S'
         else:
             tipo = 'all'
 
         head = fits.Header()
         head.append(('nvoids',int(self.dvcat.nobj)))
-        head.append(('lens',lenscat))
-        head.append(('sour',sourcecat.split('_')[-1][:5],'cosmohub stamp'))
-        head.append(('Rv_min',np.round(cat_config['Rv_min'],2)))
-        head.append(('Rv_max',np.round(cat_config['Rv_max'],2)))
+        head.append(('lens',lens_args['name']))
+        head.append(('sour',source_name.split('_')[-1][:5],'cosmohub stamp'))
+        head.append(('Rv_min',np.round(lens_args['Rv_min'],2)))
+        head.append(('Rv_max',np.round(lens_args['Rv_max'],2)))
         # head.append(('Rv_mean',np.round(rvmean,4)))
-        head.append(('r1_min',np.round(cat_config['rho1_min'],2)))
-        head.append(('r1_max',np.round(cat_config['rho1_max'],2)))
-        head.append(('r2_min',np.round(cat_config['rho2_min'],2)))
-        head.append(('r2_max',np.round(cat_config['rho2_max'],2)))
+        head.append(('r1_min',np.round(lens_args['rho1_min'],2)))
+        head.append(('r1_max',np.round(lens_args['rho1_max'],2)))
+        head.append(('r2_min',np.round(lens_args['rho2_min'],2)))
+        head.append(('r2_max',np.round(lens_args['rho2_max'],2)))
         # head.append(('r2_mean',np.round(rho2mean,4)))
-        head.append(('z_min',np.round(cat_config['z_min'],2)))
-        head.append(('z_max',np.round(cat_config['z_max'],2)))
+        head.append(('z_min',np.round(lens_args['z_min'],2)))
+        head.append(('z_max',np.round(lens_args['z_max'],2)))
         # head.append(('z_mean',np.round(zmean,4)))
         # head.append(('SLCS_INFO'))
         head.append(('RMIN',np.round(self.config['rmin'],4)))
@@ -295,8 +295,6 @@ class VoidGalaxyCrossCorrelation:
         primary_hdu = fits.PrimaryHDU(header=head)
         
         hdul = fits.HDUList([primary_hdu, tbhdu_p, tbhdu_c])
-
-        output_file = f'results/vgcf_{sample}_{np.ceil(cat_config["Rv_min"]).astype(int)}-{np.ceil(cat_config["Rv_max"]).astype(int)}_z0{int(10.0*cat_config["z_min"])}-0{int(10.0*cat_config["z_max"])}_type{tipo}.fits'
 
         hdul.writeto(output_file,overwrite=True)
         print('saved in', output_file,flush=True)
@@ -322,7 +320,11 @@ def main(tree_config, lens_args, source_name, sample):
     else:
         voidtype = 'all'
 
-    vgcf = VoidGalaxyCrossCorrelation(tree_config)
+
+    output_file = (f'results/vgcf_{sample}-{gravity}_L{lens_args["name"].split("_")[-1][:-4]}_'
+                   f'Rv{lens_args["Rv_min"]:02.0f}-{lens_args["Rv_max"]:02.0f}_'
+                   f'z{100*lens_args["z_min"]:03.0f}-{100*lens_args["z_max"]:03.0f}_'
+                   f'type{voidtype}_bin{tree_config["bin_type"]}.fits')
 
     # === program arguments
     print(f' {" Settings ":=^60}')
@@ -346,13 +348,14 @@ def main(tree_config, lens_args, source_name, sample):
     print(' Redshift '+f'{": ":.>10}[{lens_args["z_min"]:.2f}, {lens_args["z_max"]:.2f})')
     print(' Type '+f'{": ":.>14}[{lens_args["delta_min"]},{lens_args["delta_max"]}) => {voidtype}')
 
-    cats = Catalogs(lens_args, lenscat, source_name)
+    # === executing...
+    cats = Catalogs(lens_args, source_name)
+    vgcf = VoidGalaxyCrossCorrelation(tree_config)
     vgcf.execute(cats)
-    vgcf.write(sample+'_'+lenscat.split('_')[1], lens_args, lenscat, source_name)
 
-if __name__ == '__main__':
-    
-    
+    vgcf.write(output_file, lens_args, source_name)
+
+if __name__ == '__main__':    
     print('''
                              __ 
                             / _|
@@ -369,7 +372,9 @@ if __name__ == '__main__':
     # parser.add_argument('--lens_cat', type=str, default='voids_LCDM_09.dat', action='store')
     # parser.add_argument('--source_cat', type=str, default='l768_gr_z04-07_for02-03_19304.fits', action='store')
     parser.add_argument('--sample', type=str, default='TEST', action='store')
-    parser.add_argument('--sim', type=str, default='both', action='store', choices=['LCDM','fR','both'])
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--fROnly', action='store_true')
+    group.add_argument('--GROnly', action='store_true')
     parser.add_argument('-c','--ncores', type=int, default=2, action='store')
     # parser.add_argument('-r','--n_runslices', type=int, default=1, action='store')
     # parser.add_argument('--h_cosmo', type=float, default=1.0, action='store')
@@ -389,7 +394,7 @@ if __name__ == '__main__':
     # parser.add_argument('--addnoise', action='store_true')
     args = parser.parse_args()
 
-    cat_config = {
+    lens_args = {
         'Rv_min':args.Rv_min,
         'Rv_max':args.Rv_max,
         'z_min':args.z_min,
@@ -401,7 +406,7 @@ if __name__ == '__main__':
         'fullshape':False,
     }
 
-    mean_rv = (cat_config['Rv_min']+cat_config['Rv_max'])*0.5
+    mean_rv = (lens_args['Rv_min']+lens_args['Rv_max'])*0.5 # Eh ... no es tan así
 
     tree_config = {
         'ndots' : args.ndots, # number of radial bins
@@ -416,29 +421,30 @@ if __name__ == '__main__':
         'bin_type':'Log',
     } 
 
-    cats_name = [
-        ('voids_LCDM_09.dat', 'l768_gr_octant_galz00-06_Mr-18_19860.parquet'),
-        ('voids_fR_09.dat', 'l768_mg_octant_galz00-06_Mr-18_19861.parquet'),
-    ]
-    if args.sim == 'both':
-    
-        tin = time.time()
-        for lenscat, sourcecat in cats_name:
-            main(tree_config, cat_config, lenscat, sourcecat, args.sample, args.ncores)
-    
-    elif args.sim == 'LCDM':
-        #lenscat = 'voids_LCDM_09.dat' 
-        #sourcecat = 'l768_gr_galz00-06_Mr-18_19860.parquet'
-        lenscat,sourcecat = cats_name[0]
-        tin = time.time()
-        main(tree_config, cat_config, lenscat, sourcecat, args.sample, args.ncores)
+    simus = {
+        'GR':{
+            'lens':'voids_LCDM_09.dat',
+            'source':'l768_gr_z02-04_for01-02_19532.fits'
+        },
+        'fR':{
+            'lens':'voids_fR_09.dat',
+            'source':'l768_mg_z02-04_for01-02_19531.fits'
+        }
+    }
 
+    if args.GROnly:
+        print(' '+f' EXECUTING -GR- ONLY '.center(60, '$')+' \n')
+        lens_args['name']=simus['GR']['lens']
+        main(tree_config=tree_config, lens_args=lens_args, source_name=simus['GR']['source'])
+    elif args.fROnly:
+        print(' '+f' EXECUTING -f(R)- ONLY '.center(60, '$')+' \n')
+        lens_args['name']=simus['fR']['lens']
+        main(tree_config=tree_config, lens_args=lens_args, source_name=simus['fR']['source'])
     else:
-        #lenscat = 'voids_fR_09.dat'
-        #sourcecat = 'l768_mg_galz00-06_Mr-18_19861.parquet'
-        lenscat,sourcecat = cats_name[1]
-        tin = time.time()
-        main(tree_config, cat_config, lenscat, sourcecat, args.sample, args.ncores)
+        for gravity in ['GR','fR']:
+            print(' '+f' EXECUTING -{gravity}- '.center(60, '$')+' \n')
+            lens_args['name']=simus[gravity]['lens']
+            main(tree_config=tree_config, lens_args=lens_args, source_name=simus[gravity]['source'])
 
     print(f'Took {(time.time()-tin)/60.0} min'.center(50,':'), flush=True)
     print('End!', flush=True)
