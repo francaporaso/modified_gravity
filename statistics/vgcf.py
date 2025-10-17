@@ -313,9 +313,9 @@ class VoidGalaxyCrossCorrelation:
 
 def main(tree_config, lens_args, source_name, sample):
     
-    if lens_args['rho2_max']<=0:
+    if lens_args['delta_max']<=0:
         voidtype = 'R'
-    elif lens_args['rho2_min']>=0:
+    elif lens_args['delta_min']>=0:
         voidtype = 'S'
     else:
         voidtype = 'all'
