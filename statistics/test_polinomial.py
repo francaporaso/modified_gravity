@@ -16,6 +16,6 @@ poly = p(z_rand)
 peso = poly/np.sum(poly)
 z_rand = rng.choice(z_rand, size_rand, replace=True, p=peso)
 
-plt.stair(y, x, label='True')
+plt.stairs(y, x, label='True')
 plt.hist(z_rand, 25, label='Rand', histtype='step')
 plt.show()
