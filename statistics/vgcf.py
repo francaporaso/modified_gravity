@@ -130,9 +130,9 @@ class VoidGalaxyCrossCorrelation:
 
     def write(self, output_file, lens_args, source_args):
         print('saving init',flush=True)
-        if lens_args['delta__max']<=0:
+        if lens_args['delta_max']<=0:
             tipo = 'R'
-        elif lens_args['delta__min']>=0:
+        elif lens_args['delta_min']>=0:
             tipo = 'S'
         else:
             tipo = 'all'
