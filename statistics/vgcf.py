@@ -144,10 +144,8 @@ class VoidGalaxyCrossCorrelation:
         head.append(('Rv_min',np.round(lens_args['Rv_min'],2)))
         head.append(('Rv_max',np.round(lens_args['Rv_max'],2)))
         # head.append(('Rv_mean',np.round(rvmean,4)))
-        head.append(('r1_min',np.round(lens_args['rho1_min'],2)))
-        head.append(('r1_max',np.round(lens_args['rho1_max'],2)))
-        head.append(('r2_min',np.round(lens_args['rho2_min'],2)))
-        head.append(('r2_max',np.round(lens_args['rho2_max'],2)))
+        head.append(('r2_min',np.round(lens_args['delta_min'],2)))
+        head.append(('r2_max',np.round(lens_args['delta_max'],2)))
         # head.append(('r2_mean',np.round(rho2mean,4)))
         head.append(('z_min',np.round(lens_args['z_min'],2)))
         head.append(('z_max',np.round(lens_args['z_max'],2)))
@@ -303,7 +301,7 @@ if __name__ == '__main__':
             'rand_source':None,
         }
     }
-
+    
     if args.GROnly:
         tin = time.time()
         print(' '+f' EXECUTING -GR- ONLY '.center(60, '$')+' \n')
