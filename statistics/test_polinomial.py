@@ -1,11 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
+from time import time
 
 with fits.open('/home/fcaporaso/cats/L768/l768_gr_z02-04_for01-02_19532.fits') as f:
     z_gal = f[1].data['true_redshift_gal']
 
-size_rand = 1000
+t1 = time()
+size_rand = len(z_gal)*10
 
 y, xedge = np.histogram(z_gal, bins=25)
 x = 0.5*(xedge[:-1]+xedge[1:])
@@ -16,7 +18,9 @@ poly = p(z_rand)
 peso = poly/np.sum(poly)
 z_rand = rng.choice(z_rand, size_rand, replace=True, p=peso)
 
-_,b,_ = plt.hist(z_gal, bins=25, label='True', density=True)
+print(f'time took: {time()-time:2.5f}')
+
+_,b,_ = plt.hist(z_gal, bins=25, label='True', histtype='step', density=True)
 plt.hist(z_rand, bins=b, label='Rand', histtype='step', density=True)
 plt.legend()
 plt.show()
