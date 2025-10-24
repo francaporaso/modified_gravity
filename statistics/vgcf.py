@@ -130,9 +130,9 @@ class VoidGalaxyCrossCorrelation:
 
     def write(self, output_file, lens_args, source_args):
         print('saving init',flush=True)
-        if lens_args['rho2_max']<=0:
+        if lens_args['delta__max']<=0:
             tipo = 'R'
-        elif lens_args['rho2_min']>=0:
+        elif lens_args['delta__min']>=0:
             tipo = 'S'
         else:
             tipo = 'all'
@@ -146,7 +146,7 @@ class VoidGalaxyCrossCorrelation:
         # head.append(('Rv_mean',np.round(rvmean,4)))
         head.append(('r2_min',np.round(lens_args['delta_min'],2)))
         head.append(('r2_max',np.round(lens_args['delta_max'],2)))
-        # head.append(('r2_mean',np.round(rho2mean,4)))
+        # head.append(('r2_mean',np.round(delta_mean,4)))
         head.append(('z_min',np.round(lens_args['z_min'],2)))
         head.append(('z_max',np.round(lens_args['z_max'],2)))
         # head.append(('z_mean',np.round(zmean,4)))
@@ -301,7 +301,7 @@ if __name__ == '__main__':
             'rand_source':None,
         }
     }
-    
+
     if args.GROnly:
         tin = time.time()
         print(' '+f' EXECUTING -GR- ONLY '.center(60, '$')+' \n')
