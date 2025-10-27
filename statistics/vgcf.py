@@ -318,7 +318,7 @@ if __name__ == '__main__':
         'ncores' : args.ncores, # Number of cores to run in parallel
         'slop' : 0., # Resolution for treecorr
         'box' : False, # Indicates if the data corresponds to a box, otherwise it will assume a lightcone
-        'bin_type':'Log',
+        'bin_type':'Lin',
         'estimator':'P' # or 'LS'
     } 
 
