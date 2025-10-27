@@ -72,7 +72,7 @@ class VoidGalaxyCrossCorrelation:
 
         if self.config['estimator'] == 'P':
             print('calculating corr w Peebles estimator', flush=True)
-            pairs_names = ['DvDg', 'RvRg']
+            pairs_names = ['DvDg', 'DvRg']
         elif self.config['estimator'] == 'LS':
             print('calculating corr w Landy-Szalay estimator', flush=True)
             pairs_names = ['DvDg', 'DvRg', 'RvDg', 'RvRg']
