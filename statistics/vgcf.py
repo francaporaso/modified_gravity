@@ -184,7 +184,7 @@ def main(tree_config, lens_args, source_args, sample):
     print(' N '+f'{": ":.>17}{tree_config["ndots"]:<2d}')
     print(' NK '+f'{": ":.>16}{tree_config["NPatches"]:<2d}')
     print(' Binning '+f'{": ":.>11}{tree_config["bin_type"]}')
-    print(' Estimator '+f'{": ":.>8}{tree_config["estimator"]}')
+    print(' Estimator '+f'{": ":.>9}{tree_config["estimator"]}')
     
     # === lens arguments
     print(f' {" Void sample ":=^60}')
