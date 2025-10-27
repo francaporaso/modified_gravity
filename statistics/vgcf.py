@@ -195,7 +195,7 @@ def main(tree_config, lens_args, source_args, sample):
     # === executing...
     cats = Catalogs(lens_args, source_args)
     vgcf = VoidGalaxyCrossCorrelation(tree_config)
-    vgcf.execute(cats, tree_config['estimator'])
+    vgcf.execute(cats)
 
     vgcf.write(output_file, lens_args, source_args)
 
