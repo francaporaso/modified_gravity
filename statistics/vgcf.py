@@ -68,107 +68,53 @@ class VoidGalaxyCrossCorrelation:
         )
         print('rgcat done',flush=True)
 
-    def calculate_corr_LandySzalay(self):
-        print('calculating corr w Landy-Szalay estimator', flush=True)
-        DvDg = treecorr.NNCorrelation(
-            nbins=self.config['ndots'], 
-            min_sep=self.config['rmin'], 
-            max_sep=self.config['rmax'], 
-            bin_slop=self.config['slop'], brute = False, 
-            verbose=0, var_method = 'jackknife',
-            bin_type=self.config['bin_type']
-        )
-        print('dvdg done',flush=True)
-        DvRg = treecorr.NNCorrelation(
-            nbins=self.config['ndots'], 
-            min_sep=self.config['rmin'], 
-            max_sep=self.config['rmax'], 
-            bin_slop=self.config['slop'], brute = False, 
-            verbose=0, var_method = 'jackknife',
-            bin_type=self.config['bin_type']
-        )
-        print('dvrg done',flush=True)
+    def calculate_corr(self):
 
-        RvDg = treecorr.NNCorrelation(
-            nbins=self.config['ndots'], 
-            min_sep=self.config['rmin'], 
-            max_sep=self.config['rmax'], 
-            bin_slop=self.config['slop'], brute = False, 
-            verbose=0, var_method = 'jackknife',
-            bin_type=self.config['bin_type']
-        )
-        print('rvdg done',flush=True)
-
-        RvRg = treecorr.NNCorrelation(
-            nbins=self.config['ndots'], 
-            min_sep=self.config['rmin'], 
-            max_sep=self.config['rmax'], 
-            bin_slop=self.config['slop'], brute = False, 
-            verbose=0, var_method = 'jackknife',
-            bin_type=self.config['bin_type']
-        )
-        print('rvrg done',flush=True)
-        
-        print('process init',flush=True)
-        DvDg.process(self.dvcat, self.dgcat, num_threads=self.config['ncores'])
-        print('process DvDg done',flush=True)
-        DvRg.process(self.dvcat, self.rgcat, num_threads=self.config['ncores'])
-        print('process DvRg done',flush=True)
-        RvDg.process(self.rvcat, self.dgcat, num_threads=self.config['ncores'])
-        print('process RvDg done',flush=True)
-        RvRg.process(self.rvcat, self.rgcat, num_threads=self.config['ncores'])
-        print('process RvRg done',flush=True)
-
-        print('calculating xi',flush=True)
-        self.r = DvDg.meanr
-        self.xi, self.varxi = DvDg.calculateXi(dr=DvRg, rd=RvDg, rr=RvRg)
-        self.cov = DvDg.cov
-    
-    def calculate_corr_Peebles(self):
-        print('Calculating corr w Peebles estimator')
-
-        DvDg = treecorr.NNCorrelation(
-            nbins=self.config['ndots'], 
-            min_sep=self.config['rmin'], 
-            max_sep=self.config['rmax'], 
-            bin_slop=self.config['slop'], brute = False, 
-            verbose=0, var_method = 'jackknife',
-            bin_type=self.config['bin_type']
-        )
-        RvRg = treecorr.NNCorrelation(
-            nbins=self.config['ndots'], 
-            min_sep=self.config['rmin'], 
-            max_sep=self.config['rmax'], 
-            bin_slop=self.config['slop'], brute = False, 
-            verbose=0, var_method = 'jackknife',
-            bin_type=self.config['bin_type']
-        )
-
-        print('process init',flush=True)
-        DvDg.process(self.dvcat, self.dgcat, num_threads=self.config['ncores'])
-        RvRg.process(self.rvcat, self.rgcat, num_threads=self.config['ncores'])
-        print('calculating xi',flush=True)
-        self.r = DvDg.meanr
-        self.xi, self.varxi = DvDg.calculateXi(rr=RvRg)
-        self.cov = DvDg.cov
-
-    def execute(self, cats, estimator : str = 'P'):
-        self.load_treecorrcatalogs(cats)
-        if estimator == 'P':
-            self.calculate_corr_Peebles()
-        elif estimator == 'LS':
-            self.calculate_corr_LandySzalay()
+        if self.config['estimator'] == 'P':
+            print('calculating corr w Peebles estimator', flush=True)
+            pairs_names = ['DvDg', 'RvRg']
+        elif self.config['estimator'] == 'LS':
+            print('calculating corr w Landy-Szalay estimator', flush=True)
+            pairs_names = ['DvDg', 'DvRg', 'RvDg', 'RvRg']
         else:
             raise ValueError('Estimator should be "P" (Peebles) or "LS" (Landy-Szalay)')
 
+        pairs = {}
+        for name in pairs_names:
+            pairs[name] = treecorr.NNCorrelation(
+                nbins=self.config['ndots'],
+                min_sep=self.config['rmin'],
+                max_sep=self.config['rmax'],
+                bin_slop=self.config['slop'],
+                brute=False,
+                verbose=0,
+                var_method='jackknife',
+                bin_type=self.config['bin_type']
+            )
+
+        for name, pair in pairs.items():
+            cat1 = self.dvcat if name[:2]=='Dv' else self.rvcat
+            cat2 = self.dgcat if name[-2:]=='Dg' else self.rgcat    
+            pair.process(cat1, cat2, num_threads=self.config['ncores'])
+
+        print('calculating xi',flush=True)
+        self.r = pairs['DvDg'].meanr
+        if self.config['estimator'] == 'P':
+            self.xi, self.varxi = pairs['DvDg'].calculateXi(rr=pairs['RvRg'])
+        else:
+            self.xi, self.varxi = pairs['DvDg'].calculateXi(
+                dr=pairs['DvRg'], 
+                rd=pairs['RvDg'], 
+                rr=pairs['RvRg']
+            )
+        self.cov = pairs['DvDg'].cov
+    
+    def execute(self, cats):
+        self.load_treecorrcatalogs(cats)
+        self.calculate_corr()
+
     def write(self, output_file, lens_args, source_args):
         print('saving init',flush=True)
-        if lens_args['delta_max']<=0:
-            tipo = 'R'
-        elif lens_args['delta_min']>=0:
-            tipo = 'S'
-        else:
-            tipo = 'all'
 
         head = fits.Header()
         head.append(('nvoids',int(self.dvcat.nobj)))
@@ -206,8 +152,8 @@ class VoidGalaxyCrossCorrelation:
         
         hdul = fits.HDUList([primary_hdu, tbhdu_p, tbhdu_c])
 
-        hdul.writeto(output_file,overwrite=True)
-        print('saved in', output_file,flush=True)
+        hdul.writeto(output_file, overwrite=True)
+        print('saved in', output_file, flush=True)
 
 def main(tree_config, lens_args, source_args, sample):
     
@@ -238,7 +184,7 @@ def main(tree_config, lens_args, source_args, sample):
     print(' N '+f'{": ":.>17}{tree_config["ndots"]:<2d}')
     print(' NK '+f'{": ":.>16}{tree_config["NPatches"]:<2d}')
     print(' Binning '+f'{": ":.>11}{tree_config["bin_type"]}')
-    print(' Estimator '+f'{": ":.>11}{tree_config["estimator"]}')
+    print(' Estimator '+f'{": ":.>8}{tree_config["estimator"]}')
     
     # === lens arguments
     print(f' {" Void sample ":=^60}')
@@ -318,7 +264,7 @@ if __name__ == '__main__':
         'ncores' : args.ncores, # Number of cores to run in parallel
         'slop' : 0., # Resolution for treecorr
         'box' : False, # Indicates if the data corresponds to a box, otherwise it will assume a lightcone
-        'bin_type':'Lin',
+        'bin_type':'Linear',
         'estimator':'P' # or 'LS'
     } 
 
