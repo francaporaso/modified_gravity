@@ -68,8 +68,8 @@ class VoidGalaxyCrossCorrelation:
         )
         print('rgcat done',flush=True)
 
-    def calculate_corr(self):
-        print('calculating corr...',flush=True)
+    def calculate_corr_LandySzalay(self):
+        print('calculating corr w Landy-Szalay estimator', flush=True)
         DvDg = treecorr.NNCorrelation(
             nbins=self.config['ndots'], 
             min_sep=self.config['rmin'], 
@@ -124,9 +124,42 @@ class VoidGalaxyCrossCorrelation:
         self.xi, self.varxi = DvDg.calculateXi(dr=DvRg, rd=RvDg, rr=RvRg)
         self.cov = DvDg.cov
     
-    def execute(self, cats):
+    def calculate_corr_Peebles(self):
+        print('Calculating corr w Peebles estimator')
+
+        DvDg = treecorr.NNCorrelation(
+            nbins=self.config['ndots'], 
+            min_sep=self.config['rmin'], 
+            max_sep=self.config['rmax'], 
+            bin_slop=self.config['slop'], brute = False, 
+            verbose=0, var_method = 'jackknife',
+            bin_type=self.config['bin_type']
+        )
+        RvRg = treecorr.NNCorrelation(
+            nbins=self.config['ndots'], 
+            min_sep=self.config['rmin'], 
+            max_sep=self.config['rmax'], 
+            bin_slop=self.config['slop'], brute = False, 
+            verbose=0, var_method = 'jackknife',
+            bin_type=self.config['bin_type']
+        )
+
+        print('process init',flush=True)
+        DvDg.process(self.dvcat, self.dgcat, num_threads=self.config['ncores'])
+        RvRg.process(self.rvcat, self.rgcat, num_threads=self.config['ncores'])
+        print('calculating xi',flush=True)
+        self.r = DvDg.meanr
+        self.xi, self.varxi = DvDg.calculateXi(rr=RvRg)
+        self.cov = DvDg.cov
+
+    def execute(self, cats, estimator : str = 'P'):
         self.load_treecorrcatalogs(cats)
-        self.calculate_corr()
+        if estimator == 'P':
+            self.calculate_corr_Peebles()
+        elif estimator == 'LS':
+            self.calculate_corr_LandySzalay()
+        else:
+            raise ValueError('Estimator should be "P" (Peebles) or "LS" (Landy-Szalay)')
 
     def write(self, output_file, lens_args, source_args):
         print('saving init',flush=True)
@@ -205,6 +238,7 @@ def main(tree_config, lens_args, source_args, sample):
     print(' N '+f'{": ":.>17}{tree_config["ndots"]:<2d}')
     print(' NK '+f'{": ":.>16}{tree_config["NPatches"]:<2d}')
     print(' Binning '+f'{": ":.>11}{tree_config["bin_type"]}')
+    print(' Estimator '+f'{": ":.>11}{tree_config["estimator"]}')
     
     # === lens arguments
     print(f' {" Void sample ":=^60}')
@@ -215,7 +249,7 @@ def main(tree_config, lens_args, source_args, sample):
     # === executing...
     cats = Catalogs(lens_args, source_args)
     vgcf = VoidGalaxyCrossCorrelation(tree_config)
-    vgcf.execute(cats)
+    vgcf.execute(cats, tree_config['estimator'])
 
     vgcf.write(output_file, lens_args, source_args)
 
@@ -285,6 +319,7 @@ if __name__ == '__main__':
         'slop' : 0., # Resolution for treecorr
         'box' : False, # Indicates if the data corresponds to a box, otherwise it will assume a lightcone
         'bin_type':'Log',
+        'estimator':'P' # or 'LS'
     } 
 
     simus = {
