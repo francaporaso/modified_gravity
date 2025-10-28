@@ -116,7 +116,7 @@ class VoidGalaxyCrossCorrelation:
             dec=cats.sources['dec_gal'], 
             #w=np.ones(cats.ngals), 
             r=cats.sources['dcom_gal'], 
-            patch_centers=self.config['NPatches'],
+            npatch=self.config['NPatches'],
             ra_units='deg', dec_units='deg'
         )
 
@@ -151,7 +151,7 @@ class VoidGalaxyCrossCorrelation:
                 dec=void['dec'],
                 #w=np.ones(cats.nvoids), # If not given, all ones
                 r=void['dcom'],
-                npatch=dgcat.patch_centers,
+                patch_centers=dgcat.patch_centers,
                 ra_units='deg',
                 dec_units='deg',
             )
