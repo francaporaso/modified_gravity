@@ -69,12 +69,12 @@ class Catalogs:
         self.sources = self.sources[mask]
         self.ngals = len(self.sources)
         assert self.ngals != 0, 'No tracer found with those parameters!'
+
+        if 'dcom_gal' not in self.sources.columns:
+            self.sources['dcom_gal'] = comoving_distance(self.sources['true_redshift_gal'])
         
         if do_rands:
             print(' Making randoms '.center(60, '.'), flush=True)
-
-            if 'dcom_gal' not in self.sources.columns:
-                self.sources['dcom_gal'] = comoving_distance(self.sources['true_redshift_gal'])
 
             self.random_lenses = Table(
                 make_randoms(
