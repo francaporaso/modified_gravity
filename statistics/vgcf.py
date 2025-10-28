@@ -27,7 +27,7 @@ class VoidGalaxyCrossCorrelation:
         self.dvcat = treecorr.Catalog(
             ra=cats.lenses['ra'],
             dec=cats.lenses['dec'],
-            w=np.ones(cats.nvoids),
+            #w=np.ones(cats.nvoids), # If not given, all ones
             r=cats.lenses['dcom'],
             npatch=self.config['NPatches'],
             ra_units='deg',
@@ -39,7 +39,7 @@ class VoidGalaxyCrossCorrelation:
         self.dgcat = treecorr.Catalog(
             ra=cats.sources['ra_gal'], 
             dec=cats.sources['dec_gal'], 
-            w=np.ones(cats.ngals), 
+            #w=np.ones(cats.ngals), 
             r=cats.sources['dcom_gal'], 
             patch_centers= self.dvcat.patch_centers,
             ra_units='deg', dec_units='deg'
@@ -72,7 +72,7 @@ class VoidGalaxyCrossCorrelation:
 
         if self.config['estimator'] == 'P':
             print('calculating corr w Peebles estimator', flush=True)
-            pairs_names = ['DvDg', 'DvRg']
+            pairs_names = ['DvDg', 'RvRg']
         elif self.config['estimator'] == 'LS':
             print('calculating corr w Landy-Szalay estimator', flush=True)
             pairs_names = ['DvDg', 'DvRg', 'RvDg', 'RvRg']
@@ -109,9 +109,84 @@ class VoidGalaxyCrossCorrelation:
             )
         self.cov = pairs['DvDg'].cov
     
+    def calculate_corr_normdist(self, cats):
+
+        dgcat = treecorr.Catalog(
+            ra=cats.sources['ra_gal'], 
+            dec=cats.sources['dec_gal'], 
+            #w=np.ones(cats.ngals), 
+            r=cats.sources['dcom_gal'], 
+            patch_centers=self.config['NPatches'],
+            ra_units='deg', dec_units='deg'
+        )
+
+        rgcat = treecorr.Catalog(
+            ra=cats.random_sources['ra_gal'], 
+            dec=cats.random_sources['dec_gal'], 
+            #w=np.ones(cats.ngals*10), 
+            r=cats.random_sources['dcom_gal'], 
+            patch_centers= dgcat.patch_centers,
+            ra_units='deg', dec_units='deg'
+        )
+
+        rvcat = treecorr.Catalog(
+            ra=cats.random_lenses['ra'], 
+            dec=cats.random_lenses['dec'], 
+            #w=np.ones(cats.nvoids*10), 
+            r=cats.random_lenses['dcom'], 
+            patch_centers= dgcat.patch_centers,
+            ra_units='deg', dec_units='deg'
+        )
+        
+        print('calculating corr w Peebles estimator', flush=True)
+        pairs_names = ['DvDg', 'RvRg']
+
+        r = np.linspace(self.config['rmin'], self.config['rmax'], self.config['ndots']+1)
+        r = 0.5*(r[:-1]+r[1:])
+        xi = np.zeros(self.config['ndots'])
+
+        for void in cats.lenses:
+            dvcat = treecorr.Catalog(
+                ra=void['ra'],
+                dec=void['dec'],
+                #w=np.ones(cats.nvoids), # If not given, all ones
+                r=void['dcom'],
+                npatch=dgcat.patch_centers,
+                ra_units='deg',
+                dec_units='deg',
+            )
+            pairs = {}
+            for name in pairs_names:
+                pairs[name] = treecorr.NNCorrelation(
+                    nbins=self.config['ndots'],
+                    min_sep=self.config['rmin']*void['Rv'],
+                    max_sep=self.config['rmax']*void['Rv'],
+                    bin_slop=self.config['slop'],
+                    brute=False,
+                    verbose=0,
+                    var_method='jackknife',
+                    bin_type=self.config['bin_type']
+                )
+
+            for name, pair in pairs.items():
+                if name[0] == 'D':
+                    cat1, cat2 = dvcat, dgcat
+                else:
+                    cat1, cat2 = rvcat, rgcat
+                pair.process(cat1, cat2, num_threads=self.config['ncores'])
+
+            xi += (pairs['DvDg'].weight/pairs['RvRg'].weight)*(pairs['RvRg'].tot/pairs['DvDg'].tot) - 1.0
+
+        xi /= len(cats.lenses)
+
+        return r, xi
+
     def execute(self, cats):
-        self.load_treecorrcatalogs(cats)
-        self.calculate_corr()
+        # self.load_treecorrcatalogs(cats)
+        # self.calculate_corr()
+
+        self.r, self.xi = self.calculate_corr_normdist(cats)
+        self.cov = np.full((len(self.r),len(self.r)), np.nan, dtype=np.float32)
 
     def write(self, output_file, lens_args, source_args):
         print('saving init',flush=True)
@@ -256,8 +331,8 @@ if __name__ == '__main__':
 
     tree_config = {
         'ndots' : args.ndots, # number of radial bins
-        'rmin' : args.RIN*mean_rv, # minimum value for rp (r in case of the quadrupole)
-        'rmax' : args.ROUT*mean_rv, # maximum value for rp (r in case of the quadrupole)
+        'rmin' : args.RIN, #*mean_rv, # minimum value for rp (r in case of the quadrupole)
+        'rmax' : args.ROUT, #*mean_rv, # maximum value for rp (r in case of the quadrupole)
         # Related to JK patches
         'NPatches' : 100,
         # Other configuration parameters
