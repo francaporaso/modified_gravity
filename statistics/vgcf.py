@@ -184,39 +184,11 @@ class VoidGalaxyCrossCorrelation:
         # self.load_treecorrcatalogs(cats)
         # self.calculate_corr()
 
-        self.r, self.xi = self.calculate_corr_normdist(cats)
-        self.cov = np.full((len(self.r),len(self.r)), np.nan, dtype=np.float32)
+        # self.r, self.xi = self.calculate_corr_normdist(cats)
+        # self.cov = np.full((len(self.r),len(self.r)), np.nan, dtype=np.float32)
+        pass
 
-    def write(self, cats, output_file, lens_args, source_args):
-        print('saving init',flush=True)
-
-        head = fits.Header()
-        head['nvoids'] = len(cats.lenses)
-        head['lenscat'] = lens_args['name']
-        head['sourcat'] = source_args['name']
-        head['Rv_min'] = f'{cats.lenses["Rv"].min():2.2f}'
-        head['Rv_max'] = f'{cats.lenses["Rv"].max():2.2f}'
-        head['z_min'] = f'{cats.lenses["redshift"].min():1.3f}'
-        head['z_max'] = f'{cats.lenses["redshift"].max():1.3f}'
-        head['delta_min'] = lens_args["delta_min"]
-        head['delta_max'] = lens_args["delta_max"]
-        head['RIN'] = self.config['rmin']
-        head['ROUT'] = self.config['rmax']
-        head['ndots'] = self.config['ndots']
-        head['HISTORY'] = f'{time.asctime()}'
-
-        table_p = [fits.Column(name='r', format='E', array=self.r),
-                   fits.Column(name='Xi', format='E', array=self.xi)]
-        cov_hdu = [fits.ImageHDU(self.cov, name='cov')]
-
-        primary_hdu = fits.PrimaryHDU(header=head)
-        tbhdu_p = fits.BinTableHDU.from_columns(fits.ColDefs(table_p))
-        
-        hdul = fits.HDUList([primary_hdu, tbhdu_p]+cov_hdu)
-        hdul.writeto(output_file, overwrite=True)
-        print('saved in', output_file, flush=True)
-
-def main(tree_config, lens_args, source_args, sample):
+def vgcf_single_simulation(gravity, tree_config, lens_args, source_args, sample):
     
     if lens_args['delta_max']<=0:
         voidtype = 'R'
@@ -256,47 +228,55 @@ def main(tree_config, lens_args, source_args, sample):
     # === executing...
     cats = Catalogs(lens_args, source_args)
     vgcf = VoidGalaxyCrossCorrelation(tree_config)
-    vgcf.execute(cats)
+    r, xi = vgcf.calculate_corr_normdist(cats)
+    cov = np.full((len(r),len(r)), np.nan, dtype=np.float32)
+    
+    print('saving init',flush=True)
 
-    vgcf.write(output_file, lens_args, source_args)
+    head = fits.Header()
+    head['nvoids'] = len(cats.lenses)
+    head['lenscat'] = lens_args['name']
+    head['sourcat'] = source_args['name']
+    head['Rv_min'] = f'{cats.lenses["Rv"].min():2.2f}'
+    head['Rv_max'] = f'{cats.lenses["Rv"].max():2.2f}'
+    head['z_min'] = f'{cats.lenses["redshift"].min():1.3f}'
+    head['z_max'] = f'{cats.lenses["redshift"].max():1.3f}'
+    head['voidtype'] = voidtype
+    head['delta_min'] = lens_args["delta_min"]
+    head['delta_max'] = lens_args["delta_max"]
+    head['RIN'] = tree_config['rmin']
+    head['ROUT'] = tree_config['rmax']
+    head['ndots'] = tree_config['ndots']
+    head['HISTORY'] = f'{time.asctime()}'
 
-if __name__ == '__main__':    
-    print('''
-                             __ 
-                            / _|
-     __   __   __ _    ___  | |_ 
-     \ \ / /  / _` |  / __| |  _|
-      \ V /  | (_| | | (__  | |  
-       \_/    \__, |  \___| |_|  
-               __/ |             
-              |___/              
-    ''',
-    flush=True)
+    table_p = [fits.Column(name='r', format='E', array=r),
+                fits.Column(name='Xi', format='E', array=xi)]
+    cov_hdu = [fits.ImageHDU(cov, name='cov')]
+
+    primary_hdu = fits.PrimaryHDU(header=head)
+    tbhdu_p = fits.BinTableHDU.from_columns(fits.ColDefs(table_p))
+    
+    hdul = fits.HDUList([primary_hdu, tbhdu_p]+cov_hdu)
+    hdul.writeto(output_file, overwrite=True)
+    print('saved in', output_file, flush=True)
+
+def main():
 
     parser = ArgumentParser()
-    # parser.add_argument('--lens_cat', type=str, default='voids_LCDM_09.dat', action='store')
-    # parser.add_argument('--source_cat', type=str, default='l768_gr_z04-07_for02-03_19304.fits', action='store')
     parser.add_argument('--sample', type=str, default='TEST', action='store')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--fROnly', action='store_true')
     group.add_argument('--GROnly', action='store_true')
     parser.add_argument('-c','--ncores', type=int, default=2, action='store')
-    # parser.add_argument('-r','--n_runslices', type=int, default=1, action='store')
-    # parser.add_argument('--h_cosmo', type=float, default=1.0, action='store')
-    # parser.add_argument('--Om0', type=float, default=0.3089, action='store')
-    # parser.add_argument('--Ode0', type=float, default=0.6911, action='store')
     parser.add_argument('--Rv_min', type=float, default=1.0, action='store')
     parser.add_argument('--Rv_max', type=float, default=50.0, action='store')
     parser.add_argument('--z_min', type=float, default=0.0, action='store')
     parser.add_argument('--z_max', type=float, default=0.6, action='store')
     parser.add_argument('--delta_min', type=float, default=-1.0, action='store')
     parser.add_argument('--delta_max', type=float, default=100.0, action='store')
-    # parser.add_argument('--octant', action='store_true') ## 'store_true' guarda True SOLO cuando se da --octant
     parser.add_argument('--RIN', type=float, default=0.05, action='store')
     parser.add_argument('--ROUT', type=float, default=5.0, action='store')    
     parser.add_argument('-N','--ndots', type=int, default=22, action='store')    
-    # parser.add_argument('-K','--nk', type=int, default=100, action='store')    
-    # parser.add_argument('--addnoise', action='store_true')
     args = parser.parse_args()
 
     lens_args = {
@@ -312,8 +292,6 @@ if __name__ == '__main__':
     }
 
     source_args = {}
-
-    mean_rv = (lens_args['Rv_min']+lens_args['Rv_max'])*0.5 # Eh ... no es tan así
 
     tree_config = {
         'ndots' : args.ndots, # number of radial bins
@@ -345,26 +323,56 @@ if __name__ == '__main__':
     }
 
     if args.GROnly:
-        tin = time.time()
         print(' '+f' EXECUTING -GR- ONLY '.center(60, '$')+' \n')
         lens_args['name']=simus['GR']['lens']
         source_args['name']=simus['GR']['source']
-        main(sample=args.sample, tree_config=tree_config, lens_args=lens_args, source_args=source_args)
+        vgcf_single_simulation(
+            gravity='GR',
+            sample=args.sample, 
+            tree_config=tree_config, 
+            lens_args=lens_args, 
+            source_args=source_args
+        )
 
     elif args.fROnly:
-        tin = time.time()
         print(' '+f' EXECUTING -f(R)- ONLY '.center(60, '$')+' \n')
         lens_args['name']=simus['fR']['lens']
         source_args['name']=simus['fR']['source']
-        main(sample=args.sample, tree_config=tree_config, lens_args=lens_args, source_args=source_args)
+        vgcf_single_simulation(
+            gravity='fR',
+            sample=args.sample, 
+            tree_config=tree_config, 
+            lens_args=lens_args, 
+            source_args=source_args
+        )
 
     else:
-        tin = time.time()
         for gravity in ['GR','fR']:
             print(' '+f' EXECUTING -{gravity}- '.center(60, '$')+' \n')
             lens_args['name']=simus[gravity]['lens']
             source_args['name']=simus[gravity]['source']
-            main(sample=args.sample, tree_config=tree_config, lens_args=lens_args, source_args=source_args)
+            vgcf_single_simulation(
+                gravity=gravity,
+                sample=args.sample, 
+                tree_config=tree_config, 
+                lens_args=lens_args, 
+                source_args=source_args
+            )
 
-    print(f'Took {(time.time()-tin)/60.0} min'.center(50,':'), flush=True)
+if __name__ == '__main__':    
+    print('''
+                             __ 
+                            / _|
+     __   __   __ _    ___  | |_ 
+     \ \ / /  / _` |  / __| |  _|
+      \ V /  | (_| | | (__  | |  
+       \_/    \__, |  \___| |_|  
+               __/ |             
+              |___/              
+    ''',
+    flush=True)
+
+    tin = time.time()
+    main()
     print('End!', flush=True)
+    print(f'Took {(time.time()-tin)/60.0} min'.center(50,':'), flush=True)
