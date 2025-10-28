@@ -178,7 +178,6 @@ class VoidGalaxyCrossCorrelation:
             xi += (pairs['DvDg'].weight/pairs['RvRg'].weight)*(pairs['RvRg'].tot/pairs['DvDg'].tot) - 1.0
 
         xi /= len(cats.lenses)
-
         return r, xi
 
     def execute(self, cats):
@@ -188,45 +187,32 @@ class VoidGalaxyCrossCorrelation:
         self.r, self.xi = self.calculate_corr_normdist(cats)
         self.cov = np.full((len(self.r),len(self.r)), np.nan, dtype=np.float32)
 
-    def write(self, output_file, lens_args, source_args):
+    def write(self, cats, output_file, lens_args, source_args):
         print('saving init',flush=True)
 
         head = fits.Header()
-        head.append(('nvoids',int(self.dvcat.nobj)))
-        head.append(('lens',lens_args['name']))
-        head.append(('sour',source_args['name'].split('_')[-1][:5],'cosmohub stamp'))
-        head.append(('Rv_min',np.round(lens_args['Rv_min'],2)))
-        head.append(('Rv_max',np.round(lens_args['Rv_max'],2)))
-        # head.append(('Rv_mean',np.round(rvmean,4)))
-        head.append(('r2_min',np.round(lens_args['delta_min'],2)))
-        head.append(('r2_max',np.round(lens_args['delta_max'],2)))
-        # head.append(('r2_mean',np.round(delta_mean,4)))
-        head.append(('z_min',np.round(lens_args['z_min'],2)))
-        head.append(('z_max',np.round(lens_args['z_max'],2)))
-        # head.append(('z_mean',np.round(zmean,4)))
-        # head.append(('SLCS_INFO'))
-        head.append(('RMIN',np.round(self.config['rmin'],4)))
-        head.append(('RMAX',np.round(self.config['rmax'],4)))
-        head.append(('ndots',np.round(self.config['ndots'],4)))
-        # head.append(('nk',np.round(args.nk,4),'jackknife slices'))
+        head['nvoids'] = len(cats.lenses)
+        head['lenscat'] = lens_args['name']
+        head['sourcat'] = source_args['name']
+        head['Rv_min'] = f'{cats.lenses['Rv'].min():2.2f}'
+        head['Rv_max'] = f'{cats.lenses['Rv'].max():2.2f}'
+        head['z_min'] = f'{cats.lenses['redshift'].min():1.3f}'
+        head['z_max'] = f'{cats.lenses['redshift'].max():1.3f}'
+        head['delta_min'] = lens_args['delta_min']
+        head['delta_max'] = lens_args['delta_max']
+        head['RIN'] = self.config['rmin']
+        head['ROUT'] = self.config['rmax']
+        head['ndots'] = self.config['ndots']
         head['HISTORY'] = f'{time.asctime()}'
 
-        table_p = [
-            fits.Column(name='r', format='E', array=self.r),
-            fits.Column(name='Xi', format='E', array=self.xi),
-        ]
+        table_p = [fits.Column(name='r', format='E', array=self.r),
+                   fits.Column(name='Xi', format='E', array=self.xi)]
+        cov_hdu = [fits.ImageHDU(self.cov, name='cov')]
 
-        table_c = [
-            fits.Column(name='cov', format='E', array=self.cov.flatten()),
-        ]
-
-        tbhdu_p = fits.BinTableHDU.from_columns(fits.ColDefs(table_p))
-        tbhdu_c = fits.BinTableHDU.from_columns(fits.ColDefs(table_c))
-        
         primary_hdu = fits.PrimaryHDU(header=head)
+        tbhdu_p = fits.BinTableHDU.from_columns(fits.ColDefs(table_p))
         
-        hdul = fits.HDUList([primary_hdu, tbhdu_p, tbhdu_c])
-
+        hdul = fits.HDUList([primary_hdu, tbhdu_p]+cov_hdu)
         hdul.writeto(output_file, overwrite=True)
         print('saved in', output_file, flush=True)
 
