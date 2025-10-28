@@ -147,10 +147,10 @@ class VoidGalaxyCrossCorrelation:
 
         for void in cats.lenses:
             dvcat = treecorr.Catalog(
-                ra=void['ra'],
-                dec=void['dec'],
+                ra=np.array([void['ra']]),
+                dec=np.array([void['dec']]),
                 #w=np.ones(cats.nvoids), # If not given, all ones
-                r=void['dcom'],
+                r=np.array([void['dcom']]),
                 patch_centers=dgcat.patch_centers,
                 ra_units='deg',
                 dec_units='deg',
