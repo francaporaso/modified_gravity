@@ -184,7 +184,7 @@ class VoidGalaxyCrossCorrelation:
 
             xi += (pairs['DvDg'].weight/pairs['RvRg'].weight)*(pairs['RvRg'].tot/pairs['DvDg'].tot) - 1.0
             
-            for i in range(self.config['Npatches']):
+            for i in range(self.config['NPatches']):
                 nv_patch = np.sum(dvcat.w[(dvcat!=i)])
                 nrv_patch = np.sum(rvcat.w[(rvcat!=i)])
                 ng_patch = np.sum(dgcat.w[(dgcat!=i)])
