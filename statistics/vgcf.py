@@ -144,6 +144,7 @@ class VoidGalaxyCrossCorrelation:
         r = np.linspace(self.config['rmin'], self.config['rmax'], self.config['ndots']+1)
         r = 0.5*(r[:-1]+r[1:])
         xi = np.zeros(self.config['ndots'])
+        xi_jk = np.zeros((self.config['NPatches'], self.config['ndots']))
 
         for void in cats.lenses:
             dvcat = treecorr.Catalog(
@@ -156,6 +157,7 @@ class VoidGalaxyCrossCorrelation:
                 dec_units='deg',
             )
             pairs = {}
+            jk = {}
             for name in pairs_names:
                 pairs[name] = treecorr.NNCorrelation(
                     nbins=self.config['ndots'],
@@ -174,11 +176,35 @@ class VoidGalaxyCrossCorrelation:
                 else:
                     cat1, cat2 = rvcat, rgcat
                 pair.process(cat1, cat2, num_threads=self.config['ncores'])
+                jk[name], _ = treecorr.build_multi_cov_design_matrix(
+                    [pair],
+                    'jackknife',
+                    func=lambda c: c[0].weight
+                )
 
             xi += (pairs['DvDg'].weight/pairs['RvRg'].weight)*(pairs['RvRg'].tot/pairs['DvDg'].tot) - 1.0
+            
+            for i in range(self.config['Npatches']):
+                nv_patch = np.sum(dvcat.w[(dvcat!=i)])
+                nrv_patch = np.sum(rvcat.w[(rvcat!=i)])
+                ng_patch = np.sum(dgcat.w[(dgcat!=i)])
+                nrg_patch = np.sum(rgcat.w[(rgcat!=i)])
 
+                ddpairs = nv_patch*ng_patch
+                rrpairs = nrv_patch*nrg_patch
+
+                xi_jk[i] += (rrpairs/ddpairs) * (jk['DvDg'][i]/jk['RvRg'][i]) - 1.0
+        
         xi /= len(cats.lenses)
-        return r, xi
+        xi_jk /= len(cats.lenses)
+        cov = ((self.config['NPatches']-1)/self.config['NPatches'])*np.sum(
+            np.einsum(
+                'ij,ik->ijk',
+                xi_jk-np.mean(xi_jk, axis=0), xi_jk-np.mean(xi_jk, axis=0)
+            ),
+            axis = 0
+        )
+        return r, xi, xi_jk, cov
 
     def execute(self, cats):
         # self.load_treecorrcatalogs(cats)
@@ -228,7 +254,7 @@ def vgcf_single_simulation(gravity, tree_config, lens_args, source_args, sample)
     # === executing...
     cats = Catalogs(lens_args, source_args)
     vgcf = VoidGalaxyCrossCorrelation(tree_config)
-    r, xi = vgcf.calculate_corr_normdist(cats)
+    r, xi, xi_jk, cov = vgcf.calculate_corr_normdist(cats)
     cov = np.full((len(r),len(r)), np.nan, dtype=np.float32)
     
     print('saving init',flush=True)
@@ -251,12 +277,13 @@ def vgcf_single_simulation(gravity, tree_config, lens_args, source_args, sample)
 
     table_p = [fits.Column(name='r', format='E', array=r),
                 fits.Column(name='Xi', format='E', array=xi)]
+    xi_jk_hdu = [fits.ImageHDU(xi_jk, name='xi_jackknife')]
     cov_hdu = [fits.ImageHDU(cov, name='cov')]
 
     primary_hdu = fits.PrimaryHDU(header=head)
     tbhdu_p = fits.BinTableHDU.from_columns(fits.ColDefs(table_p))
     
-    hdul = fits.HDUList([primary_hdu, tbhdu_p]+cov_hdu)
+    hdul = fits.HDUList([primary_hdu, tbhdu_p]+cov_hdu+xi_jk_hdu)
     hdul.writeto(output_file, overwrite=True)
     print('saved in', output_file, flush=True)
 
@@ -274,8 +301,8 @@ def main():
     parser.add_argument('--z_max', type=float, default=0.6, action='store')
     parser.add_argument('--delta_min', type=float, default=-1.0, action='store')
     parser.add_argument('--delta_max', type=float, default=100.0, action='store')
-    parser.add_argument('--RIN', type=float, default=0.05, action='store')
-    parser.add_argument('--ROUT', type=float, default=5.0, action='store')    
+    parser.add_argument('--RIN', type=float, default=0.01, action='store')
+    parser.add_argument('--ROUT', type=float, default=2.0, action='store')    
     parser.add_argument('-N','--ndots', type=int, default=22, action='store')    
     args = parser.parse_args()
 

@@ -6,6 +6,13 @@ import sys
 sys.path.append('/home/fcaporaso/modified_gravity/')
 from lensing.funcs import lenscat_load
 
+def error_absdiff(r, X, Y, eX, eY):
+    # metric:
+    # m = (X-Y)/abs(X)
+    # e(m) = sqrt( (dm/dX e(X))^2 + (dm/dY e(Y))^2 )
+    #      = sqrt( ( XY/abs(X)^3 * e(X))^2 + (e(Y)/abs(X))^2 )
+    return np.hypot(X*Y*eX/np.abs(X)**3, eY/np.abs(X))
+
 def ang2xyz(ra, dec, redshift):
     comdist = comoving_distance(redshift)
     x = comdist * np.cos(np.deg2rad(dec)) * np.cos(np.deg2rad(ra))
