@@ -48,7 +48,7 @@ def sigma_crit(z_l, z_s):
     d_ls = cosmo.angular_diameter_distance_z1z2(z_l, z_s).value
     return SC_CONSTANT*(d_s/(d_ls*d_l))
 
-def get_masked_data(psi, ra0, dec0, z0):
+def _get_masked_data(psi, ra0, dec0, z0):
     '''
     objects are selected by pixel on a disc of rad=psi+pad.
     pad = 0.1*psi
@@ -74,7 +74,7 @@ def partial_profile(inp):
     DEGxMPC = cosmo.arcsec_per_kpc_proper(z0).to('deg/Mpc').value
     psi = DEGxMPC*_ROUT*Rv0
     
-    catdata = get_masked_data(psi, ra0, dec0, z0)
+    catdata = _get_masked_data(psi, ra0, dec0, z0)
     #print(catdata.info, flush=True)
 
     sigma_c = sigma_crit(z0, catdata['true_redshift_gal'])/Rv0

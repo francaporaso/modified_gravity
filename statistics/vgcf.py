@@ -255,7 +255,6 @@ def vgcf_single_simulation(gravity, tree_config, lens_args, source_args, sample)
     cats = Catalogs(lens_args, source_args)
     vgcf = VoidGalaxyCrossCorrelation(tree_config)
     r, xi, xi_jk, cov = vgcf.calculate_corr_normdist(cats)
-    cov = np.full((len(r),len(r)), np.nan, dtype=np.float32)
     
     print('saving init',flush=True)
 

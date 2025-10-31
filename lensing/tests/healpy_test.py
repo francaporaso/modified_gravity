@@ -16,10 +16,12 @@ def get_masked_data(psi, ra0, dec0, z0):
     cos_dec0 = np.cos(dec0_rad)
 
     #mask_z = S['true_redshift_gal']>z0+0.1
-    mask_field = (cos_dec0*np.cos(ra0_rad)*S['cos_dec_gal']*S['cos_ra_gal']
-                + cos_dec0*np.sin(ra0_rad)*S['cos_dec_gal']*S['sin_ra_gal'] 
-                + np.sin(dec0_rad)*S['sin_dec_gal'] >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
+    # mask_field = (cos_dec0*np.cos(ra0_rad)*S['cos_dec_gal']*S['cos_ra_gal']
+    #             + cos_dec0*np.sin(ra0_rad)*S['cos_dec_gal']*S['sin_ra_gal'] 
+    #             + np.sin(dec0_rad)*S['sin_dec_gal'] >= np.sqrt(1-np.sin(np.deg2rad(psi))**2))
     
+    mask_field = (cos_dec0*S['cos_dec_gal']*(np.cos(ra0_rad)*S['cos_ra_gal']
+                + np.sin(ra0_rad)*S['sin_ra_gal']) + np.sin(dec0_rad)*S['sin_dec_gal'] >= np.sqrt(1.0-np.sin(np.deg2rad(psi))**2))
     return mask_field
 
 #S = Table.read('/home/fcaporaso/cats/L768/l768_gr_z04-07_for02-3_w_trig_19304.fits', format='fits', memmap=True)
