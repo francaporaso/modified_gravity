@@ -14,7 +14,7 @@ args = parser.parse_args()
 
 radii = [np.linspace(args.Rv_min, args.Rv_max, args.nRv+1)]
 
-zarange = np.arange(args.z_min, args.z_max, args.dz)
+zarange = np.arange(args.z_min, args.z_max+args.dz, args.dz)
 redshift = np.array([[zarange[i], zarange[i+1]] for i in range(len(zarange)-1)])
 
 if args.voidtype=='mix':
@@ -23,6 +23,10 @@ elif args.voidtype=='S':
     delta = [(0.0,10.0)]
 elif args.voidtype=='R':
     delta = [(-1.0,0.0)]
+
+print(f'{radii=}')
+print(f'{redshift=}')
+print(f'{delta=}')
 
 i = 0
 for zs in redshift:
