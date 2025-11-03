@@ -10,9 +10,6 @@ import time
 import toml
 from tqdm import tqdm
 
-import sys
-sys.path.append('../')
-
 from funcs import eq2p2, lenscat_load, sourcecat_load, cov_matrix
 
 SC_CONSTANT : float = (c.value**2.0/(4.0*np.pi*G.value))*(pc.value/M_sun.value)*1.0e-6
@@ -292,13 +289,15 @@ def main():
 
 if __name__ == '__main__':
 
-    print('''
-    ▗▖▗▞▀▚▖▄▄▄▄   ▄▄▄ ▄ ▄▄▄▄   ▗▄▄▖
-    ▐▌▐▛▀▀▘█   █ ▀▄▄  ▄ █   █ ▐▌   
-    ▐▌▝▚▄▄▖█   █ ▄▄▄▀ █ █   █ ▐▌▝▜▌
-    ▐▙▄▄▖             █       ▝▚▄▞▘
-    '''.center(60,' '),
-    flush=True)
+    # print('''
+    # ▗▖▗▞▀▚▖▄▄▄▄   ▄▄▄ ▄ ▄▄▄▄   ▗▄▄▖
+    # ▐▌▐▛▀▀▘█   █ ▀▄▄  ▄ █   █ ▐▌   
+    # ▐▌▝▚▄▄▖█   █ ▄▄▄▀ █ █   █ ▐▌▝▜▌
+    # ▐▙▄▄▖             █       ▝▚▄▞▘
+    # '''.center(60,' '),
+    # flush=True)
+
+    print(' '+f'Start'.center(60,'#'))
     t1=time.time()
     main()
     print(' End!')
