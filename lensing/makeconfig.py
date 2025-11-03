@@ -51,5 +51,6 @@ for zs in redshift:
             'delta_min':d[0],
             'delta_max':d[1]
         },
-        toml.dump(config, f'config_{i}.toml')
+        with open(f'config_{i}.toml', 'w') as f:
+            toml.dump(config, f)
         i+=1
