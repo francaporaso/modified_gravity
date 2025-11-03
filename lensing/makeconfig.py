@@ -1,8 +1,28 @@
+import numpy as np
+from argparse import ArgumentParser
 import toml
 
-radii = [(10,30)]
-redshift = [(0.1,0.15),(0.15,0.2),(0.2,0.25),(0.25,0.3)]
-delta = [(-1.0,0.0), (0.0,10.0)]
+parser = ArgumentParser()
+parser.add_argument('--dz', action='store', type=float, default=0.05)
+parser.add_argument('--z_min', action='store', type=float, default=0.1)
+parser.add_argument('--z_max', action='store', type=float, default=0.3)
+parser.add_argument('--nRv', action='store', type=int, default=1)
+parser.add_argument('--Rv_min', action='store', type=float, default=8.0)
+parser.add_argument('--Rv_max', action='store', type=float, default=30.0)
+parser.add_argument('--voidtype', action='store', type=str, default='mix', choices=['mix', 'S', 'R'])
+args = parser.parse_args()
+
+radii = [np.linspace(args.Rv_min, args.Rv_max, args.nRv+1)]
+
+zarange = np.arange(args.z_min, args.z_max, args.dz)
+redshift = np.array([[zarange[i], zarange[i+1]] for i in range(len(zarange)-1)])
+
+if args.voidtype=='mix':
+    delta = [(-1.0,0.0), (0.0,10.0)]
+elif args.voidtype=='S':
+    delta = [(0.0,10.0)]
+elif args.voidtype=='R':
+    delta = [(-1.0,0.0)]
 
 i = 0
 for zs in redshift:
