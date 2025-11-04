@@ -276,6 +276,9 @@ def main():
 
     config = toml.load(args.config)
 
+    if config['NCORES'] <= args.NCORES:
+        config['NCORES'] = args.NCORES
+
     if args.GROnly:
         print(' '+f' EXECUTING -GR- ONLY '.center(60, '$')+' \n')
         execute_single_simu(config, args, 'GR')
