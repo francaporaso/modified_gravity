@@ -18,7 +18,14 @@ export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate envpy
 
-for i in 0 1 2 3 4 5 6 7
+srun python voidsmodgrav.py --sample 'test_slurm' --config config_5.toml -c 32 --fROnly
+
+for i in 6 7
 do
     srun python voidsmodgrav.py --sample 'test_slurm' --config config_$i.toml -c 32
 done
+
+## for i in 0 1 2 3 4 5 6 7
+## do
+##     srun python voidsmodgrav.py --sample 'test_slurm' --config config_$i.toml -c 32
+## done
