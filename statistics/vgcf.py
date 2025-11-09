@@ -149,7 +149,7 @@ class VoidGalaxyCrossCorrelation:
         # separating voids in batches, calculate normalized corr w similar voids
         Nbatches = 10
         rv_batches = np.linspace(cats.lenses['Rv'].min(), cats.lenses['Rv'].max(), Nbatches)
-        idx = np.digitize(cats.lenses['Rv'], rv_batches)
+        idx = np.digitize(cats.lenses['Rv'].data, rv_batches)
 
         for i in range(1,Nbatches+1):
             mask = idx == i
@@ -158,10 +158,10 @@ class VoidGalaxyCrossCorrelation:
             Rv_mean = np.mean(cats.lenses['Rv'][mask])
             
             dvcat = treecorr.Catalog(
-                ra=np.array([cats.lenses['ra'][mask]]),
-                dec=np.array([cats.lenses['dec'][mask]]),
+                ra=cats.lenses['ra'][mask].data,
+                dec=cats.lenses['dec'][mask].data,
                 #w=np.ones(cats.nvoids), # If not given, all ones
-                r=np.array([cats.lenses['dcom'][mask]]),
+                r=cats.lenses['dcom'][mask].data,
                 patch_centers=dgcat.patch_centers,
                 ra_units='deg',
                 dec_units='deg',
@@ -185,7 +185,7 @@ class VoidGalaxyCrossCorrelation:
                     cat1, cat2 = dvcat, dgcat
                 else:
                     cat1, cat2 = rvcat, rgcat
-                pair.process_cross(cat1, cat2, num_threads=self.config['ncores'])
+                pair.process(cat1, cat2, num_threads=self.config['ncores'])
                 jk[name], _ = treecorr.build_multi_cov_design_matrix(
                     [pair],
                     'jackknife',
