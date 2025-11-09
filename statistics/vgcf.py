@@ -146,12 +146,21 @@ class VoidGalaxyCrossCorrelation:
         xi = np.zeros(self.config['ndots'])
         xi_jk = np.zeros((self.config['NPatches'], self.config['ndots']))
 
-        for void in cats.lenses:
+        # separating voids in batches, calculate normalized corr w similar voids
+        Nbatches = 10
+        rv_batches = np.linspace(cats.lenses['Rv'].min(), cats.lenses['Rv'].max(), Nbatches)
+        idx = np.digitize(cats.lenses['Rv'], rv_batches)
+
+        for i in range(Nbatches):
+            mask = idx == i
+            print(f' {np.sum(mask)} voids in {i} batch '.center(60, '-'))
+            Rv_mean = np.mean(cats.lenses['Rv'][mask])
+            
             dvcat = treecorr.Catalog(
-                ra=np.array([void['ra']]),
-                dec=np.array([void['dec']]),
+                ra=np.array([cats.lenses['ra'][mask]]),
+                dec=np.array([cats.lenses['dec'][mask]]),
                 #w=np.ones(cats.nvoids), # If not given, all ones
-                r=np.array([void['dcom']]),
+                r=np.array([cats.lenses['dcom'][mask]]),
                 patch_centers=dgcat.patch_centers,
                 ra_units='deg',
                 dec_units='deg',
@@ -161,8 +170,8 @@ class VoidGalaxyCrossCorrelation:
             for name in pairs_names:
                 pairs[name] = treecorr.NNCorrelation(
                     nbins=self.config['ndots'],
-                    min_sep=self.config['rmin']*void['Rv'],
-                    max_sep=self.config['rmax']*void['Rv'],
+                    min_sep=self.config['rmin']*Rv_mean,
+                    max_sep=self.config['rmax']*Rv_mean,
                     bin_slop=self.config['slop'],
                     brute=False,
                     verbose=0,
@@ -175,14 +184,14 @@ class VoidGalaxyCrossCorrelation:
                     cat1, cat2 = dvcat, dgcat
                 else:
                     cat1, cat2 = rvcat, rgcat
-                pair.process(cat1, cat2, num_threads=self.config['ncores'])
+                pair.process_cross(cat1, cat2, num_threads=self.config['ncores'])
                 jk[name], _ = treecorr.build_multi_cov_design_matrix(
                     [pair],
                     'jackknife',
                     func=lambda c: c[0].weight
                 )
 
-            xi += (pairs['DvDg'].weight/pairs['RvRg'].weight)*(pairs['RvRg'].tot/pairs['DvDg'].tot) - 1.0
+            xi += (pairs['DvDg'].weight/pairs['RvRg'].weight)*(pairs['RvRg'].tot/pairs['DvDg'].tot)- 1.0
             
             for i in range(self.config['NPatches']):
                 nv_patch = np.sum(dvcat.w[(dvcat!=i)])
@@ -205,6 +214,56 @@ class VoidGalaxyCrossCorrelation:
             axis = 0
         )
         return r, xi, xi_jk, cov
+        
+
+        # for void in cats.lenses:
+        #     dvcat = treecorr.Catalog(
+        #         ra=np.array([void['ra']]),
+        #         dec=np.array([void['dec']]),
+        #         #w=np.ones(cats.nvoids), # If not given, all ones
+        #         r=np.array([void['dcom']]),
+        #         patch_centers=dgcat.patch_centers,
+        #         ra_units='deg',
+        #         dec_units='deg',
+        #     )
+        #     pairs = {}
+        #     jk = {}
+        #     for name in pairs_names:
+        #         pairs[name] = treecorr.NNCorrelation(
+        #             nbins=self.config['ndots'],
+        #             min_sep=self.config['rmin']*void['Rv'],
+        #             max_sep=self.config['rmax']*void['Rv'],
+        #             bin_slop=self.config['slop'],
+        #             brute=False,
+        #             verbose=0,
+        #             var_method='jackknife',
+        #             bin_type=self.config['bin_type']
+        #         )
+
+        #     for name, pair in pairs.items():
+        #         if name[0] == 'D':
+        #             cat1, cat2 = dvcat, dgcat
+        #         else:
+        #             cat1, cat2 = rvcat, rgcat
+        #         pair.process(cat1, cat2, num_threads=self.config['ncores'])
+        #         jk[name], _ = treecorr.build_multi_cov_design_matrix(
+        #             [pair],
+        #             'jackknife',
+        #             func=lambda c: c[0].weight
+        #         )
+
+        #     xi += (pairs['DvDg'].weight/pairs['RvRg'].weight)*(pairs['RvRg'].tot/pairs['DvDg'].tot) - 1.0
+            
+        #     for i in range(self.config['NPatches']):
+        #         nv_patch = np.sum(dvcat.w[(dvcat!=i)])
+        #         nrv_patch = np.sum(rvcat.w[(rvcat!=i)])
+        #         ng_patch = np.sum(dgcat.w[(dgcat!=i)])
+        #         nrg_patch = np.sum(rgcat.w[(rgcat!=i)])
+
+        #         ddpairs = nv_patch*ng_patch
+        #         rrpairs = nrv_patch*nrg_patch
+
+        #         xi_jk[i] += (rrpairs/ddpairs) * (jk['DvDg'][i]/jk['RvRg'][i]) - 1.0
 
     def execute(self, cats):
         # self.load_treecorrcatalogs(cats)
@@ -327,7 +386,7 @@ def main():
         'NPatches' : 100,
         # Other configuration parameters
         'ncores' : args.ncores, # Number of cores to run in parallel
-        'slop' : 0., # Resolution for treecorr
+        'slop' : 0.05, # Resolution for treecorr
         'box' : False, # Indicates if the data corresponds to a box, otherwise it will assume a lightcone
         'bin_type':'Linear',
         'estimator':'P' # or 'LS'
