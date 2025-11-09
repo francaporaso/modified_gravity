@@ -151,8 +151,9 @@ class VoidGalaxyCrossCorrelation:
         rv_batches = np.linspace(cats.lenses['Rv'].min(), cats.lenses['Rv'].max(), Nbatches)
         idx = np.digitize(cats.lenses['Rv'], rv_batches)
 
-        for i in range(Nbatches):
+        for i in range(1,Nbatches+1):
             mask = idx == i
+            if not np.any(mask): continue
             print(f' {np.sum(mask)} voids in {i} batch '.center(60, '-'))
             Rv_mean = np.mean(cats.lenses['Rv'][mask])
             
