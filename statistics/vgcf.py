@@ -136,10 +136,7 @@ class VoidGalaxyCrossCorrelation:
             r=cats.random_lenses['dcom'], 
             patch_centers= dgcat.patch_centers,
             ra_units='deg', dec_units='deg'
-        )
-        
-        print('calculating corr w Peebles estimator', flush=True)
-        pairs_names = ['DvDg', 'RvRg']
+        )        
 
         r = np.linspace(self.config['rmin'], self.config['rmax'], self.config['ndots']+1)
         r = 0.5*(r[:-1]+r[1:])
@@ -151,6 +148,8 @@ class VoidGalaxyCrossCorrelation:
         rv_batches = np.linspace(cats.lenses['Rv'].min(), cats.lenses['Rv'].max(), Nbatches)
         idx = np.digitize(cats.lenses['Rv'].data, rv_batches)
 
+        print('calculating corr w Peebles estimator', flush=True)
+        pairs_names = ['DvDg', 'RvRg']
         for i in range(1,Nbatches+1):
             mask = idx == i
             if not np.any(mask): continue
@@ -192,7 +191,7 @@ class VoidGalaxyCrossCorrelation:
                     func=lambda c: c[0].weight
                 )
 
-            xi += (pairs['DvDg'].weight/pairs['RvRg'].weight)*(pairs['RvRg'].tot/pairs['DvDg'].tot)- 1.0
+            xi[:] += (pairs['DvDg'].weight/pairs['RvRg'].weight)*(pairs['RvRg'].tot/pairs['DvDg'].tot) - 1.0
             
             for i in range(self.config['NPatches']):
                 nv_patch = np.sum(dvcat.w[(dvcat!=i)])
@@ -203,7 +202,7 @@ class VoidGalaxyCrossCorrelation:
                 ddpairs = nv_patch*ng_patch
                 rrpairs = nrv_patch*nrg_patch
 
-                xi_jk[i] += (rrpairs/ddpairs) * (jk['DvDg'][i]/jk['RvRg'][i]) - 1.0
+                xi_jk[i, :] += (rrpairs/ddpairs) * (jk['DvDg'][i]/jk['RvRg'][i]) - 1.0
         
         xi /= len(cats.lenses)
         xi_jk /= len(cats.lenses)
