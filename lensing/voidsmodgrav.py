@@ -313,24 +313,13 @@ def execute_single_simu(config, args, gravity):
         fits.ImageHDU(cov_matrix(DSigma_t[1:,:]), name='cov_DSigma_t'),
         fits.ImageHDU(cov_matrix(DSigma_x[1:,:]), name='cov_DSigma_x'),
     ]
-
+    
     jack_hdu = [
-        fits.BinTableHDU(
-            Table(dict(
-                [(str(n), Sigma[n,:]) for n in range(1, profile_args['NK']+1)]
-            ))
-        ),
-        fits.BinTableHDU(
-            Table(dict(
-                [(str(n), DSigma_t[n,:]) for n in range(1, profile_args['NK']+1)]
-            ))
-        ),
-        fits.BinTableHDU(
-            Table(dict(
-                [(str(n), DSigma_x[n,:]) for n in range(1, profile_args['NK']+1)]
-            ))
-        ),
+        fits.ImageHDU(Sigma[1:profile_args['NK']+1, :], name='jack_Sigma'),
+        fits.ImageHDU(DSigma_t[1:profile_args['NK']+1, :], name='jack_DSigma_t'),
+        fits.ImageHDU(DSigma_x[1:profile_args['NK']+1, :], name='jack_DSigma_x'),
     ]
+    
  
     hdul = fits.HDUList([
         fits.PrimaryHDU(header=head), 
