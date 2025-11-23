@@ -220,8 +220,10 @@ def execute_single_simu(config, args, gravity):
 
     if (config['void']['z_min']>=0.1) and (config['void']['z_max']<=0.2):
         sourcename = config['sim'][gravity]['source'][f'for01-02']
-    else:
+    elif (config['void']['z_min']>=0.2) and (config['void']['z_max']<=0.3):
         sourcename = config['sim'][gravity]['source'][f'for02-03']
+    else:
+        sourcename = config['sim'][gravity]['source'][f'for05-06']
 
     source_args = dict(
         name = sourcename,
