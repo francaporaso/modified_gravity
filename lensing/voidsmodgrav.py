@@ -137,8 +137,8 @@ def partial_profile(inp):
 
     ## Si cosmohub=[19532,19531,19260,19304], cambiarle el signo
     ## Si comoshub=[22833, 22834], el signo ya está cambiado
-    e1 = catdata['gamma1']
-    e2 = catdata['gamma2']
+    e1 = -catdata['gamma1']
+    e2 = -catdata['gamma2']
 
     #get tangential ellipticities 
     cos2t = np.cos(2.0*theta)
@@ -314,13 +314,29 @@ def execute_single_simu(config, args, gravity):
         fits.ImageHDU(cov_matrix(DSigma_x[1:,:]), name='cov_DSigma_x'),
     ]
 
-    primary_hdu = fits.PrimaryHDU(header=head)
-    table_hdu = fits.BinTableHDU(table, name='profiles') 
+    jack_hdu = [
+        fits.BinTableHDU(
+            Table(dict(
+                [(str(n), Sigma[n,:]) for n in range(1, profile_args['NK']+1)]
+            ))
+        ),
+        fits.BinTableHDU(
+            Table(dict(
+                [(str(n), DSigma_t[n,:]) for n in range(1, profile_args['NK']+1)]
+            ))
+        ),
+        fits.BinTableHDU(
+            Table(dict(
+                [(str(n), DSigma_x[n,:]) for n in range(1, profile_args['NK']+1)]
+            ))
+        ),
+    ]
  
     hdul = fits.HDUList([
         fits.PrimaryHDU(header=head), 
         fits.BinTableHDU(table, name='profiles'),
-        *cov_hdu
+        *cov_hdu,
+        *jack_hdu
     ])
     
     hdul.writeto(output_file, overwrite=args.overwrite)
