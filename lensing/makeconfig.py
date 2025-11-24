@@ -17,7 +17,7 @@ args = parser.parse_args()
 rvrange = np.linspace(args.Rv_min, args.Rv_max, args.nRv+1)
 radii = np.column_stack([rvrange[:-1], rvrange[1:]])
 
-nz = int((args.z_max-args.z_min)/args.dz)+1
+nz = np.round((args.z_max-args.z_min)/args.dz).astype(int)+1
 zrange = np.linspace(args.z_min, args.z_max, nz, endpoint=True)
 redshift = np.column_stack([zrange[:-1], zrange[1:]])
 
