@@ -46,11 +46,14 @@ for g in grav:
                 covS[g][t][z] = f[2].data
                 covDSt[g][t][z] = f[3].data
                 covDSx[g][t][z] = f[4].data
-                jack[g][t][z] = {
-                    'Sigma':f[5].data,
-                    'DSigma_t':f[6].data,
-                    'DSigma_x':f[7].data,
-                }
+                try:
+                    jack[g][t][z] = {
+                        'Sigma':f[5].data,
+                        'DSigma_t':f[6].data,
+                        'DSigma_x':f[7].data,
+                    }
+                except IndexError:
+                    print(f"jackknife not saved for {t=}, {z=}, {g=}")
 
 
 fig, axes = plt.subplots(len(voidtype), len(redshift))
