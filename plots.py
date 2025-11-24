@@ -67,5 +67,6 @@ for g in grav:
                 fmt='.-',
                 label=g+t+z
             )
+            axes[i,j].legend()
 
 plt.show()
