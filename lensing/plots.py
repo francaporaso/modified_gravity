@@ -5,7 +5,7 @@ from astropy.io import fits
 
 grav = ['GR', 'fR']
 voidtype = ['R', 'S']
-redshift = ['050-055', '055-060']
+redshift = ['010-015', '015-020', '020-025', '025-030', '050-055', '055-060']
 
 R = {}
 Sigma = {}
@@ -38,7 +38,7 @@ for g in grav:
         
         for z in redshift:
 
-            with fits.open(f'results/lensing_high-z-{g}_L09_Rv08-30_z{z}_type{t}_binlin.fits') as f:
+            with fits.open(f'results/lensing_{g}_L09_Rv08-30_z{z}_type{t}_binlin.fits') as f:
                 R[g][t][z] = np.linspace(f[0].header['RIN'], f[0].header['ROUT'], f[0].header['N'])
                 Sigma[g][t][z] = f[1].data.Sigma
                 DSigma_t[g][t][z] = f[1].data.DSigma_t
@@ -53,7 +53,7 @@ for g in grav:
                 }
 
 
-fig, axes = plt.subplots(2,2)
+fig, axes = plt.subplots(len(voidtype), len(redshift))
 
 for g in grav:
     for i, t in enumerate(voidtype):
