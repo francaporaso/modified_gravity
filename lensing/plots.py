@@ -38,7 +38,7 @@ for g in grav:
         
         for z in redshift:
 
-            with fits.open(f'results/lensing_{g}_L09_Rv08-30_z{z}_type{t}_binlin.fits') as f:
+            with fits.open(f'results/Rv08-30/lensing_{g}_L09_Rv08-30_z{z}_type{t}_binlin.fits') as f:
                 R[g][t][z] = np.linspace(f[0].header['RIN'], f[0].header['ROUT'], f[0].header['N'])
                 Sigma[g][t][z] = f[1].data.Sigma
                 DSigma_t[g][t][z] = f[1].data.DSigma_t
