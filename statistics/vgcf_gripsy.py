@@ -1,5 +1,98 @@
+from astropy.table import Table
+from astropy.cosmology import Planck18 as cosmo
 import numpy as np
 import grispy as gsp
+
+import sys
+sys.path.append('/home/fcaporaso/modified_gravity/lensing')
+from funcs import lenscat_load
+
+def sphere2box(ra,dec,chi):
+    cosdec = np.cos(np.deg2rad(dec))
+    x = chi*np.cos(np.deg2rad(ra))*cosdec
+    y = chi*np.sin(np.deg2rad(ra))*cosdec
+    z = chi*np.sin(np.deg2rad(dec))
+    return np.column_stack([x,y,z])
+
+def source_load(name=''):
+    t = Table.read(name, memmap=True, format='fits')
+    if 'chi_gal' in t.columns:
+        return sphere2box(
+            t['ra_gal'], 
+            t['dec_gal'], 
+            t['chi_gal']
+        )
+    else:
+        return sphere2box(
+            t['ra_gal'], 
+            t['dec_gal'], 
+            cosmo.comoving_distance(t['redshift_gal']).value
+        )
+
+def count_pairs(grid, center, rad, RIN, ROUT, N):
+    
+    dist, _ = grid.shell_neighbors(
+        sphere2box(*center),
+        distance_lower_bound=rad*RIN,
+        distance_upper_bound=rad*ROUT,
+    )
+
+    pairs, _ = np.histogram(dist, bins=np.linspace(RIN,ROUT,N+1)*rad)
+    return pairs
+
+def void_galaxy_corrfunc(data_box, data_voids, rand_box, RIN=0.1, ROUT=3.0, N=20):
+    """
+    Docstring para void_galaxy_corrfunc
+    
+    :param data_box: datos (ndarray (ngal,3))
+    :param data_voids: voids (ndarray (nvoids,4)=> data_voids[:3]==(ra,dec,redshift); data_voids[3]==rv)
+    :param rand_box: randoms (ndarray (nrand, 3))
+    :param RIN: float min distance to calculate corrfunc in rv
+    :param ROUT:  float max distance to calculate corrfunc in rv
+    :param N: int number of bins of corrfunc
+    """
+
+    grid_true = gsp.GriSPy(data_box, N_cells=64)
+    grid_rand = gsp.GriSPy(rand_box, N_cells=64)
+
+    n_gal = grid_true.ndata
+    n_rand = grid_rand.ndata
+
+    DD = np.zeros(N)
+    RR = np.zeros(N)
+    # paralelizar este for?
+    for v in data_voids:
+        DD[:] += count_pairs(grid_true, sphere2box(v[:3]), v[3], RIN, ROUT, N)
+        RR[:] += count_pairs(grid_rand, sphere2box(v[:3]), v[3], RIN, ROUT, N)
+    
+    xi = (DD/RR) * (n_rand / n_gal) - 1.0
+
+    return xi
+
+def main(galname='l768_gr_z005-070_forcorrfunc.fits',
+         voidname='voids_LCDM_09.dat',
+         RIN=0.1, ROUT=3.0, N=20):
+
+    S = source_load(galname)
+    L,_,nvoids = lenscat_load(voidname, Rv_min=8.0, Rv_max=30.0, z_min=0.2, z_max=0.25, delta_min=-1.0, delta_max=0.0, fullshape=False)
+
+    rng = np.random.default_rng(0)
+    n_rand = len(S)*5
+    rand_box = sphere2box(
+        *np.column_stack([
+            rng.uniform(0.0,360.0,n_rand),
+            rng.uniform(-90.0,90.0,n_rand),
+            rng.uniform(0.2,0.25,n_rand),
+        ])
+    )
+
+    xi = void_galaxy_corrfunc(S, L, rand_box, RIN, ROUT, N)
+
+    redge = np.linspace(RIN, ROUT, N+1)
+    r = 0.5*(redge[:-1]+redge[1:])
+
+    for i in range(N):
+        print(f"{r[i]:9.3f} | {xi[i]:12.4f}")
 
 def count_pairs_grispy_vectorized(positions, centers, radii, r_norm_edges, periodic=None, metric='euclid'):
     """
@@ -294,4 +387,5 @@ def example():
 
 
 if __name__ == "__main__":
-    r_norm, xi_ls, xi_peebles, DD, RR = example()
+    #r_norm, xi_ls, xi_peebles, DD, RR = example()
+    main()
