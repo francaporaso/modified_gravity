@@ -71,7 +71,7 @@ def check_output_exists(output_file, overwrite=False):
     return True
 
 def sigma_crit(z_l, z_s):
-    
+
     d_l  = cosmo.angular_diameter_distance(z_l).value
     d_s  = cosmo.angular_diameter_distance(z_s).value
     d_ls = cosmo.angular_diameter_distance_z1z2(z_l, z_s).value
@@ -97,17 +97,17 @@ def _get_masked_idx_fast(psi, ra0, dec0, z0):
     '''
 
     pix_idx = hp.query_disc(
-        _NSIDE, 
-        vec=hp.ang2vec(ra0, dec0, lonlat=True), 
+        _NSIDE,
+        vec=hp.ang2vec(ra0, dec0, lonlat=True),
         radius=np.deg2rad(psi*1.1)
     )
-    
+
     idx_source = np.concatenate([
         _PIX_TO_IDX[p] for p in pix_idx
     ])
 
     mask_z = _S[REDSHIFT][idx_source] > (z0+0.1)
-    
+
     return idx_source[mask_z]
 
 def partial_profile(inp):
@@ -116,18 +116,18 @@ def partial_profile(inp):
     DSigma_t_wsum = np.zeros(_N)
     DSigma_x_wsum = np.zeros(_N)
     N_inbin       = np.zeros(_N)
-    
+
     Rv0, ra0, dec0, z0 = inp
     # for ni in range(N):
     # adentro del for, mask depende de n... solo quiero las gx en un anillo
 
     DEGxMPC = cosmo.arcsec_per_kpc_proper(z0).to('deg/Mpc').value
     psi = DEGxMPC*_ROUT*Rv0
-    
+
     #catdata = _get_masked_data(psi, ra0, dec0, z0)
     idx = _get_masked_idx_fast(psi, ra0, dec0, z0)
     catdata = _S[idx]
-    
+
     sigma_c = sigma_crit(z0, catdata[REDSHIFT])/Rv0
 
     rads, theta = eq2p2(
@@ -140,12 +140,12 @@ def partial_profile(inp):
     e1 = -catdata['gamma1']
     e2 = -catdata['gamma2']
 
-    #get tangential ellipticities 
+    #get tangential ellipticities
     cos2t = np.cos(2.0*theta)
     sin2t = np.sin(2.0*theta)
     et = -(e1*cos2t+e2*sin2t)*sigma_c
     ex = (-e1*sin2t+e2*cos2t)*sigma_c
-        
+
     #get convergence
     k  = catdata['kappa']*sigma_c
 
@@ -154,12 +154,12 @@ def partial_profile(inp):
     dig = np.digitize((np.rad2deg(rads)/DEGxMPC)/Rv0, bines)
 
     for nbin in range(_N):
-        mbin = dig == nbin+1              
+        mbin = dig == nbin+1
         Sigma_wsum[nbin]    = k[mbin].sum()
         DSigma_t_wsum[nbin] = et[mbin].sum()
         DSigma_x_wsum[nbin] = ex[mbin].sum()
         N_inbin[nbin]       = np.count_nonzero(mbin) ## idem mbin.sum(), faster
-    
+
     return Sigma_wsum, DSigma_t_wsum, DSigma_x_wsum, N_inbin
 
 def stacking(source_args, lens_args, profile_args):
@@ -213,17 +213,18 @@ def execute_single_simu(config, args, gravity):
         z_max = config['void']['z_max'],
         delta_min = config['void']['delta_min'], # void type
         delta_max = config['void']['delta_max'], # void type
-        NK = config['NK'], 
+        NK = config['NK'],
         fullshape=True,
         NCHUNKS=1,
     )
 
-    if (config['void']['z_min']>=0.1) and (config['void']['z_max']<=0.2):
-        sourcename = config['sim'][gravity]['source'][f'for01-02']
-    elif (config['void']['z_min']>=0.2) and (config['void']['z_max']<=0.3):
-        sourcename = config['sim'][gravity]['source'][f'for02-03']
-    else:
-        sourcename = config['sim'][gravity]['source'][f'for05-06']
+    sourcename = config['sim'][gravity]['source']['full']
+    #if (config['void']['z_min']>=0.1) and (config['void']['z_max']<=0.2):
+    #    sourcename = config['sim'][gravity]['source'][f'for01-02']
+    #elif (config['void']['z_min']>=0.2) and (config['void']['z_max']<=0.3):
+    #    sourcename = config['sim'][gravity]['source'][f'for02-03']
+    #else:
+    #    sourcename = config['sim'][gravity]['source'][f'for05-06']
 
     source_args = dict(
         name = sourcename,
@@ -238,7 +239,7 @@ def execute_single_simu(config, args, gravity):
         NCORES = config['NCORES'],
         binning = config['BIN'],
         name = args.sample,
-        noise = args.addnoise   
+        noise = args.addnoise
     )
 
     if lens_args['delta_max']<=0:
@@ -247,12 +248,12 @@ def execute_single_simu(config, args, gravity):
         voidtype = 'S'
     else:
         voidtype = 'mixed'
-    
+
     output_file = (f'results/lensing_{profile_args["name"]}-{gravity}_L{lens_args["name"].split("_")[-1][:-4]}_'
                    f'Rv{lens_args["Rv_min"]:02.0f}-{lens_args["Rv_max"]:02.0f}_'
                    f'z{100*lens_args["z_min"]:03.0f}-{100*lens_args["z_max"]:03.0f}_'
                    f'type{voidtype}_bin{profile_args["binning"]}.fits')
-    
+
     check_output_exists(output_file, overwrite=args.overwrite)
 
     # === program arguments
@@ -270,7 +271,7 @@ def execute_single_simu(config, args, gravity):
     print(' NK '+f'{": ":.>16}{profile_args["NK"]:<2d}')
     print(' Binning '+f'{": ":.>11}{profile_args["binning"]}')
     print(' Shape Noise '+f'{": ":.>7}{profile_args["noise"]}\n')
-    
+
     # === lens arguments
     print(f' {" Void sample ":=^60}')
     print(' Radii '+f'{": ":.>13}[{lens_args["Rv_min"]:.2f}, {lens_args["Rv_max"]:.2f}) Mpc/h')
@@ -315,21 +316,21 @@ def execute_single_simu(config, args, gravity):
         fits.ImageHDU(cov_matrix(DSigma_t[1:,:]), name='cov_DSigma_t'),
         fits.ImageHDU(cov_matrix(DSigma_x[1:,:]), name='cov_DSigma_x'),
     ]
-    
+
     jack_hdu = [
         fits.ImageHDU(Sigma[1:profile_args['NK']+1, :], name='jack_Sigma'),
         fits.ImageHDU(DSigma_t[1:profile_args['NK']+1, :], name='jack_DSigma_t'),
         fits.ImageHDU(DSigma_x[1:profile_args['NK']+1, :], name='jack_DSigma_x'),
     ]
-    
- 
+
+
     hdul = fits.HDUList([
-        fits.PrimaryHDU(header=head), 
+        fits.PrimaryHDU(header=head),
         fits.BinTableHDU(table, name='profiles'),
         *cov_hdu,
         *jack_hdu
     ])
-    
+
     hdul.writeto(output_file, overwrite=args.overwrite)
     print(f' File saved in: {output_file}', flush=True)
 
@@ -367,7 +368,7 @@ if __name__ == '__main__':
 
     # print('''
     # ▗▖▗▞▀▚▖▄▄▄▄   ▄▄▄ ▄ ▄▄▄▄   ▗▄▄▖
-    # ▐▌▐▛▀▀▘█   █ ▀▄▄  ▄ █   █ ▐▌   
+    # ▐▌▐▛▀▀▘█   █ ▀▄▄  ▄ █   █ ▐▌
     # ▐▌▝▚▄▄▖█   █ ▄▄▄▀ █ █   █ ▐▌▝▜▌
     # ▐▙▄▄▖             █       ▝▚▄▞▘
     # '''.center(60,' '),

@@ -62,6 +62,7 @@ for rv in radii:
                             'void09':'voids_LCDM_09.dat'
                         },
                         'source':{
+                            'full':'l768_gr_z020-130_w-pix64_23056.fits'
                             'for01-02':'l768_gr_z02-04_for01-02_w-pix64_19532.fits',
                             'for02-03':'l768_gr_z04-07_for02-03_w-pix64_19304.fits',
                             'for05-06':'l768_gr_z060-130_for05-06_w-pix64_23014.fits'
@@ -73,6 +74,7 @@ for rv in radii:
                             'void09':'voids_fR_09.dat',
                         },
                         'source':{
+                            'full':'l768_mg_z020-130_w-pix64_23057.fits'
                             'for01-02':'l768_mg_z02-04_for01-02_w-pix64_19531.fits',
                             'for02-03':'l768_mg_z04-07_for02-03_w-pix64_19260.fits',
                             'for05-06':'l768_mg_z060-130_for05-06_w-pix64_23015.fits'
