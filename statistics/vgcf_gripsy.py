@@ -83,15 +83,14 @@ grid_rand = None
 RIN, ROUT, N = None, None, None
 
 def main(galname='../../cats/L768/l768_gr_z005-070_forcorrfunc.fits',
-         voidname='../../cats/L768/voids_LCDM_09.dat',
-         RIN=0.1, ROUT=3.0, N=20):
+         voidname='../../cats/L768/voids_LCDM_09.dat'):
 
     global grid_true, grid_rand
     global RIN, ROUT, N
 
-    RIN = RIN
-    ROUT = ROUT
-    N = N
+    RIN = 0.1
+    ROUT = 3.0
+    N = 20
 
     S = source_load(galname)
     L,_,nvoids = lenscat_load(voidname, Rv_min=8.0, Rv_max=30.0, z_min=0.2, z_max=0.25, delta_min=-1.0, delta_max=0.0, fullshape=False)
