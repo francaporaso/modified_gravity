@@ -281,13 +281,13 @@ if __name__ == '__main__':
     for radius, pp in p.items():
         for tipo, profile in pp.items():
             
-            print('Fitting sigma for:')
+            print('Fitting sigma for:') 
             print('Rv: '.ljust(10,'.'),radius)
             print('Tipo: '.ljust(10,'.'),tipo)
 
             l = Likelihood(
                 func=hsw.sigma, 
-                r = p[radius][tipo].Rp.to_numpy(), 
+                r=p[radius][tipo].Rp.to_numpy(), 
                 y=p[radius][tipo].S.to_numpy(), 
                 # yerr=np.linalg.inv(cov[radius][tipo]['covS']), ## No fittea con la cov completa
                 yerr=p[radius][tipo].eS.to_numpy(), 
@@ -296,10 +296,10 @@ if __name__ == '__main__':
             )
             ## el orden es importante! -> chequear con hsw.sigma
             pos = np.array([
-                # np.random.uniform(-0.9,-0.4,nwalkers),
+                np.random.uniform(-0.9,-0.4,nwalkers),
                 np.random.uniform(0.8,4.5,nwalkers),
-                # np.random.uniform(1.5,4.5,nwalkers),
-                # np.random.uniform(4.5,9.0,nwalkers),
+                np.random.uniform(1.5,4.5,nwalkers),
+                np.random.uniform(4.5,9.0,nwalkers),
                 np.random.uniform(-0.1,0.1,nwalkers),
             ]).T
 
