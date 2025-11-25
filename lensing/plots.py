@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
 
-
 grav = ['GR', 'fR']
 voidtype = ['R', 'S']
 redshift = ['010-015', '015-020', '020-025', '025-030', '050-055', '055-060']
@@ -56,20 +55,39 @@ for g in grav:
                     print(f"jackknife not saved for {t=}, {z=}, {g=}")
 
 
-fig, axes = plt.subplots(len(voidtype), len(redshift))
+def plot_profiles1():
+    fig, axes = plt.subplots(len(voidtype), len(redshift))
 
-for g in grav:
-    for i, t in enumerate(voidtype):
-        for j, z in enumerate(redshift):
-            
-            axes[i,j].errorbar(
-                R[g][t][z], 
-                Sigma[g][t][z],
-                np.sqrt(np.diag(covS[g][t][z])),
-                capsize=3,
-                fmt='.-',
-                label=g+t+z
+    for g in grav:
+        for i, t in enumerate(voidtype):
+            for j, z in enumerate(redshift):
+                
+                axes[i,j].errorbar(
+                    R[g][t][z], 
+                    Sigma[g][t][z],
+                    np.sqrt(np.diag(covS[g][t][z])),
+                    capsize=3,
+                    fmt='.-',
+                    label=g+t+z
+                )
+                axes[i,j].legend()
+
+    plt.show()
+
+def plot_profiles2():
+    colors = {
+        'GR':plt.get_cmap('Blues', len(redshift)+2),
+        'fR':plt.get_cmap('Reds', len(redshift)+2),
+    }
+
+    fig, axes = plt.subplots(1,2,sharex=True, sharey=True)
+    for g in grav:
+        for i, z in enumerate(redshift):
+            axes[i].errorbar(
+                R[g]['R'][z],
+                Sigma[g]['R'][z],
+                np.sqrt(np.diag(covS[g]['R'][z])),
+                c=colors[g](i+2), capsize=2, fmt='.-', label=g+z
             )
-            axes[i,j].legend()
 
-plt.show()
+    plt.show()
