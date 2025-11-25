@@ -105,11 +105,11 @@ def main(galname='../../cats/L768/l768_gr_z005-070_forcorrfunc.fits',
         ])
     )
 
-    grid_true = gsp.GriSPy(data_box, N_cells=64)
-    grid_rand = gsp.GriSPy(rand_box, N_cells=64)
-
     void_centre = sphere2box(L[1], L[2], cosmo.comoving_distance(L[3]).value)
     Rv = L[0]
+
+    grid_true = gsp.GriSPy(void_centre, N_cells=64)
+    grid_rand = gsp.GriSPy(rand_box, N_cells=64)
 
     xi = void_galaxy_corrfunc(void_centre, Rv)
 
