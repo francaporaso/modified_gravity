@@ -69,8 +69,8 @@ def void_galaxy_corrfunc(data_box, data_voids, rand_box, RIN=0.1, ROUT=3.0, N=20
 
     return xi
 
-def main(galname='../../../cats/L768/l768_gr_z005-070_forcorrfunc.fits',
-         voidname='../../../cats/L768/voids_LCDM_09.dat',
+def main(galname='../../cats/L768/l768_gr_z005-070_forcorrfunc.fits',
+         voidname='../../cats/L768/voids_LCDM_09.dat',
          RIN=0.1, ROUT=3.0, N=20):
 
     S = source_load(galname)
