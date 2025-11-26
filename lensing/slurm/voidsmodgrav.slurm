@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=lens_c0-9
+#SBATCH --job-name=lens_c10-19
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=56
 #SBATCH --time=3-00:00:00
@@ -18,7 +18,7 @@ export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate envpy
 
-for i in {0..9}
+for i in {10..19}
 do
     printf "\n ####### \n Running config_$i \n ####### \n \n"
     srun python voidsmodgrav.py --sample 'fullsource' --config config_$i.toml -c 56
