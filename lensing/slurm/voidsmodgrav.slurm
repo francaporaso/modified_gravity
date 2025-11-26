@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=vlen_7
+#SBATCH --job-name=lens_c0-9
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=56
 #SBATCH --time=3-00:00:00
@@ -18,17 +18,8 @@ export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate envpy
 
-
-printf "\n ####### \n Running config_5 fROnly \n ####### \n \n"
-srun python voidsmodgrav.py --sample 'test_slurm' --config config_5.toml -c 32 --fROnly
-
-for i in 6 7
+for i in {0..9}
 do
     printf "\n ####### \n Running config_$i \n ####### \n \n"
-    srun python voidsmodgrav.py --sample 'test_slurm' --config config_$i.toml -c 32
+    srun python voidsmodgrav.py --sample 'fullsource' --config config_$i.toml -c 56
 done
-
-## for i in 0 1 2 3 4 5 6 7
-## do
-##     srun python voidsmodgrav.py --sample 'test_slurm' --config config_$i.toml -c 32
-## done
