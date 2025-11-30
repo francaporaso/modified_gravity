@@ -12,6 +12,9 @@ parser.add_argument('--Rv_max', action='store', type=float, default=30.0)
 parser.add_argument('--voidtype', action='store', type=str, default=None, choices=['mix', 'S', 'R'])
 parser.add_argument('--delta_min', action='store', type=float, default=-1.0)
 parser.add_argument('--delta_max', action='store', type=float, default=10.0)
+parser.add_argument('--RIN', action='store', type=float, default=0.01)
+parser.add_argument('--ROUT', action='store', type=float, default=3.0)
+parser.add_argument('--NDOTS', action='store', type=int, default=20)
 args = parser.parse_args()
 
 rvrange = np.linspace(args.Rv_min, args.Rv_max, args.nRv+1)
@@ -43,9 +46,9 @@ for rv in radii:
                 'NK':100,
                 'BIN':'lin',
                 'prof':{
-                    'NDOTS':20,
-                    'RIN':0.01,
-                    'ROUT':2.0
+                    'NDOTS':args.NDOTS,
+                    'RIN':args.RIN,
+                    'ROUT':args.ROUT,
                 },
                 'void': {
                     'Rv_min':float(rv[0]),
