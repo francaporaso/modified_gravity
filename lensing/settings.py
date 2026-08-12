@@ -36,8 +36,8 @@ class Config:
         #self.is_MICE = cfg['lenses']['is_mice']
         #self.voidtype = cfg['lenses']['voidtype']
 
-        self.scols = cfg['lenses']['columns']
-        self.lcols = cfg['sources']['columns']
+        self.scols = cfg['sources']['columns']
+        self.lcols = cfg['lcols']['columns']
 
         self.h = cfg['cosmology']['h']
         self.Om0 = cfg['cosmology']['Om0']
