@@ -37,7 +37,7 @@ class Config:
         #self.voidtype = cfg['lenses']['voidtype']
 
         self.scols = cfg['sources']['columns']
-        self.lcols = cfg['lcols']['columns']
+        self.lcols = cfg['lenses']['columns']
 
         self.h = cfg['cosmology']['h']
         self.Om0 = cfg['cosmology']['Om0']
