@@ -25,9 +25,11 @@ fullshape = true
 
 [lenses.gr]
 name = '~/cats/L768/voids_LCDM_09.dat'
+randname = '~/cats/L768/voids_rand_LCDM_09.dat'
 
 [lenses.mg]
 name = '~/cats/L768/voids_fR_09.dat'
+randname = '~/cats/L768/voids_rand_fR_09.dat'
 
 [lenses.columns]
 rv = 1 # void radius
@@ -55,13 +57,6 @@ gamma1 = 'gamma1'
 gamma2 = 'gamma2'
 eps1 = 'eps1'
 eps2 = 'eps2'
-
-[randoms]
-[randoms.gr]
-name = '~/cats/L768/voids_rand_LCDM_09.dat'
-
-[randoms.mg]
-name = '~/cats/L768/voids_rand_LCDM_09.dat'
 
 [cosmology]
 h = 1.0

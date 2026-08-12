@@ -11,7 +11,7 @@ class Config:
 
         self.lensname = cfg['lenses'][gravity.lower()]['name']
         self.sourcename = cfg['sources'][gravity.lower()]['name']
-        self.randsname = cfg['randoms'][gravity.lower()]['name']
+        self.randsname = cfg['lenses'][gravity.lower()]['randname']
 
         self.sample = cfg['run']['sample']
         self.ncores = cfg['run']['ncores']
