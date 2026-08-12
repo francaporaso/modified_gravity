@@ -405,7 +405,6 @@ def main():
         
         if i==0:
             total = len(cfg.zbins)*len(cfg.rvbins)*len(cfg.voidtype)*len(args.gravity)
-            print(f' >> Voids of simulations {cfg.gravity}')
             print(f' >> Running {len(cfg.zbins)} redshift bin(s) x {len(cfg.rvbins)} radius bin(s), for {len(cfg.voidtype)} void types.')
             print(f' >> Calculating {total} void profiles')
 
