@@ -17,7 +17,6 @@ class Config:
         self.ncores = cfg['run']['ncores']
         self.plot = cfg['run']['plot']
         self.overwrite = cfg['run']['overwrite']
-        self.gravity = cfg['run']['gravity'] # which simus to calculate from
         
         self.RIN = cfg['profile']['rin'] #Mpc/h
         self.ROUT = cfg['profile']['rout'] #Mpc/h
