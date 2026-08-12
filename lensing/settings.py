@@ -1,17 +1,18 @@
 import numpy as np
 import toml
+import re
 
-# ==== Input globals
-# read from config file
 class Config:
 
-    def __init__(self, configfile:str='lensing/config.toml', gravity:str='GR'):
+    def __init__(self, configfile:str='lensing/config.toml', gravity:str='GR', threshold:str='09'):
 
         cfg = toml.load(configfile)
 
         self.lensname = cfg['lenses'][gravity.lower()]['name']
         self.sourcename = cfg['sources'][gravity.lower()]['name']
         self.randsname = cfg['lenses'][gravity.lower()]['randname']
+        
+        self.swap_threshold(threshold)
 
         self.sample = cfg['run']['sample']
         self.ncores = cfg['run']['ncores']
@@ -42,6 +43,15 @@ class Config:
         self.h = cfg['cosmology']['h']
         self.Om0 = cfg['cosmology']['Om0']
         self.Ob0 = cfg['cosmology']['Ob0']
+
+    def swap_threshold(self, threshold):
+        current_th = re.search(r'_\d{2}', self.lensname)
+        threshold = '_'+threshold
+
+        if current_th != threshold:
+            print(f'using {threshold}')
+            self.lensname = re.sub(r'_\d{2}', threshold, self.lensname) 
+            self.randsname = re.sub(r'_\d{2}', threshold, self.randsname) 
 
     def _edges_to_bins(self, edges, name):
         if not isinstance(edges, list) or len(edges) < 2:
