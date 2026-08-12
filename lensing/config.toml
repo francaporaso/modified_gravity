@@ -24,10 +24,10 @@ flag = 2.0
 fullshape = true
 
 [lenses.gr]
-name = 'etc.dat'
+name = '~/cats/L768/voids_LCDM_09.dat'
 
 [lenses.mg]
-name = 'etc.dat'
+name = '~/cats/L768/voids_fR_09.dat'
 
 [lenses.columns]
 rv = 1 # void radius
@@ -39,10 +39,10 @@ delta = 9 # integrated density between 2-3 Rv, for void classification
 [sources]
 
 [sources.gr]
-name = 'etc.fits'
+name = '~/cats/L768/l768_gr_z020-130_wpix64_23087.fits'
 
 [sources.mg]
-name = 'etc.fits'
+name = '~/cats/L768/l768_mg_z020-130_wpix64_23086.fits'
 
 [sources.columns]
 # column names of source cat
@@ -58,10 +58,10 @@ eps2 = 'eps2'
 
 [randoms]
 [randoms.gr]
-name = 'etc.dat'
+name = '~/cats/L768/voids_rand_LCDM_09.dat'
 
 [randoms.mg]
-name = 'etc.dat'
+name = '~/cats/L768/voids_rand_LCDM_09.dat'
 
 [cosmology]
 h = 1.0
