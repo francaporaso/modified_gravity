@@ -390,7 +390,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--config', type=str, default='lensing/config.toml', action='store')
     parser.add_argument('--ncores', type=int, action='store', default=2)
-    parser.add_argument('--gravity', type=str, action='store', nargs='+', require=True)
+    parser.add_argument('--gravity', type=str, action='store', nargs='+', required=True)
     args = parser.parse_args()
 
     print(' Start '.center(15, '='))
