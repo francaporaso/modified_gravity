@@ -9,7 +9,7 @@ from multiprocessing import Pool
 import numpy as np
 import os
 from time import time, asctime
-import toml
+#import toml
 from tqdm import tqdm
 from itertools import product
 
@@ -390,25 +390,28 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--config', type=str, default='lensing/config.toml', action='store')
     parser.add_argument('--ncores', type=int, action='store', default=2)
+    parser.add_argument('--gravity', type=str, action='store', nargs='+', require=True)
     args = parser.parse_args()
 
     print(' Start '.center(15, '='))
     tini = time()
     
-    cfg = Config(args.config)
-    if args.ncores > cfg.ncores:
-        cfg.set_ncores(args.ncores)
-    
-    init_globals()
-
-    total = len(cfg.zbins)*len(cfg.rvbins)*len(cfg.voidtype)
-    print(f' >> Voids of simulations {cfg.gravity}')
-    print(f' >> Running {len(cfg.zbins)} redshift bin(s) x {len(cfg.rvbins)} radius bin(s), for {len(cfg.voidtype)} void types.')
-    print(f' >> Calculating {total*len(cfg.gravity)} void profiles')
-
     i = 0
+    for grav in args.gravity:
 
-    for grav in cfg.gravity:
+        cfg = Config(args.config, grav)
+        if args.ncores > cfg.ncores:
+            cfg.set_ncores(args.ncores)
+        
+        if i==0:
+            total = len(cfg.zbins)*len(cfg.rvbins)*len(cfg.voidtype)*len(args.gravity)
+            print(f' >> Voids of simulations {cfg.gravity}')
+            print(f' >> Running {len(cfg.zbins)} redshift bin(s) x {len(cfg.rvbins)} radius bin(s), for {len(cfg.voidtype)} void types.')
+            print(f' >> Calculating {total} void profiles')
+
+        print(f' >> Running for -{grav.upper()}-')
+        init_globals()
+
         for ((z_min, z_max), (rv_min, rv_max)) in product(cfg.zbins, cfg.rvbins):
             for void in cfg.voidtype:
                 i+=1

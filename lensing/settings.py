@@ -5,13 +5,13 @@ import toml
 # read from config file
 class Config:
 
-    def __init__(self, configfile:str='lensing/config.toml'):
+    def __init__(self, configfile:str='lensing/config.toml', gravity:str='GR'):
 
         cfg = toml.load(configfile)
 
-        self.lensname = cfg['lenses']['name']
-        self.sourcename = cfg['sources']['name']
-        self.randsname = cfg['randoms']['name']
+        self.lensname = cfg['lenses'][gravity.lower()]['name']
+        self.sourcename = cfg['sources'][gravity.lower()]['name']
+        self.randsname = cfg['randoms'][gravity.lower()]['name']
 
         self.sample = cfg['run']['sample']
         self.ncores = cfg['run']['ncores']
@@ -30,7 +30,8 @@ class Config:
 
         self.zbins = self._edges_to_bins(cfg['lenses']['z_edges'], 'z_edges')
         self.rvbins = self._edges_to_bins(cfg['lenses']['rv_edges'], 'rv_edges')
-        self.deltabins = self._edges_to_bins(cfg['lenses']['delta_edges'], 'delta_edges')
+        #self.deltabins = self._edges_to_bins(cfg['lenses']['delta_edges'], 'delta_edges')
+        self.voidtype = cfg['lenses']['voidtype']
         self.flag = cfg['lenses']['flag']
         self.fullshape = cfg['lenses']['fullshape']
         #self.is_MICE = cfg['lenses']['is_mice']

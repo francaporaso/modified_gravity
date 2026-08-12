@@ -3,7 +3,7 @@ sample = 'test'
 ncores = 32
 plot = false
 overwrite = true
-gravity = ['GR', 'MG']
+#gravity = ['GR', 'MG']
 
 [profile]
 rin = 0.1
@@ -16,8 +16,8 @@ binning = 'lin' # 'lin' or 'log'
 [lenses]
 z_edges = [0.1, 0.2] # redshift edges to cut between
 rv_edges = [10.0, 20.0]
-# voidtype = ['mixed'] # ['mixed', 'S', 'R'] #deprecated by deltaedges
-delta_edges = [-1.0, 10.0]
+voidtype = ['mixed'] # ['mixed', 'S', 'R']
+# delta_edges = [-1.0, 10.0] # TODO: add the option to cut by delta values
 flag = 2.0
 # is_mice = false
 fullshape = true
@@ -56,6 +56,10 @@ eps1 = 'eps1'
 eps2 = 'eps2'
 
 [randoms]
+[randoms.gr]
+name = 'etc.dat'
+
+[randoms.mg]
 name = 'etc.dat'
 
 [cosmology]
