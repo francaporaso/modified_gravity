@@ -5,7 +5,7 @@ from astropy.constants import G,c,M_sun,pc
 from astropy.io import fits
 from astropy.table import Table
 import healpy as hp
-from multiprocessing import Pool
+from multiprocessing import get_context
 import numpy as np
 import os
 from time import time, asctime
@@ -15,6 +15,8 @@ from itertools import product
 
 from lensing.funcs import eq2p2, lenscat_load, sourcecat_load, cov_matrix, get_jackknife_kmeans
 from lensing.settings import Config
+
+ctx = get_context('fork')
 
 # --- Fixed globals
 cfg : None | Config = None
@@ -222,7 +224,7 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max):
     Sigma_wsum_rand = np.zeros((cfg.NJK+1, cfg.NBINS))
     N_inbin_rand = np.zeros((cfg.NJK+1, cfg.NBINS))
     # calculating voids 
-    with Pool(processes=cfg.ncores) as pool:
+    with ctx.Pool(processes=cfg.ncores) as pool:
         resmap = list(
             tqdm(
                 pool.imap(
@@ -240,7 +242,7 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max):
 
     # calculating randoms
     print('\n >> Calculating profiles for random voids...')
-    with Pool(processes=cfg.ncores) as pool:
+    with ctx.Pool(processes=cfg.ncores) as pool:
         randmap = list(
             tqdm(
                 pool.imap(
