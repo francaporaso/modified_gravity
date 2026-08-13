@@ -1,11 +1,14 @@
 from astropy.io import fits
 from astropy.table import Table
 import numpy as np
+from pathlib import Path
 
 def read_lens_catalog(filename, cat='sparkling', **kwargs):
 
+    filepath = Path(filename).expanduser()
+
     if cat == 'sparkling':
-        return read_sparkling(filename, **kwargs)
+        return read_sparkling(filepath, **kwargs)
 
     elif cat == 'redmapper':
         raise NotImplementedError
