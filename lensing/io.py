@@ -2,6 +2,8 @@ from astropy.io import fits
 from astropy.table import Table
 import numpy as np
 from pathlib import Path
+#import pyarrow as pa
+import pyarrow.parquet as pq
 
 def read_lens_catalog(filename, cat='sparkling', **kwargs):
 
@@ -13,8 +15,9 @@ def read_lens_catalog(filename, cat='sparkling', **kwargs):
     elif cat == 'redmapper':
         raise NotImplementedError
 
-def read_source_catalog():
-    pass
+def read_sources_catalog(filename, cat='parquet', **kwargs):
+    if cat == 'parquet':
+        return read_sources_parquet(filename, **kwargs)
 
 def read_sparkling(filename,
                    Rv_min, Rv_max, 
@@ -50,3 +53,6 @@ def read_sparkling(filename,
 
     return L, nvoids
 
+def read_sources_parquet(filename, **kwargs):
+    sources = pq.read_table(filename, **kwargs)
+    return sources
