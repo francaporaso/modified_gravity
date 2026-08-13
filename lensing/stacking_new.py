@@ -13,13 +13,13 @@ from time import time, asctime
 from tqdm import tqdm
 from itertools import product
 
-from lensing.funcs import eq2p2, lenscat_load, sourcecat_load, cov_matrix, get_jackknife_kmeans
+from lensing.funcs import eq2p2, read_lens_catalog, sourcecat_load, cov_matrix, get_jackknife_kmeans
 from lensing.settings import Config
 
 ctx = get_context('fork')
 
 # --- Fixed globals
-cfg : None | Config = None
+cfg : Config = None
 
 SOURCE = None
 PIX_TO_IDX : dict = {}
@@ -158,22 +158,24 @@ def partial_profile(inp):
 
 def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max):
     
-    lenses, nvoids = lenscat_load(
-        name = cfg.lensname,
+    lenses, nvoids = read_lens_catalog(
+        filename = cfg.lensname,
+        cat='sparkling',
         Rv_min = rv_min, Rv_max = rv_max,
         z_min = z_min, z_max = z_max,
         delta_min = delta_min, delta_max = delta_max,
         flag = cfg.flag,
-        is_MICE = cfg.is_MICE,
+        has_id = False,
         fullshape = cfg.fullshape
     )
-    lensrand, nrands = lenscat_load(
-        name = cfg.randsname,
+    lensrand, nrands = read_lens_catalog(
+        filename = cfg.randsname,
+        cat='sparkling',
         Rv_min = rv_min, Rv_max = rv_max,
         z_min = z_min, z_max = z_max,
         delta_min = delta_min, delta_max = delta_max,
         flag = cfg.flag,
-        is_MICE = cfg.is_MICE,
+        has_id = False,
         fullshape = cfg.fullshape
     )
 
@@ -205,7 +207,6 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max):
     print(' RMAX '+f'{": ":.>14}{cfg.ROUT:.2f}')
     print(' NBINS '+f'{": ":.>13}{cfg.NBINS:<2d}')
     print(' NJK '+f'{": ":.>15}{cfg.NJK:<2d}')
-    print(' Source density '+f'{": ":.>4}{cfg.nback} arcmin^(-2)')
     print(' Binning '+f'{": ":.>11}{cfg.binning}')
     print(' Shape Noise '+f'{": ":.>7}{cfg.addnoise}\n')
 
