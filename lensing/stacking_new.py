@@ -13,7 +13,8 @@ from time import time, asctime
 from tqdm import tqdm
 from itertools import product
 
-from lensing.funcs import eq2p2, read_lens_catalog, sourcecat_load, cov_matrix, get_jackknife_kmeans
+from lensing.funcs import eq2p2, sourcecat_load, cov_matrix, get_jackknife_kmeans
+from lensing.io import read_lens_catalog
 from lensing.settings import Config
 
 ctx = get_context('fork')
