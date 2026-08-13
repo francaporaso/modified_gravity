@@ -27,7 +27,11 @@ def read_sparkling(filename,
                    flag=2,
                    has_id=False, 
                    fullshape=True):
+    '''
+    reads sparkling voids table into a numpy array
+    '''
 
+    FLG = 11
     if has_id:
         RV,RA,DEC,Z,R1,R2 = 1,2,3,4,8,9
     else:
@@ -42,17 +46,20 @@ def read_sparkling(filename,
         (L[Z] >= z_min) & (L[Z] < z_max) & 
         (L[R1] >= rho1_min) & (L[R1] < rho1_max) & 
         (L[R2] >= delta_min) & (L[R2] < delta_max) & 
-        (L[11] >= flag)
+        (L[FLG] >= flag)
     )
 
-    nvoids = mask.sum()
     if fullshape:
         L = L[:, mask]
     else:
         L = L[[RV,RA,DEC,Z]][:, mask]
 
-    return L, nvoids
+    return L
 
 def read_sources_parquet(filename, **kwargs):
+    '''
+    reads sources files from parquet format using pyarrow
+    '''
+
     sources = pq.read_table(filename, **kwargs)
     return sources
