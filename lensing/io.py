@@ -53,7 +53,8 @@ LENS_READERS = {
 
 # ======================================================================
 def read_sources_fits(filename, **kwargs):
-    raise NotImplementedError
+    sources = Table.read(filename, memmap=True, format='fits', **kwargs)
+    return sources
 
 def read_sources_parquet(filename, **kwargs):
     '''
