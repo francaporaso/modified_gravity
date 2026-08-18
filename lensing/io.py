@@ -5,20 +5,7 @@ from pathlib import Path
 #import pyarrow as pa
 import pyarrow.parquet as pq
 
-def read_lens_catalog(filename, cat='sparkling', **kwargs):
-
-    filepath = Path(filename).expanduser()
-
-    if cat == 'sparkling':
-        return read_sparkling(filepath, **kwargs)
-
-    elif cat == 'redmapper':
-        raise NotImplementedError
-
-def read_sources_catalog(filename, cat='parquet', **kwargs):
-    if cat == 'parquet':
-        return read_sources_parquet(filename, **kwargs)
-
+# ======================================================================
 def read_sparkling(filename,
                    Rv_min, Rv_max, 
                    z_min, z_max, 
@@ -56,6 +43,18 @@ def read_sparkling(filename,
 
     return L
 
+def read_redmapper(filename, **kwargs):
+    raise NotImplementedError
+
+LENS_READERS = {
+    'sparkling': read_sparkling,
+    'redmapper': read_redmapper,
+}
+
+# ======================================================================
+def read_sources_fits(filename, **kwargs):
+    raise NotImplementedError
+
 def read_sources_parquet(filename, **kwargs):
     '''
     reads sources files from parquet format using pyarrow
@@ -63,3 +62,23 @@ def read_sources_parquet(filename, **kwargs):
 
     sources = pq.read_table(filename, **kwargs)
     return sources
+
+SOURCES_READERS = {
+    'fits': read_sources_fits,
+    'parquet': read_sources_parquet,
+}
+
+# ======================================================================
+def read_lens_catalog(filename, cat='sparkling', **kwargs):
+
+    filepath = Path(filename).expanduser()
+    if cat not in LENS_READERS:
+        raise ValueError(f'Unknown cat {cat}')
+    return LENS_READERS.get(cat)(filepath, **kwargs)
+
+def read_sources_catalog(filename, cat='parquet', **kwargs):
+ 
+    filepath = Path(filename).expanduser()
+    if cat not in SOURCES_READERS:
+        raise ValueError(f'Unknown cat {cat}')
+    return SOURCES_READERS.get(cat)(filepath, **kwargs)
