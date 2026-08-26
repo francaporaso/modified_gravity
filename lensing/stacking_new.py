@@ -126,7 +126,7 @@ def partial_profile(inp):
     sigma_c = sigma_crit(z0, catdata[cfg.scols['redshift']]) / (Rv0*cosmo.h)
 
     rads, theta = eq2p2(
-        np.deg2rad(catdata[cfg.scols['ra_gal']]), np.deg2rad(catdata[cfg.scols['dec_gal']]),
+        np.deg2rad(catdata[cfg.scols['ra']]), np.deg2rad(catdata[cfg.scols['dec']]),
         np.deg2rad(ra0), np.deg2rad(dec0)
     )
 
