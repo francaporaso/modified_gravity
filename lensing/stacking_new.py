@@ -395,7 +395,7 @@ def main():
 
     parser = ArgumentParser()
     parser.add_argument('--config', type=str, default='lensing/config.toml', action='store')
-    parser.add_argument('--ncores', type=int, action='store', default=2)
+    parser.add_argument('--ncores', type=int, action='store')
     parser.add_argument('--gravity', type=str, action='store', nargs='+', required=True)
     parser.add_argument('--use_threshold', type=str, action='store', choices=['08', '09'], default='09')
     args = parser.parse_args()
@@ -408,7 +408,8 @@ def main():
     for grav in args.gravity:
 
         cfg = Config(args.config, grav, args.use_threshold)
-        cfg.set_ncores(args.ncores)
+        if args.ncores is not None:
+            cfg.set_ncores(args.ncores)
         
         if i==0:
             total = len(cfg.zbins)*len(cfg.rvbins)*len(cfg.voidtype)*len(args.gravity)
