@@ -22,8 +22,8 @@ ctx = get_context('fork')
 # --- Fixed globals
 cfg : Config = None
 
-SOURCE = None
-PIX_TO_IDX : dict = {}
+#SOURCE = None
+#PIX_TO_IDX : dict = {}
 SC_CONSTANT : float = (c.value**2.0/(4.0*np.pi*G.value))*(pc.value/M_sun.value)*1e-6
 binspace = None
 
@@ -48,6 +48,8 @@ def init_globals():
     # read cat
     SOURCE = sourcecat_load(cfg.sourcename)
 
+def make_pix2idx_dict():
+    global PIX_TO_IDX
     # making a dict of healpix idx for fast query
     upix, split_idx = np.unique(SOURCE[cfg.scols['pix']], return_index=True)
     split_idx = np.append(split_idx, len(SOURCE))
@@ -418,6 +420,7 @@ def main():
 
         print(f' >> Running for -{grav.upper()}-')
         init_globals()
+        make_pix2idx_dict()
 
         for ((z_min, z_max), (rv_min, rv_max)) in product(cfg.zbins, cfg.rvbins):
             for void in cfg.voidtype:
