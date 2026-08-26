@@ -316,9 +316,9 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
     extradata = dict(
         nvoids=nvoids,
         z_mean=lenses[cfg.lcols['z']].mean(),
-        z_median=lenses[cfg.lcols['z']].median(),
+        z_median=np.median(lenses[cfg.lcols['z']]),
         Rv_mean=lenses[cfg.lcols['rv']].mean(),
-        Rv_median=lenses[cfg.lcols['rv']].median(),
+        Rv_median=np.median(lenses[cfg.lcols['rv']]),
         delta_mean=lenses[cfg.lcols['delta']].mean(),
         delta_median=lenses[cfg.lcols['delta']].mean(),
     )
