@@ -159,7 +159,7 @@ def partial_profile(inp):
 
 def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
     
-    lenses, nvoids = read_lens_catalog(
+    lenses = read_lens_catalog(
         filename = cfg.lensname,
         cat='sparkling',
         Rv_min = rv_min, Rv_max = rv_max,
@@ -169,7 +169,7 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
         has_id = False,
         fullshape = cfg.fullshape
     )
-    lensrand, nrands = read_lens_catalog(
+    lensrand = read_lens_catalog(
         filename = cfg.randsname,
         cat='sparkling',
         Rv_min = rv_min, Rv_max = rv_max,
@@ -179,6 +179,9 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
         has_id = False,
         fullshape = cfg.fullshape
     )
+
+    nvoids = len(lenses.T)
+    nrands = len(lensrand.T)
 
     if delta_max<=0:
         voidtype = 'R'
@@ -242,9 +245,8 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
             )
         )
 
-    # calculating randoms
-    print('\n >> Calculating profiles for random voids...')
-    with ctx.Pool(processes=cfg.ncores) as pool:
+        # calculating randoms
+        print('\n >> Calculating profiles for random voids...', flush=True)
         randmap = list(
             tqdm(
                 pool.imap(
