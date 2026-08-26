@@ -20,12 +20,10 @@ from lensing.settings import Config
 ctx = get_context('fork')
 
 # --- Fixed globals
-cfg : Config = None
-
+cfg : Config
 #SOURCE = None
-#PIX_TO_IDX : dict = {}
+PIX_TO_IDX : dict
 SC_CONSTANT : float = (c.value**2.0/(4.0*np.pi*G.value))*(pc.value/M_sun.value)*1e-6
-binspace = None
 
 # "z_cgal" : true-z
 # "z_cgal_v" : spec-z
@@ -35,7 +33,7 @@ binspace = None
 
 def init_globals():
 
-    global SOURCE, PIX_TO_IDX
+    global SOURCE
     global binspace
     global cosmo
 
@@ -48,11 +46,11 @@ def init_globals():
     # read cat
     SOURCE = sourcecat_load(cfg.sourcename)
 
-def make_pix2idx_dict():
+def make_pix2idx_dict(source):
     global PIX_TO_IDX
     # making a dict of healpix idx for fast query
-    upix, split_idx = np.unique(SOURCE[cfg.scols['pix']], return_index=True)
-    split_idx = np.append(split_idx, len(SOURCE))
+    upix, split_idx = np.unique(source[cfg.scols['pix']], return_index=True)
+    split_idx = np.append(split_idx, len(source))
     for i, pix in enumerate(upix):
         PIX_TO_IDX[int(pix)] = np.arange(split_idx[i], split_idx[i+1])
 
@@ -420,7 +418,7 @@ def main():
 
         print(f' >> Running for -{grav.upper()}-')
         init_globals()
-        make_pix2idx_dict()
+        make_pix2idx_dict(SOURCE)
 
         for ((z_min, z_max), (rv_min, rv_max)) in product(cfg.zbins, cfg.rvbins):
             for void in cfg.voidtype:
