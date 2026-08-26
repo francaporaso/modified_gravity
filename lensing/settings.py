@@ -62,5 +62,5 @@ class Config:
         return list(zip(edges[:-1], edges[1:]))
 
     def set_ncores(self, new_ncores):
-        self.NCORES = new_ncores
+        self.ncores = new_ncores
 
