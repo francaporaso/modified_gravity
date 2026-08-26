@@ -22,7 +22,7 @@ ctx = get_context('fork')
 # --- Fixed globals
 cfg : Config
 #SOURCE = None
-PIX_TO_IDX : dict
+PIX_TO_IDX : dict = {}
 SC_CONSTANT : float = (c.value**2.0/(4.0*np.pi*G.value))*(pc.value/M_sun.value)*1e-6
 
 # "z_cgal" : true-z
