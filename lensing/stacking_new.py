@@ -408,8 +408,7 @@ def main():
     for grav in args.gravity:
 
         cfg = Config(args.config, grav, args.use_threshold)
-        if args.ncores > cfg.ncores:
-            cfg.set_ncores(args.ncores)
+        cfg.set_ncores(args.ncores)
         
         if i==0:
             total = len(cfg.zbins)*len(cfg.rvbins)*len(cfg.voidtype)*len(args.gravity)
