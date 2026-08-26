@@ -8,6 +8,7 @@ import healpy as hp
 from multiprocessing import get_context
 import numpy as np
 import os
+from pathlib import Path
 from time import time, asctime
 #import toml
 from tqdm import tqdm
@@ -197,6 +198,7 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
     if cfg.addnoise:
         output_filename += 'w-noise'
     output_filename += '.fits'
+    output_filename = Path(output_filename).expanduser() 
 
     assert check_output_exists(output_filename, overwrite=cfg.overwrite)
 
@@ -402,15 +404,16 @@ def main():
 
     print(' Start '.center(15, '='))
     tini = time()
-    
+
     i = 0
     total = 0
     for grav in args.gravity:
 
         cfg = Config(args.config, grav, args.use_threshold)
+
         if args.ncores is not None:
             cfg.set_ncores(args.ncores)
-        
+
         if i==0:
             total = len(cfg.zbins)*len(cfg.rvbins)*len(cfg.voidtype)*len(args.gravity)
             print(f' >> Running {len(cfg.zbins)} redshift bin(s) x {len(cfg.rvbins)} radius bin(s), for {len(cfg.voidtype)} void types.')
