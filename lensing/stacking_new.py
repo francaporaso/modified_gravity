@@ -157,7 +157,7 @@ def partial_profile(inp):
 
     return Sigma_wsum, DSigma_t_wsum, DSigma_x_wsum, N_inbin
 
-def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max):
+def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
     
     lenses, nvoids = read_lens_catalog(
         filename = cfg.lensname,
@@ -402,6 +402,7 @@ def main():
     tini = time()
     
     i = 0
+    total = 0
     for grav in args.gravity:
 
         cfg = Config(args.config, grav, args.use_threshold)
@@ -428,7 +429,7 @@ def main():
                     delta_max = 0.0
 
                 print(f' \n[{i}/{total}]')
-                check = stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max)
+                check = stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, grav.upper())
                 assert check == 0, ' >> Something went wrong. << '
 
     print(' End! '.center(15,'='))
