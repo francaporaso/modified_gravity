@@ -7,7 +7,7 @@
 *.fits
 *.out
 *.toml
-!config.tmlpt.toml
+!config.tmplt.toml
 
 # ignorando test.ipynb
 **/test.ipynb
