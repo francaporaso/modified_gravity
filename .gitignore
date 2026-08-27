@@ -6,7 +6,8 @@
 *.png
 *.fits
 *.out
-# *.toml
+*.toml
+!config.tmlpt.toml
 
 # ignorando test.ipynb
 **/test.ipynb
