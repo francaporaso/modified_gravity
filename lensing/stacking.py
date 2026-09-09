@@ -50,10 +50,10 @@ def init_globals():
 def make_pix2idx_dict(source):
     global PIX_TO_IDX
     # making a dict of healpix idx for fast query
-    upix, split_idx = np.unique(source[cfg.scols['pix']], return_index=True)
+    upix, split_idx = np.unique(source[cfg.scols['pix']].data, return_index=True)
     split_idx = np.append(split_idx, len(source))
     for i, pix in enumerate(upix):
-        PIX_TO_IDX[int(pix)] = np.arange(split_idx[i], split_idx[i+1])
+        PIX_TO_IDX[int(pix)] = (split_idx[i], split_idx[i+1])
 
 def check_output_exists(output_file, overwrite=False):
 
