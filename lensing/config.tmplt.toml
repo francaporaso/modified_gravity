@@ -42,9 +42,11 @@ delta = 9 # integrated density between 2-3 Rv, for void classification
 
 [sources.gr]
 name = '~/cats/L768/l768_gr_z020-130_wpix64_23087.fits'
+pix2idx = '~/cats/L768/pix2idx_gr_23087.npz'
 
 [sources.mg]
 name = '~/cats/L768/l768_mg_z020-130_wpix64_23086.fits'
+pix2idx = '~/cats/L768/pix2idx_mg_23086.npz'
 
 [sources.columns]
 # column names of source cat
