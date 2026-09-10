@@ -14,8 +14,8 @@ from time import time, asctime
 from tqdm import tqdm
 from itertools import product
 
-from lensing.funcs import eq2p2, sourcecat_load, cov_matrix, get_jackknife_kmeans
-from lensing.io import read_lens_catalog
+from lensing.funcs import eq2p2, cov_matrix, get_jackknife_kmeans
+from lensing.io import read_lens_catalog, read_sources_catalog
 from lensing.settings import Config
 
 ctx = get_context('fork')
@@ -45,7 +45,7 @@ def init_globals():
     binspace = ( np.linspace if cfg.binning=='lin' else np.geomspace )
 
     # read cat
-    SOURCE = sourcecat_load(cfg.sourcename)
+    SOURCE = read_sources_catalog(cfg.sourcename, cat='fits')
 
 def make_pix2idx_dict(source):
     global PIX_TO_IDX
