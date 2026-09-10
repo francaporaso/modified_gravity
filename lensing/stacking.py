@@ -103,19 +103,21 @@ def get_masked_idx_fast(psi, ra0, dec0, z0):
     returns the indices of _S where to select
     '''
 
-    pix_idx = hp.query_disc(
+    queried_pix = hp.query_disc(
         cfg.NSIDE,
         vec=hp.ang2vec(ra0, dec0, lonlat=True),
         radius=np.deg2rad(psi*1.1)
     )
 
-    idx_arrays = np.concatenate([
-        PIX_TO_IDX[p]
-        for p in pix_idx
-        if p in PIX_TO_IDX
+    queried_idranges = np.array([
+        PIX_TO_IDX[p] for p in queried_pix if p in PIX_TO_IDX
     ])
 
-    mask_z = SOURCE[cfg.scols['redshift']][idx_arrays] > (z0+0.1)
+    idx_arrays = np.concatenate([
+        np.arange(s,e) for s, e in queried_idranges
+    ])
+
+    mask_z = SOURCE[cfg.scols['redshift']].data[idx_arrays] > (z0+0.1)
 
     return idx_arrays[mask_z]
 
@@ -141,18 +143,18 @@ def partial_profile(inp):
     #sigma_c = sigma_crit(z0, catdata[REDSHIFT])/Rv0
     ## dividing by cosmo.h gives the correct units! (Rv0 in Mpc/h but sigma_crit in physical Msun*pc^-2)
     ## factor of almost 1.5 difference!
-    sigma_c = sigma_crit(z0, catdata[cfg.scols['redshift']]) / (Rv0*cosmo.h)
+    sigma_c = sigma_crit(z0, catdata[cfg.scols['redshift']].data) / (Rv0*cosmo.h)
 
     rads, theta = eq2p2(
-        np.deg2rad(catdata[cfg.scols['ra']]), np.deg2rad(catdata[cfg.scols['dec']]),
+        np.deg2rad(catdata[cfg.scols['ra']].data), np.deg2rad(catdata[cfg.scols['dec']].data),
         np.deg2rad(ra0), np.deg2rad(dec0)
     )
 
-    e1 = catdata[cfg.scols['gamma1']]
-    e2 = -catdata[cfg.scols['gamma2']]
+    e1 = catdata[cfg.scols['gamma1']].data
+    e2 = -catdata[cfg.scols['gamma2']].data
     if cfg.addnoise:
-        e1-=catdata[cfg.scols['eps1']]
-        e2+=catdata[cfg.scols['eps2']]
+        e1-=catdata[cfg.scols['eps1']].data
+        e2+=catdata[cfg.scols['eps2']].data
 
     #get tangential ellipticities
     cos2t = np.cos(2.0*theta)
@@ -161,7 +163,7 @@ def partial_profile(inp):
     ex = (-e1*sin2t+e2*cos2t) * sigma_c
 
     #get convergence
-    k  = catdata[cfg.scols['kappa']] * sigma_c
+    k  = catdata[cfg.scols['kappa']].data * sigma_c
 
     bines = binspace(cfg.RIN, cfg.ROUT, cfg.NBINS+1)
     dig = np.digitize((np.rad2deg(rads)/DEGxMPC)/Rv0, bines)
@@ -187,6 +189,7 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
         has_id = False,
         fullshape = cfg.fullshape
     )
+    # TODO: maybe shuffle the cutted catalogue? the # of voids is not the same
     lensrand = read_lens_catalog(
         filename = cfg.randsname,
         cat='sparkling',
