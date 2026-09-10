@@ -52,8 +52,9 @@ def make_pix2idx_dict(source):
     # making a dict of healpix idx for fast query
     
     #check if presaved dict exists
-    if os.path.exists(Path(cfg.pix2idx).expanduser()):
-        data = np.load(cfg.pix2idx)
+    path2pix = Path(cfg.pix2idx).expanduser()
+    if os.path.exists(path2pix):
+        data = np.load(path2pix)
         upix = data['upix']
         split_idx = data['split_idx']
         PIX_TO_IDX = dict(zip(
@@ -69,7 +70,7 @@ def make_pix2idx_dict(source):
             PIX_TO_IDX[int(pix)] = (split_idx[i], split_idx[i+1])
 
         print(f" >>> Saving index to file {cfg.pix2idx}")
-        np.savez_compressed(cfg.pix2idx, upix=upix, split_idx=np.array(list(PIX_TO_IDX.values())))
+        np.savez_compressed(path2pix, upix=upix, split_idx=np.array(list(PIX_TO_IDX.values())))
 
 def check_output_exists(output_file, overwrite=False):
 
