@@ -52,7 +52,7 @@ def make_pix2idx_dict(source):
     # making a dict of healpix idx for fast query
     
     #check if presaved dict exists
-    if os.path.exists(cfg.pix2idx):
+    if os.path.exists(Path(cfg.pix2idx).expanduser()):
         data = np.load(cfg.pix2idx)
         upix = data['upix']
         split_idx = data['split_idx']
