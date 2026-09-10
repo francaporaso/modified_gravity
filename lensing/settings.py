@@ -10,6 +10,7 @@ class Config:
 
         self.lensname = cfg['lenses'][gravity.lower()]['name']
         self.sourcename = cfg['sources'][gravity.lower()]['name']
+        self.pix2idx = cfg['sources'][gravity.lower()]['pix2idx']
         self.randsname = cfg['lenses'][gravity.lower()]['randname']
         
         self.swap_threshold(threshold)

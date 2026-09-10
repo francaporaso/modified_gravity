@@ -50,10 +50,26 @@ def init_globals():
 def make_pix2idx_dict(source):
     global PIX_TO_IDX
     # making a dict of healpix idx for fast query
-    upix, split_idx = np.unique(source[cfg.scols['pix']].data, return_index=True)
-    split_idx = np.append(split_idx, len(source))
-    for i, pix in enumerate(upix):
-        PIX_TO_IDX[int(pix)] = (split_idx[i], split_idx[i+1])
+    
+    #check if presaved dict exists
+    if os.path.exists(cfg.pix2idx):
+        data = np.load(cfg.pix2idx)
+        upix = data['upix']
+        split_idx = data['split_idx']
+        PIX_TO_IDX = dict(zip(
+            upix.tolist(),
+            map(tuple, split_idx.tolist())
+        ))
+
+    else:
+        print(" >>> Pixel index file couldn't be found. Building from source... ")
+        upix, split_idx = np.unique(source[cfg.scols['pix']].data, return_index=True)
+        split_idx = np.append(split_idx, len(source))
+        for i, pix in enumerate(upix):
+            PIX_TO_IDX[int(pix)] = (split_idx[i], split_idx[i+1])
+
+        print(f" >>> Saving index to file {cfg.pix2idx}")
+        np.savez_compressed(cfg.pix2idx, upix=upix, split_idx=np.array(list(PIX_TO_IDX.values())))
 
 def check_output_exists(output_file, overwrite=False):
 
