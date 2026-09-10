@@ -99,25 +99,35 @@ def sigma_crit(z_l, z_s):
 def get_masked_idx_fast(psi, ra0, dec0, z0):
     '''
     objects are selected by pixel on a disc of rad=psi+pad where pad = 0.1*psi
-    uses prebuilt _PIX_TO_INDEX dict
-    returns the indices of _S where to select
+    uses prebuilt PIX_TO_INDEX dict
+    returns the indices of sources where to select
     '''
 
-    pix_idx = hp.query_disc(
+    # query indices in disc around ra0,dec0
+    queried_idx = hp.query_disc(
         cfg.NSIDE,
         vec=hp.ang2vec(ra0, dec0, lonlat=True),
         radius=np.deg2rad(psi*1.1)
     )
 
-    idx_arrays = np.concatenate([
-        PIX_TO_IDX[p]
-        for p in pix_idx
-        if p in PIX_TO_IDX
+    # get valid ranges of sources row
+    queried_ranges = np.array([
+        PIX_TO_IDX[p] for p in queried_idx if p in PIX_TO_IDX
     ])
 
-    mask_z = SOURCE[cfg.scols['redshift']][idx_arrays] > (z0+0.1)
+    if not queried_ranges:
+        raise ValueError(f'no galaxies found around ({ra0},{dec0},{z0})')
 
-    return idx_arrays[mask_z]
+    filtered_idx = np.array([])
+
+    for start, stop in queried_ranges:
+        mask_z = SOURCE[cfg.scols['redshift']].data[start:stop] > z0+0.1
+
+        if np.any(mask_z):
+            chunk_idx = np.arange(start,stop)[mask_z]
+            filtered_idx = np.append(filtered_idx, chunk_idx)
+
+    return np.concatenate(filtered_idx)
 
 ## distance: is needed a cosmo.h dividing sigma_c when h!=1, else is not needed.
 ## leaving it for general case...
