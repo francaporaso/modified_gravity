@@ -211,7 +211,7 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
     else:
         voidtype = 'mixed'
 
-    output_filename = (f'lensing/results/lensing_{gravity}_{cfg.sample}_N{cfg.NBINS}_'
+    output_filename = (f'lensing/results/lensing_{gravity}_thr{cfg.voidthr}_{cfg.sample}_N{cfg.NBINS}_'
                    f'Rv{rv_min:02.0f}-{rv_max:02.0f}_'
                    f'z{100*z_min:03.0f}-{100*z_max:03.0f}_'
                    f'type{voidtype}_bin{cfg.binning}')
