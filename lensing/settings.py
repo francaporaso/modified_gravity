@@ -50,10 +50,10 @@ class Config:
         threshold = '_'+threshold
 
         if current_th != threshold:
-            print(f' >> Using void thr {threshold[:1]}')
+            print(f' >> Using void thr {threshold[1:]}')
             self.lensname = re.sub(r'_\d{2}', threshold, self.lensname) 
             self.randsname = re.sub(r'_\d{2}', threshold, self.randsname) 
-            self.voidthr = threshold[:1]
+            self.voidthr = threshold[1:]
 
     def _edges_to_bins(self, edges, name):
         if not isinstance(edges, list) or len(edges) < 2:
