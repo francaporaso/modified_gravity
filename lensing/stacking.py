@@ -422,7 +422,7 @@ def main():
     parser.add_argument('--use_threshold', type=str, action='store', choices=['08', '09'], default='09')
     args = parser.parse_args()
 
-    print(' Start '.center(15, '='))
+    print(' '+' Start '.center(15, '='))
     tini = time()
 
     i = 0
@@ -454,7 +454,7 @@ def main():
                 elif void=='R':
                     delta_max = 0.0
 
-                print(f' \n[{i}/{total}]')
+                print(f'\n [{i}/{total}]')
                 check = stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, grav.upper())
                 assert check == 0, ' >> Something went wrong. << '
 
