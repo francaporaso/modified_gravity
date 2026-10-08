@@ -6,15 +6,15 @@ import numpy as np
 # Configuration
 # ----------------------------------------------------------------------
 
-input_file = "../gr_gamma_map_order5_z01-14.fits"
+input_file = "27445.fits"
 ORDER = 5
 NSIDE = 2**ORDER
 
-ZMIN = 0.10
+ZMIN = 0.05
 ZMAX = 1.40
 DZ = 0.05
 
-output_file = f"lensing-cube_nside{NSIDE}_z{ZMIN * 10:1.0f}-{ZMAX * 10:1.0f}.fits"
+output_file = f"lensing-cube_nside{NSIDE}_z{ZMIN * 10:1.0f}-{ZMAX * 10:1.0f}_27445.fits"
 
 
 # ----------------------------------------------------------------------
@@ -29,6 +29,9 @@ zbin = np.asarray(tab["zbin"], dtype=np.int64)
 nobj_table = np.asarray(tab["nobj"], dtype=np.int64)
 sum_gamma1_table = np.asarray(tab["sum_gamma1"], dtype=np.float64)
 sum_gamma2_table = np.asarray(tab["sum_gamma2"], dtype=np.float64)
+sum_kappa_table = np.asarray(tab["sum_kappa"], dtype=np.float64)
+sum_defl1_table = np.asarray(tab["sum_defl1"], dtype=np.float64)
+sum_defl2_table = np.asarray(tab["sum_defl2"], dtype=np.float64)
 
 
 # ----------------------------------------------------------------------
@@ -55,6 +58,9 @@ if len(tab) != npix * nz:
 nobj = np.zeros((nz, npix), dtype=np.int64)
 sum_gamma1 = np.zeros((nz, npix), dtype=np.float64)
 sum_gamma2 = np.zeros((nz, npix), dtype=np.float64)
+sum_kappa = np.zeros((nz, npix), dtype=np.float64)
+sum_defl1 = np.zeros((nz, npix), dtype=np.float64)
+sum_defl2 = np.zeros((nz, npix), dtype=np.float64)
 
 
 # The CosmoHub zbin convention in the test file is:
@@ -79,7 +85,10 @@ if np.any(iz < 0) or np.any(iz >= nz):
 # direct assignment is sufficient.
 nobj[iz, pix] = nobj_table
 sum_gamma1[iz, pix] = sum_gamma1_table
-sum_gamma2[iz, pix] = sum_gamma2_table
+sum_gamma2[iz, pix] = sum_gamma1_table
+sum_kappa[iz, pix] = sum_gamma1_table
+sum_defl1[iz, pix] = sum_gamma1_table
+sum_defl2[iz, pix] = sum_gamma2_table
 
 
 # ----------------------------------------------------------------------
@@ -88,7 +97,20 @@ sum_gamma2[iz, pix] = sum_gamma2_table
 
 
 def construct_cube_fits(
-    ORDER, NSIDE, npix, nz, ZMIN, ZMAX, DZ, nobj, sum_gamma1, sum_gamma2, output_file
+    ORDER,
+    NSIDE,
+    npix,
+    nz,
+    ZMIN,
+    ZMAX,
+    DZ,
+    nobj,
+    sum_gamma1,
+    sum_gamma2,
+    sum_kappa,
+    sum_defl1,
+    sum_defl2,
+    output_file,
 ):
     primary = fits.PrimaryHDU()
     header = primary.header
@@ -103,6 +125,10 @@ def construct_cube_fits(
         "HEALPix NSIDE",
     )
 
+    header["ORDERING"] = (
+        "RING",
+        "HEALPix ordering scheme",
+    )
     header["NPIX"] = (
         npix,
         "Number of HEALPix pixels",
@@ -144,7 +170,7 @@ def construct_cube_fits(
 
     header.add_comment(
         "NOBJ contains galaxy counts. SUM_GAMMA1 and SUM_GAMMA2 "
-        "contain the corresponding sums of shear components."
+        "contain the corresponding sums of shear components, SUM_KAPPA is the convergence and SUM_DEFL1,2 are the instrinsic shapes. "
     )
 
     # ----------------------------------------------------------------------
@@ -166,6 +192,21 @@ def construct_cube_fits(
         name="SUM_GAMMA2",
     )
 
+    hdu_kappa = fits.ImageHDU(
+        sum_kappa,
+        name="SUM_KAPPA",
+    )
+
+    hdu_defl1 = fits.ImageHDU(
+        sum_defl1,
+        name="SUM_DEFL1",
+    )
+
+    hdu_defl2 = fits.ImageHDU(
+        sum_defl2,
+        name="SUM_DEFL2",
+    )
+
     # ----------------------------------------------------------------------
     # Write the cube
     # ----------------------------------------------------------------------
@@ -176,6 +217,9 @@ def construct_cube_fits(
             hdu_nobj,
             hdu_gamma1,
             hdu_gamma2,
+            hdu_kappa,
+            hdu_defl1,
+            hdu_defl2,
         ]
     )
 
@@ -204,6 +248,9 @@ construct_cube_fits(
     nobj=nobj,
     sum_gamma1=sum_gamma1,
     sum_gamma2=sum_gamma2,
+    sum_kappa=sum_kappa,
+    sum_defl1=sum_defl1,
+    sum_defl2=sum_defl2,
     output_file=output_file,
 )
 
