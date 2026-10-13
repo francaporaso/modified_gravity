@@ -85,10 +85,10 @@ if np.any(iz < 0) or np.any(iz >= nz):
 # direct assignment is sufficient.
 nobj[iz, pix] = nobj_table
 sum_gamma1[iz, pix] = sum_gamma1_table
-sum_gamma2[iz, pix] = sum_gamma1_table
-sum_kappa[iz, pix] = sum_gamma1_table
-sum_defl1[iz, pix] = sum_gamma1_table
-sum_defl2[iz, pix] = sum_gamma2_table
+sum_gamma2[iz, pix] = sum_gamma2_table
+sum_kappa[iz, pix] = sum_kappa_table
+sum_defl1[iz, pix] = sum_defl1_table
+sum_defl2[iz, pix] = sum_defl2_table
 
 
 # ----------------------------------------------------------------------
