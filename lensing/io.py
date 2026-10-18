@@ -2,132 +2,193 @@ from astropy.io import fits
 from astropy.table import Table
 import numpy as np
 from pathlib import Path
-#import pyarrow as pa
+
+# import pyarrow as pa
 import pyarrow.parquet as pq
 
+
 # ======================================================================
-def read_sparkling(filename,
-                   Rv_min, Rv_max, 
-                   z_min, z_max, 
-                   delta_min, delta_max, 
-                   rho_min=-1.0, rho_max=0.0, 
-                   flag=2,
-                   has_id=False, 
-                   fullshape=True):
-    '''
+def read_sparkling(
+    filename,
+    Rv_min,
+    Rv_max,
+    z_min,
+    z_max,
+    delta_min,
+    delta_max,
+    rho_min=-1.0,
+    rho_max=0.0,
+    flag=2,
+    has_id=False,
+    fullshape=True,
+):
+    """
     Reads Sparkling voids table into a numpy array
-    
+
     Args:
         filename (str or Path): Name of the file. Can be a Path object.
         Rv_min (float): Minimum void radius in the table.
         Rv_max (float): Maximum void radius in the table.
         z_min (float): Minimum void redshift in the table.
         z_max (float): Maximum void redshift in the table.
-        delta_min (float): Minimum value of the integrated density contrast in 
+        delta_min (float): Minimum value of the integrated density contrast in
             the table, used for separating void type.
-        delta_max (float): Maximum value of the integrated density contrast in 
+        delta_max (float): Maximum value of the integrated density contrast in
             the table, used for separating void type.
         rho_min (float, optional): Minimum value of the integrated density
             contrast at void centre. Default = -1.0.
-        rho_max (float, optional): Maximum value of the integrated density 
+        rho_max (float, optional): Maximum value of the integrated density
             contrast at void centre. Default = 0.0.
-        flag (int, optional): Flag threshold for proximity to survey wall. 
-            flag < 1: void centre is not fully inside survey. 
+        flag (int, optional): Flag threshold for proximity to survey wall.
+            flag < 1: void centre is not fully inside survey.
             1<= flag < 2: void centre is between 1 and 2 radii of the wall.
-            flag==2: void is inside survey up to 2 void radii. 
+            flag==2: void is inside survey up to 2 void radii.
             Default = 2.
-        has_id (bool, optional): Set to True if the file contains ID as first 
+        has_id (bool, optional): Set to True if the file contains ID as first
             column. Default = False.
-        fullshape (bool, optional): If True, returns all 12 Sparkling columns. 
+        fullshape (bool, optional): If True, returns all 12 Sparkling columns.
             Else, only [Rv, ra, dec, z]. Default = True.
-    
+
     Returns:
-        ndarray: Array of shape (N, V), where N is the number of columns (12 if 
+        ndarray: Array of shape (N, V), where N is the number of columns (12 if
         `fullshape` is set to True, else 4) and V is the number of filtered voids.
-    '''
+    """
 
     FLG = 11
     if has_id:
-        RV,RA,DEC,Z,R1,R2 = 1,2,3,4,8,9
+        RV, RA, DEC, Z, R1, R2 = 1, 2, 3, 4, 8, 9
     else:
-        RV,RA,DEC,Z,R1,R2 = 0,1,2,3,7,8
+        RV, RA, DEC, Z, R1, R2 = 0, 1, 2, 3, 7, 8
     # 0:Rv, 1:ra, 2:dec, 3:z, 4:xv, 5:yv, 6:zv, 7:rho1, 8:rho2, 9:logp, 10:diff CdM y CdV, 11:flag
     # CdM: centro de masa
     # CdV: centro del void
-    L = np.loadtxt(filename, dtype='f4').T
+    L = np.loadtxt(filename, dtype="f4").T
 
     mask = (
-        (L[RV] >= Rv_min) & (L[RV] < Rv_max) & 
-        (L[Z] >= z_min) & (L[Z] < z_max) & 
-        (L[R1] >= rho_min) & (L[R1] < rho_max) & 
-        (L[R2] >= delta_min) & (L[R2] < delta_max) & 
-        (L[FLG] >= flag)
+        (L[RV] >= Rv_min)
+        & (L[RV] < Rv_max)
+        & (L[Z] >= z_min)
+        & (L[Z] < z_max)
+        & (L[R1] >= rho_min)
+        & (L[R1] < rho_max)
+        & (L[R2] >= delta_min)
+        & (L[R2] < delta_max)
+        & (L[FLG] >= flag)
     )
 
     if fullshape:
         L = L[:, mask]
     else:
-        L = L[[RV,RA,DEC,Z]][:, mask]
+        L = L[[RV, RA, DEC, Z]][:, mask]
 
     return L
+
 
 def read_redmapper(filename, **kwargs):
     raise NotImplementedError
 
+
 LENS_READERS = {
-    'sparkling': read_sparkling,
-    'redmapper': read_redmapper,
+    "sparkling": read_sparkling,
+    "redmapper": read_redmapper,
 }
+
 
 # ======================================================================
 def read_sources_fits(filename, **kwargs):
-    '''
+    """
     Reads source files with .fits format. Uses `astorpy.table.Table` with memmap
     set to True.
 
-    Args: 
-        filename (str or Path): Name of the file, can be either str or Path 
+    Args:
+        filename (str or Path): Name of the file, can be either str or Path
             object.
         **kwargs: Additional keyword arguments passed to the
             astropy Table object.
-    
+
     Returns:
         astropy.table.Table : An astropy table object. Columns can be accesed
             using named keys.
-    '''
+    """
 
-    sources = Table.read(filename, memmap=True, format='fits', **kwargs)
+    sources = Table.read(filename, memmap=True, format="fits", **kwargs)
     return sources
 
+
 def read_sources_parquet(filename, **kwargs):
-    '''
+    """
     Reads sources files with .parquet format using pyarrow's parquet module.
 
-    Args: 
+    Args:
         filename (str or Path): Name of the file. Can be either a str or a Path
             object.
-        **kwargs: Additional keyword arguments passed to the 
+        **kwargs: Additional keyword arguments passed to the
             pyarrow.parquet.read_table function.
-    '''
+    """
 
     sources = pq.read_table(filename, **kwargs)
     return sources
 
+
+def read_sources_map(filename):
+    """
+    Reads a lensing cube built with `shearmap/table2cube.py`. The image
+    arrays (shape (NPIX, NSTEP)) are memmapped, not loaded in memory, so the
+    file is left open on purpose.
+
+    Args:
+        filename (str or Path): Name of the cube file.
+
+    Returns:
+        dict: `nside`, `nest` (bool), `nobj`, `gamma1`, `gamma2`, `kappa` (sums
+            over the objects in each pixel and step, memmapped), and arrays of
+            length NSTEP: `steps`, `zmin`, `zmax`, `zmid` and `zeff`. `zeff` is
+            the mean redshift of the step (column `zmean` of the STEPS table)
+            if it exists, else `zmid`.
+    """
+
+    hdul = fits.open(Path(filename).expanduser(), memmap=True)
+    head = hdul[0].header
+    cube = {
+        "nside": int(head["NSIDE"]),
+        "nest": head.get("ORDERING", "RING").strip().upper() == "NESTED",
+        "nobj": hdul["NOBJ"].data,
+        "gamma1": hdul["SUM_GAMMA1"].data,
+        "gamma2": hdul["SUM_GAMMA2"].data,
+        "kappa": hdul["SUM_KAPPA"].data,
+    }
+    steps = hdul["STEPS"].data
+    cube["steps"] = np.asarray(steps["step"])
+    cube["zmin"] = np.asarray(steps["zmin"], dtype=np.float64)
+    cube["zmax"] = np.asarray(steps["zmax"], dtype=np.float64)
+    cube["zmid"] = 0.5 * (cube["zmin"] + cube["zmax"])
+    if "zmean" in steps.columns.names:
+        cube["zeff"] = np.asarray(steps["zmean"], dtype=np.float64)
+    else:
+        print(
+            " WARNING: no `zmean` in STEPS table, using the (zmin+zmax)/2 of each step."
+        )
+        cube["zeff"] = cube["zmid"]
+    return cube
+
+
 SOURCES_READERS = {
-    'fits': read_sources_fits,
-    'parquet': read_sources_parquet,
+    "fits": read_sources_fits,
+    "parquet": read_sources_parquet,
+    "map": read_sources_map,
 }
 
+
 # ======================================================================
-def read_lens_catalog(filename, cat='sparkling', **kwargs):
-    '''
+def read_lens_catalog(filename, cat="sparkling", **kwargs):
+    """
     Read a lens catalog file using the register `LENS_READERS`.
 
     Args:
         filename (str or Path): Path to the catalog file.
         cat: The reader format key. Must be one of registered readers in
             `LENS_READERS` (e.g., 'sparkling', 'redmapper'). Defaults to 'sparkling'.
-        **kwargs: Additional keyword arguments passed directly to the 
+        **kwargs: Additional keyword arguments passed directly to the
             underlying reader function specified by `cat`.
 
     Returns:
@@ -138,22 +199,23 @@ def read_lens_catalog(filename, cat='sparkling', **kwargs):
 
     Example:
         >>> catalog = read_sources_catalog("data/lenses.dat", cat="sparkling")
-    '''
- 
+    """
+
     filepath = Path(filename).expanduser()
     if cat not in LENS_READERS:
-        raise ValueError(f'Unknown cat {cat}')
+        raise ValueError(f"Unknown cat {cat}")
     return LENS_READERS.get(cat)(filepath, **kwargs)
 
-def read_sources_catalog(filename, cat='parquet', **kwargs):
-    '''
+
+def read_sources_catalog(filename, cat="parquet", **kwargs):
+    """
     Read a sources catalog file using the register `SOURCE_READERS`.
 
     Args:
         filename (str or Path): Path to the catalog file.
         cat: The reader format key. Must be one of registered readers in
             `SOURCES_READERS` (e.g., 'parquet', 'fits'). Defaults to 'parquet'.
-        **kwargs: Additional keyword arguments passed directly to the 
+        **kwargs: Additional keyword arguments passed directly to the
             underlying reader function specified by `cat`.
 
     Returns:
@@ -164,8 +226,8 @@ def read_sources_catalog(filename, cat='parquet', **kwargs):
 
     Example:
         >>> catalog = read_sources_catalog("data/sources.fits", cat="fits")
-    '''
+    """
     filepath = Path(filename).expanduser()
     if cat not in SOURCES_READERS:
-        raise ValueError(f'Unknown cat {cat}')
+        raise ValueError(f"Unknown cat {cat}")
     return SOURCES_READERS.get(cat)(filepath, **kwargs)
