@@ -9,8 +9,19 @@ class Config:
         cfg = toml.load(configfile)
 
         self.lensname = cfg['lenses'][gravity.lower()]['name']
-        self.sourcename = cfg['sources'][gravity.lower()]['name']
-        self.pix2idx = cfg['sources'][gravity.lower()]['pix2idx']
+        self.source_mode = cfg['run'].get('source_mode', 'catalog')
+        if self.source_mode not in ('catalog', 'map'):
+            raise ValueError(f"[run] source_mode must be 'catalog' or 'map', got {self.source_mode}")
+        src = cfg['sources'][gravity.lower()]
+        self.sourcename = src.get('name')
+        self.pix2idx = src.get('pix2idx')
+        self.cubename = src.get('cube')
+        if self.source_mode == 'map':
+            if self.cubename is None:
+                raise ValueError(f"[sources.{gravity.lower()}] needs 'cube' in map mode")
+            self.sourcename = self.cubename
+        self.step_criterion = cfg['sources'].get('map', {}).get('step_criterion', 'zmin')
+        self.dz_buffer = cfg['sources'].get('map', {}).get('dz_buffer', 0.1)
         self.randsname = cfg['lenses'][gravity.lower()]['randname']
         
         self.swap_threshold(threshold)
