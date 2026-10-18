@@ -1,3 +1,4 @@
+# LEGACY: old (NZ, NPIX) dz-binned cube. Superseded by table2cube.py (per-simulation-step cube); kept for reference.
 from astropy.io import fits
 from astropy.table import Table
 import numpy as np
