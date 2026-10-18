@@ -47,6 +47,9 @@ def build_cube(tab, step2z=None, nside=None):
              zip(step2z["step"], step2z["zmin"], step2z["zmax"])}
         cube["zmin"] = np.array([z[int(s)][0] for s in steps], dtype=np.float64)
         cube["zmax"] = np.array([z[int(s)][1] for s in steps], dtype=np.float64)
+        if "zmean" in step2z.colnames:
+            zm = dict(zip(step2z["step"].tolist(), step2z["zmean"].tolist()))
+            cube["zmean"] = np.array([zm[int(s)] for s in steps], dtype=np.float64)
     return cube
 
 
@@ -79,6 +82,8 @@ def save_cube(cube, output_file):
             fits.Column(name="zmin", format="D", array=cube["zmin"]),
             fits.Column(name="zmax", format="D", array=cube["zmax"]),
         ]
+        if "zmean" in cube:
+            cols.append(fits.Column(name="zmean", format="D", array=cube["zmean"]))
     hdus.append(fits.BinTableHDU.from_columns(cols, name="STEPS"))
     fits.HDUList(hdus).writeto(output_file, overwrite=True)
 
@@ -111,6 +116,26 @@ def load_cube_table(path):
         if key in cube:
             tab.meta[key] = cube[key]
     return tab
+
+
+def degrade_cube(cube, nside_out):
+    """Lower the resolution of a RING cube to `nside_out` by summing child pixels.
+
+    Exact, since the cube stores sums and counts.
+    """
+    import healpy as hp
+
+    nside = cube["nside"]
+    if nside_out > nside or nside % nside_out:
+        raise ValueError("nside_out must divide nside and be <= nside.")
+    fac = (nside // nside_out) ** 2
+    out = {k: v for k, v in cube.items() if k not in ("nobj", *LENSING_COLS)}
+    out["nside"] = nside_out
+    for name in ("nobj", *LENSING_COLS):
+        nest = hp.reorder(np.asarray(cube[name]).T, r2n=True).T  # (npix, nstep) in NEST
+        nest = nest.reshape(-1, fac, nest.shape[1]).sum(axis=1)
+        out[name] = hp.reorder(nest.T, n2r=True).T
+    return out
 
 
 def stack_sources(cube, z_lens, criterion="zmin", dz_buffer=0.1):
