@@ -53,8 +53,11 @@ cube = '~/cats/L768/lensing-cube_mg.fits' # map mode
 
 [sources.map]
 # only used if source_mode = 'map'
-step_criterion = 'zmin' # step redshift compared with z_lens+dz_buffer: 'zmin', 'zeff' or 'zmax'
+# The sources of a void bin [z_low, z_high) are the cube slices with zmin = z_low + dz_buffer
+# and above. z_low + dz_buffer must be a slice edge and z_high - z_low <= dz_buffer.
 dz_buffer = 0.1
+weighting = 'invsc' # sources weighted by 1/sigma_crit (the only one for now)
+# order = 10 # optional: degrade the cube to this HEALPix order when loading it
 
 [sources.columns]
 # column names of source cat

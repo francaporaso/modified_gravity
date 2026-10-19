@@ -19,6 +19,7 @@ from itertools import product
 from lensing.funcs import eq2p2, cov_matrix, get_jackknife_kmeans
 from lensing.io import read_lens_catalog, read_sources_catalog
 from lensing.settings import Config
+from shearmap.table2cube import degrade_cube
 
 ctx = get_context("fork")
 
@@ -27,6 +28,9 @@ cfg: Config
 # SOURCE = None
 PIX_TO_IDX: dict = {}
 SOURCE = None
+# map mode: slices of the cube summed behind the current void bin, see `collapse_slices`
+MAPS: dict = {}
+ZSRC_MIN: float = 0.0
 SC_CONSTANT: float = (
     (c.value**2.0 / (4.0 * np.pi * G.value)) * (pc.value / M_sun.value) * 1e-6
 )
@@ -56,12 +60,65 @@ def init_globals():
             raise ValueError(
                 "addnoise is not available in map mode (the cube has no eps sums)."
             )
-        SOURCE = read_sources_catalog(cfg.cubename, cat="map")
-        # redshift of each step compared against z_lens + dz_buffer
-        SOURCE["zcut"] = SOURCE[cfg.step_criterion]
+        SOURCE = load_map_source(cfg.cubename, cfg.map_order)
+        check_map_zbins()
         check_map_resolution()
     else:
         SOURCE = read_sources_catalog(cfg.sourcename, cat="fits")
+
+
+def load_map_source(path, order=None):
+    """Read the lensing cube. If `order` is lower than the native one, the cube is
+    degraded to it by summing the child pixels (exact; loads the cube in memory)."""
+    cube = read_sources_catalog(path, cat="map")
+    if order is not None and order != cube["order"]:
+        if order > cube["order"]:
+            raise ValueError(
+                f"[sources.map] order={order} is higher than the cube's ({cube['order']})."
+            )
+        print(f" >> Degrading the cube from order {cube['order']} to {order}", flush=True)
+        cube = degrade_cube(cube, order)
+    if not cube["nest"]:
+        raise ValueError("The lensing cube must be in NESTED ordering.")
+    return cube
+
+
+def source_slice_start(z_low, zmin, buffer):
+    """Index of the first cube slice used by a void bin starting at `z_low`: the
+    slice with zmin == z_low + buffer. Raises if there is no such slice edge."""
+    target = z_low + buffer
+    k = int(np.argmin(np.abs(zmin - target)))
+    if abs(zmin[k] - target) > 1e-6:
+        raise ValueError(
+            f"z_low + dz_buffer = {target:.4f} is not the lower edge of a cube slice "
+            f"(edges: {np.round(zmin, 4).tolist()})."
+        )
+    return k
+
+
+def check_map_zbins():
+    """Stops if a void bin of the config can't be served by the cube slices."""
+    for z_min, z_max in cfg.zbins:
+        source_slice_start(z_min, SOURCE["zmin"], cfg.dz_buffer)
+        if z_max - z_min > cfg.dz_buffer + 1e-9:
+            raise ValueError(
+                f"Void bin [{z_min}, {z_max}) is wider than dz_buffer={cfg.dz_buffer}: "
+                "its voids would be behind some of the selected sources."
+            )
+
+
+def collapse_slices(z_low):
+    """Sum the cube slices behind the void bin starting at `z_low` into flat maps
+    (npix,) in the global `MAPS`, and set `ZSRC_MIN`. Done once per stack, before the
+    pool forks, so the workers share the maps."""
+    global MAPS, ZSRC_MIN
+
+    k0 = source_slice_start(z_low, SOURCE["zmin"], cfg.dz_buffer)
+    MAPS = {"nobj": np.asarray(SOURCE["nobj"][:, k0:]).sum(axis=1, dtype=np.int64)}
+    for name in ("gamma1", "gamma2", "kappa", "invchi"):
+        MAPS[name] = np.asarray(SOURCE[name][:, k0:]).sum(axis=1, dtype=np.float64)
+    ZSRC_MIN = float(SOURCE["zmin"][k0])
+    return k0
 
 
 def check_map_resolution():
@@ -134,6 +191,37 @@ def sigma_crit(z_l, z_s):
     return SC_CONSTANT * (d_s / (d_ls * d_l))
 
 
+def comoving_chi(z):
+    """Comoving distance in Mpc/h"""
+    return cosmo.comoving_distance(z).value * cosmo.h
+
+
+def inv_sigma_crit_prefactor(z_l):
+    """A(z_l) such that, in a flat universe, 1/sigma_crit(z_l, z_s) = A * (1 - chi_l/chi_s).
+    This makes the sum of 1/sigma_crit over sources linear in sum(1/chi_s), which is
+    what the lensing cube stores."""
+    return cosmo.angular_diameter_distance(z_l).value / SC_CONSTANT
+
+
+def get_masked_idx_zmin(psi, ra0, dec0, zmin):
+    """Same as `get_masked_idx_fast` but selecting the sources with z >= zmin"""
+
+    queried_pix = hp.query_disc(
+        cfg.NSIDE,
+        vec=hp.ang2vec(ra0, dec0, lonlat=True),
+        radius=np.deg2rad(psi * 1.1),
+        inclusive=True,
+    )
+
+    queried_idranges = np.array([PIX_TO_IDX[p] for p in queried_pix if p in PIX_TO_IDX])
+
+    idx_arrays = np.concatenate([np.arange(s, e) for s, e in queried_idranges])
+
+    mask_z = SOURCE[cfg.scols["redshift"]].data[idx_arrays] >= zmin
+
+    return idx_arrays[mask_z]
+
+
 def get_masked_idx_fast(psi, ra0, dec0, z0):
     """
     objects are selected by pixel on a disc of rad=psi+pad where pad = 0.1*psi
@@ -141,8 +229,14 @@ def get_masked_idx_fast(psi, ra0, dec0, z0):
     returns the indices of _S where to select
     """
 
+    # inclusive=True: with the default only the pixels whose *centre* is inside the disc
+    # are read, so sources inside psi that sit in pixels centred outside it were lost
+    # (up to ~10% for the smallest voids at high z, all in the outer radial bins)
     queried_pix = hp.query_disc(
-        cfg.NSIDE, vec=hp.ang2vec(ra0, dec0, lonlat=True), radius=np.deg2rad(psi * 1.1)
+        cfg.NSIDE,
+        vec=hp.ang2vec(ra0, dec0, lonlat=True),
+        radius=np.deg2rad(psi * 1.1),
+        inclusive=True,
     )
 
     queried_idranges = np.array([PIX_TO_IDX[p] for p in queried_pix if p in PIX_TO_IDX])
@@ -215,10 +309,18 @@ def partial_profile(inp):
 
 def partial_profile_map(inp):
     """
-    Same as `partial_profile` but the sources are the pixels of the lensing cube.
-    Each (pixel, step) holds sums of gamma1, gamma2, kappa and the number of
-    galaxies, so the sum over galaxies of X*Sigma_crit becomes a sum over steps
-    of Sigma_crit(z_step)*SUM_X, which is already weighted by the galaxy counts.
+    Same as `partial_profile_weighted` (Sigma_crit^-1 weights) but the sources are
+    the pixels of the lensing cube, summed over the slices behind the void bin
+    (`collapse_slices` must have been called for the bin of this void).
+
+    Each pixel holds N, the sums of gamma1, gamma2, kappa and X = sum(CHI_REF/chi_s).
+    In a flat universe the sum over its sources of 1/sigma_crit is
+    A(z_l) * (N - l*X), with l = chi_l/CHI_REF, so the estimator
+        DSigma = sum(gamma) / sum(1/sigma_crit)
+    is built from the pixel sums only.
+
+    Returns the sums per radial bin of: kappa, gamma_t and gamma_x (all divided by
+    Rv*h), the weights sum(1/sigma_crit) and the number of sources.
     """
 
     Rv0, ra0, dec0, z0 = inp
@@ -226,10 +328,6 @@ def partial_profile_map(inp):
     DEGxMPC = cosmo.arcsec_per_kpc_proper(z0).to("deg/Mpc").value
     psi = DEGxMPC * cfg.ROUT * Rv0
 
-    zeros = np.zeros(cfg.NBINS)
-
-    # steps behind the lens
-    ks = np.flatnonzero(SOURCE["zcut"] >= z0 + cfg.dz_buffer)
     pix = hp.query_disc(
         SOURCE["nside"],
         vec=hp.ang2vec(ra0, dec0, lonlat=True),
@@ -237,19 +335,20 @@ def partial_profile_map(inp):
         inclusive=False,  # pixels are assigned to bins by their centre
         nest=SOURCE["nest"],
     )
-    if len(ks) == 0 or len(pix) == 0:
-        return zeros, zeros.copy(), zeros.copy(), zeros.copy()
+    if len(pix) == 0:
+        return tuple(np.zeros(cfg.NBINS) for _ in range(5))
+    pix.sort()
 
-    # contiguous steps -> slice (memmap-friendly)
-    ks = slice(ks[0], ks[-1] + 1) if len(ks) == ks[-1] - ks[0] + 1 else ks
-    zs = SOURCE["zeff"][ks]
-    sigma_c = sigma_crit(z0, zs) / (Rv0 * cosmo.h)
+    n = MAPS["nobj"][pix]
+    f = 1.0 / (Rv0 * cosmo.h)
+    # 1/sigma_crit summed over the sources of each pixel
+    w = inv_sigma_crit_prefactor(z0) * (
+        n - (comoving_chi(z0) / SOURCE["chiref"]) * MAPS["invchi"][pix]
+    )
 
-    nobj = np.asarray(SOURCE["nobj"][pix, ks], dtype=np.float64)
-    g1 = np.asarray(SOURCE["gamma1"][pix, ks], dtype=np.float64) @ sigma_c
-    g2 = -(np.asarray(SOURCE["gamma2"][pix, ks], dtype=np.float64) @ sigma_c)
-    k = np.asarray(SOURCE["kappa"][pix, ks], dtype=np.float64) @ sigma_c
-    n = nobj.sum(axis=1)
+    g1 = MAPS["gamma1"][pix]
+    g2 = -MAPS["gamma2"][pix]
+    k = MAPS["kappa"][pix]
 
     ra_p, dec_p = hp.pix2ang(SOURCE["nside"], pix, nest=SOURCE["nest"], lonlat=True)
     rads, theta = eq2p2(
@@ -264,10 +363,63 @@ def partial_profile_map(inp):
     bines = binspace(cfg.RIN, cfg.ROUT, cfg.NBINS + 1)
     dig = np.digitize((np.rad2deg(rads) / DEGxMPC) / Rv0, bines)
 
-    def binsum(w):
-        return np.bincount(dig, weights=w, minlength=cfg.NBINS + 2)[1 : cfg.NBINS + 1]
+    def binsum(x):
+        return np.bincount(dig, weights=x, minlength=cfg.NBINS + 2)[1 : cfg.NBINS + 1]
 
-    return binsum(k), binsum(et), binsum(ex), binsum(n)
+    return binsum(f * k), binsum(f * et), binsum(f * ex), binsum(w), binsum(n)
+
+
+def partial_profile_weighted(inp, source_cut="bin"):
+    """
+    Galaxy-catalog counterpart of `partial_profile_map`, to check it. Same estimator
+    (sources weighted by 1/sigma_crit) and same return values. `partial_profile` is
+    left untouched.
+
+    source_cut: 'bin'  : sources with z >= ZSRC_MIN, like the slices of the cube
+                'void' : sources with z >= z_void + dz_buffer
+    """
+
+    Rv0, ra0, dec0, z0 = inp
+
+    DEGxMPC = cosmo.arcsec_per_kpc_proper(z0).to("deg/Mpc").value
+    psi = DEGxMPC * cfg.ROUT * Rv0
+
+    zmin = ZSRC_MIN if source_cut == "bin" else z0 + cfg.dz_buffer
+    idx = get_masked_idx_zmin(psi, ra0, dec0, zmin)
+    catdata = SOURCE[idx]
+
+    f = 1.0 / (Rv0 * cosmo.h)
+    zs = catdata[cfg.scols["redshift"]]
+    w = inv_sigma_crit_prefactor(z0) * (1.0 - comoving_chi(z0) / comoving_chi(zs))
+
+    rads, theta = eq2p2(
+        np.deg2rad(catdata[cfg.scols["ra"]]),
+        np.deg2rad(catdata[cfg.scols["dec"]]),
+        np.deg2rad(ra0),
+        np.deg2rad(dec0),
+    )
+
+    e1 = catdata[cfg.scols["gamma1"]]
+    e2 = -catdata[cfg.scols["gamma2"]]
+    if cfg.addnoise:
+        e1 = e1 - catdata[cfg.scols["eps1"]]
+        e2 = e2 + catdata[cfg.scols["eps2"]]
+
+    cos2t = np.cos(2.0 * theta)
+    sin2t = np.sin(2.0 * theta)
+    et = -(e1 * cos2t + e2 * sin2t)
+    ex = -e1 * sin2t + e2 * cos2t
+    k = catdata[cfg.scols["kappa"]]
+
+    bines = binspace(cfg.RIN, cfg.ROUT, cfg.NBINS + 1)
+    dig = np.digitize((np.rad2deg(rads) / DEGxMPC) / Rv0, bines)
+
+    def binsum(x):
+        return np.bincount(dig, weights=x, minlength=cfg.NBINS + 2)[1 : cfg.NBINS + 1]
+
+    return binsum(f * k), binsum(f * et), binsum(f * ex), binsum(w), np.bincount(
+        dig, minlength=cfg.NBINS + 2
+    )[1 : cfg.NBINS + 1].astype(np.float64)
 
 
 def jackknife_sample(nmax=10_000):
@@ -358,15 +510,26 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
     print(" Type " + f"{': ':.>14}[{delta_min},{delta_max}) => {voidtype}")
     print(" # of voids " + f"{': ':.>12}{nvoids}\n", flush=True)
 
-    profile_func = partial_profile_map if cfg.source_mode == "map" else partial_profile
+    if cfg.source_mode == "map":
+        profile_func = partial_profile_map
+        # before the pool forks: the workers share the collapsed maps
+        collapse_slices(z_min)
+        print(
+            f" Sources {': ':.>11}z >= {ZSRC_MIN:.2f} ({cfg.weighting} weights)\n",
+            flush=True,
+        )
+    else:
+        profile_func = partial_profile
 
     N_inbin = np.zeros((cfg.NJK + 1, cfg.NBINS))
+    W_inbin = np.zeros((cfg.NJK + 1, cfg.NBINS))
     Sigma_wsum = np.zeros((cfg.NJK + 1, cfg.NBINS))
     DSigma_t_wsum = np.zeros((cfg.NJK + 1, cfg.NBINS))
     DSigma_x_wsum = np.zeros((cfg.NJK + 1, cfg.NBINS))
 
     Sigma_wsum_rand = np.zeros((cfg.NJK + 1, cfg.NBINS))
     N_inbin_rand = np.zeros((cfg.NJK + 1, cfg.NBINS))
+    W_inbin_rand = np.zeros((cfg.NJK + 1, cfg.NBINS))
     # calculating voids
     with ctx.Pool(processes=cfg.ncores) as pool:
         resmap = list(
@@ -408,16 +571,26 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
     print("\n >> Pool ended, stacking...", flush=True)
 
     # -- reducing...
-    kappa, gamma_t, gamma_x, nbin = map(lambda x: np.vstack(x), zip(*resmap))
+    # profile functions return (kappa, gamma_t, gamma_x, N) with unit weights, or
+    # (kappa, gamma_t, gamma_x, W, N) with the sum of the weights W
+    def unpack(res):
+        cols = [np.vstack(x) for x in zip(*res)]
+        if len(cols) == 4:
+            cols.append(cols[3])
+        kappa, gamma_t, gamma_x, w, n = cols
+        return kappa, gamma_t, gamma_x, w, n
 
-    kappa_rand, _, _, nbin_rand = map(lambda x: np.vstack(x), zip(*randmap))
+    kappa, gamma_t, gamma_x, wbin, nbin = unpack(resmap)
+    kappa_rand, _, _, wbin_rand, nbin_rand = unpack(randmap)
 
     N_inbin[0] = nbin.sum(axis=0)
+    W_inbin[0] = wbin.sum(axis=0)
     Sigma_wsum[0] = kappa.sum(axis=0)
     DSigma_t_wsum[0] = gamma_t.sum(axis=0)
     DSigma_x_wsum[0] = gamma_x.sum(axis=0)
 
     N_inbin_rand[0] = nbin_rand.sum(axis=0)
+    W_inbin_rand[0] = wbin_rand.sum(axis=0)
     Sigma_wsum_rand[0] = kappa_rand.sum(axis=0)
 
     # calculate jackknife regions and profiles
@@ -439,18 +612,20 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
         mask_rand = kidx_rand != k
 
         N_inbin[j + 1, :] = nbin[mask].sum(axis=0)
+        W_inbin[j + 1, :] = wbin[mask].sum(axis=0)
         Sigma_wsum[j + 1, :] = kappa[mask].sum(axis=0)
         DSigma_t_wsum[j + 1, :] = gamma_t[mask].sum(axis=0)
         DSigma_x_wsum[j + 1, :] = gamma_x[mask].sum(axis=0)
 
         N_inbin_rand[j + 1, :] = nbin_rand[mask_rand].sum(axis=0)
+        W_inbin_rand[j + 1, :] = wbin_rand[mask_rand].sum(axis=0)
         Sigma_wsum_rand[j + 1, :] = kappa_rand[mask_rand].sum(axis=0)
 
-    Sigma = Sigma_wsum / N_inbin
-    DSigma_t = DSigma_t_wsum / N_inbin
-    DSigma_x = DSigma_x_wsum / N_inbin
+    Sigma = Sigma_wsum / W_inbin
+    DSigma_t = DSigma_t_wsum / W_inbin
+    DSigma_x = DSigma_x_wsum / W_inbin
 
-    Sigma_rand = Sigma_wsum_rand / N_inbin_rand
+    Sigma_rand = Sigma_wsum_rand / W_inbin_rand
 
     extradata = dict(
         nvoids=nvoids,
@@ -498,8 +673,11 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
         head.update(
             {
                 "nside": SOURCE["nside"],
-                "stepcrit": cfg.step_criterion,
+                "order": SOURCE["order"],
+                "weight": cfg.weighting,
                 "dzbuffer": cfg.dz_buffer,
+                "zsrcmin": ZSRC_MIN,
+                "chiref": SOURCE["chiref"],
             }
         )
 
@@ -512,6 +690,8 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
             "Sigma_rand": Sigma_rand[0],
         }
     )
+    if cfg.source_mode == "map":
+        table["N"] = N_inbin[0]
 
     # sigma cov_matrix
     covS = cov_matrix(Sigma[1:, :] - Sigma_rand[1:, :])
@@ -582,6 +762,12 @@ def main():
         init_globals()
         if cfg.source_mode == "catalog":
             make_pix2idx_dict(SOURCE)
+        else:
+            print(
+                f" >> Map mode: cube order {SOURCE['order']} NESTED, "
+                f"{len(SOURCE['zmin'])} source slices.",
+                flush=True,
+            )
 
         for (z_min, z_max), (rv_min, rv_max) in product(cfg.zbins, cfg.rvbins):
             for void in cfg.voidtype:

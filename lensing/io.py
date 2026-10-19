@@ -133,43 +133,20 @@ def read_sources_parquet(filename, **kwargs):
 def read_sources_map(filename):
     """
     Reads a lensing cube built with `shearmap/table2cube.py`. The image
-    arrays (shape (NPIX, NSTEP)) are memmapped, not loaded in memory, so the
-    file is left open on purpose.
+    arrays (shape (NPIX, NZ), NESTED) are memmapped, not loaded in memory, so
+    the file is left open on purpose.
 
     Args:
         filename (str or Path): Name of the cube file.
 
     Returns:
-        dict: `nside`, `nest` (bool), `nobj`, `gamma1`, `gamma2`, `kappa` (sums
-            over the objects in each pixel and step, memmapped), and arrays of
-            length NSTEP: `steps`, `zmin`, `zmax`, `zmid` and `zeff`. `zeff` is
-            the mean redshift of the step (column `zmean` of the STEPS table)
-            if it exists, else `zmid`.
+        dict: see `shearmap.table2cube.load_cube`. `order`, `nside`, `nest`,
+            `chiref`, `optweight`, `zmin`/`zmax` (per slice), `nobj`, and the
+            sums `gamma1`, `gamma2`, `kappa`, `invchi` (+ optional ones).
     """
+    from shearmap.table2cube import load_cube
 
-    hdul = fits.open(Path(filename).expanduser(), memmap=True)
-    head = hdul[0].header
-    cube = {
-        "nside": int(head["NSIDE"]),
-        "nest": head.get("ORDERING", "RING").strip().upper() == "NESTED",
-        "nobj": hdul["NOBJ"].data,
-        "gamma1": hdul["SUM_GAMMA1"].data,
-        "gamma2": hdul["SUM_GAMMA2"].data,
-        "kappa": hdul["SUM_KAPPA"].data,
-    }
-    steps = hdul["STEPS"].data
-    cube["steps"] = np.asarray(steps["step"])
-    cube["zmin"] = np.asarray(steps["zmin"], dtype=np.float64)
-    cube["zmax"] = np.asarray(steps["zmax"], dtype=np.float64)
-    cube["zmid"] = 0.5 * (cube["zmin"] + cube["zmax"])
-    if "zmean" in steps.columns.names:
-        cube["zeff"] = np.asarray(steps["zmean"], dtype=np.float64)
-    else:
-        print(
-            " WARNING: no `zmean` in STEPS table, using the (zmin+zmax)/2 of each step."
-        )
-        cube["zeff"] = cube["zmid"]
-    return cube
+    return load_cube(Path(filename).expanduser())
 
 
 SOURCES_READERS = {

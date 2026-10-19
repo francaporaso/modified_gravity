@@ -20,8 +20,15 @@ class Config:
             if self.cubename is None:
                 raise ValueError(f"[sources.{gravity.lower()}] needs 'cube' in map mode")
             self.sourcename = self.cubename
-        self.step_criterion = cfg['sources'].get('map', {}).get('step_criterion', 'zmin')
-        self.dz_buffer = cfg['sources'].get('map', {}).get('dz_buffer', 0.1)
+        mapcfg = cfg['sources'].get('map', {})
+        # sources of a void bin [z_low, z_high) are the cube slices with zmin >= z_low + dz_buffer
+        self.dz_buffer = mapcfg.get('dz_buffer', 0.1)
+        # weight of each source in the map estimator. Only 'invsc' (Sigma_crit^-1) for now
+        self.weighting = mapcfg.get('weighting', 'invsc')
+        if self.weighting != 'invsc':
+            raise ValueError(f"[sources.map] weighting must be 'invsc', got {self.weighting}")
+        # HEALPix order to degrade the cube to when loading it (None: native order)
+        self.map_order = mapcfg.get('order')
         self.randsname = cfg['lenses'][gravity.lower()]['randname']
         
         self.swap_threshold(threshold)
