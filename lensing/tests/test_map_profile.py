@@ -51,7 +51,9 @@ def make_galaxies(on_centres):
         dec = dec + rng.uniform(-half, half, len(dec))
     z = rng.uniform(0.2, 1.0, len(ra))
 
-    # noise-free tangential shear around the void
+    # noise-free tangential shear around the void, in the L768 convention: the code
+    # rotates (e1, e2) = (-gamma1, -gamma2), so gamma = a * (cos 2theta, sin 2theta)
+    # gives a purely tangential, positive signal
     rad, theta = st.eq2p2(
         np.deg2rad(ra), np.deg2rad(dec), np.deg2rad(RA0), np.deg2rad(DEC0)
     )
@@ -62,7 +64,7 @@ def make_galaxies(on_centres):
             "ra": ra,
             "dec": dec,
             "z": z,
-            "gamma1": -a * np.cos(2.0 * theta),
+            "gamma1": a * np.cos(2.0 * theta),
             "gamma2": a * np.sin(2.0 * theta),
             "kappa": k,
         }
@@ -156,8 +158,33 @@ def test_exact_on_pixel_centres():
     scale = max(np.abs(k_c).max(), np.abs(t_c).max())
     for c, m in ((k_c, k_m), (t_c, t_m), (x_c, x_m)):
         np.testing.assert_allclose(m, c, rtol=1e-4, atol=1e-5 * scale)
-    # the signal is purely tangential
+    # the signal is purely tangential and positive
     assert np.abs(t_c).max() > 100 * np.abs(x_c).max()
+    assert np.all(t_c > 0)
+
+
+def test_gamma_convention_in_all_profile_functions():
+    # the original catalog function, the weighted one and the map one must agree on the
+    # sign: positive tangential, no cross component, for a tangential field in L768
+    # convention. With the MICE convention (e1, e2) = (+gamma1, -gamma2) this fails.
+    assert st.GAMMA_SIGN == (-1.0, -1.0)
+    gal = make_galaxies(on_centres=False)
+    cube = make_cube(gal)
+    gal = setup(gal, cube)
+    inp = (RV0, RA0, DEC0, Z0)
+
+    map_res = st.partial_profile_map(inp)
+    st.SOURCE = gal
+    weighted_res = st.partial_profile_weighted(inp, source_cut="bin")
+    k, t, x, n = st.partial_profile(inp)  # unit weights, 4-tuple
+
+    for name, (t_, x_) in {
+        "map": (map_res[1], map_res[2]),
+        "weighted": (weighted_res[1], weighted_res[2]),
+        "original": (t, x),
+    }.items():
+        assert np.all(t_ > 0), name
+        assert np.abs(x_).max() < 0.05 * np.abs(t_).max(), name
 
 
 def test_catalog_selection_reads_every_source_in_the_disc():
@@ -179,6 +206,32 @@ def test_catalog_selection_reads_every_source_in_the_disc():
     inside = np.flatnonzero((np.rad2deg(rad) < psi) & (gal["z"] > z_src_min))
     assert len(inside) > 1000
     assert set(inside) <= set(idx.tolist())
+
+
+def test_lens_columns_check():
+    # voids as read_sparkling returns them (no ID column): 12 columns
+    n = 50
+    voids = rng.normal(size=(12, n))
+    voids[0] = rng.uniform(10, 20, n)  # Rv
+    voids[1] = rng.uniform(0, 360, n)  # ra
+    voids[2] = rng.uniform(-90, 90, n)  # dec
+    voids[3] = rng.uniform(0.1, 0.2, n)  # z
+    voids[8] = rng.uniform(-1, 100, n)  # delta
+    bounds = {"rv": (10.0, 20.0), "z": (0.1, 0.2), "delta": (-1.0, 100.0)}
+
+    good = {"rv": 0, "ra": 1, "dec": 2, "z": 3, "delta": 8}
+    st.check_lens_columns(voids, good, bounds)
+
+    # the template used to assume an ID column: every column shifted by one
+    shifted = {"rv": 1, "ra": 2, "dec": 3, "z": 4, "delta": 9}
+    with pytest.raises(ValueError, match="rv = 1"):
+        st.check_lens_columns(voids, shifted, bounds)
+    # only z shifted: the check must still find it
+    with pytest.raises(ValueError, match="z = 4"):
+        st.check_lens_columns(voids, dict(good, z=4), bounds)
+
+    # no voids selected: nothing to check
+    st.check_lens_columns(voids[:, :0], shifted, bounds)
 
 
 def test_pixelization():

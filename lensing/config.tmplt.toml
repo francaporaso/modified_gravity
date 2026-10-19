@@ -33,11 +33,12 @@ name = '~/cats/L768/voids_fR_09.dat'
 randname = '~/cats/L768/voids_rand_fR_09.dat'
 
 [lenses.columns]
-rv = 1 # void radius
-ra = 2
-dec = 3
-z = 4 #redshift
-delta = 9 # integrated density between 2-3 Rv, for void classification
+# column numbers of the void files, which have no ID column (checked against the voids selected)
+rv = 0 # void radius
+ra = 1
+dec = 2
+z = 3 #redshift
+delta = 8 # integrated density between 2-3 Rv, for void classification
 
 [sources]
 
@@ -72,7 +73,8 @@ eps1 = 'eps1'
 eps2 = 'eps2'
 
 [cosmology]
+# L768 simulation (matches the comoving distances r_gal of the lensing cube)
 h = 1.0
-Om0 = 0.25
-Ob0 = 0.0
-Ode0 = 0.75
+Om0 = 0.3089
+Ob0 = 0.0486
+Ode0 = 0.6911

@@ -31,6 +31,10 @@ SOURCE = None
 # map mode: slices of the cube summed behind the current void bin, see `collapse_slices`
 MAPS: dict = {}
 ZSRC_MIN: float = 0.0
+# Signs applied to (gamma1, gamma2) of the sources to get the (e1, e2) that are rotated to
+# the tangential/cross components. L768 convention: both negative, as in the old
+# voidsmodgrav.py. The MICE convention (+1, -1) gives no tangential signal in L768.
+GAMMA_SIGN: tuple = (-1.0, -1.0)
 SC_CONSTANT: float = (
     (c.value**2.0 / (4.0 * np.pi * G.value)) * (pc.value / M_sun.value) * 1e-6
 )
@@ -279,11 +283,11 @@ def partial_profile(inp):
         np.deg2rad(dec0),
     )
 
-    e1 = catdata[cfg.scols["gamma1"]]
-    e2 = -catdata[cfg.scols["gamma2"]]
+    e1 = GAMMA_SIGN[0] * catdata[cfg.scols["gamma1"]]
+    e2 = GAMMA_SIGN[1] * catdata[cfg.scols["gamma2"]]
     if cfg.addnoise:
-        e1 -= catdata[cfg.scols["eps1"]]
-        e2 += catdata[cfg.scols["eps2"]]
+        e1 -= GAMMA_SIGN[0] * catdata[cfg.scols["eps1"]]
+        e2 -= GAMMA_SIGN[1] * catdata[cfg.scols["eps2"]]
 
     # get tangential ellipticities
     cos2t = np.cos(2.0 * theta)
@@ -346,8 +350,8 @@ def partial_profile_map(inp):
         n - (comoving_chi(z0) / SOURCE["chiref"]) * MAPS["invchi"][pix]
     )
 
-    g1 = MAPS["gamma1"][pix]
-    g2 = -MAPS["gamma2"][pix]
+    g1 = GAMMA_SIGN[0] * MAPS["gamma1"][pix]
+    g2 = GAMMA_SIGN[1] * MAPS["gamma2"][pix]
     k = MAPS["kappa"][pix]
 
     ra_p, dec_p = hp.pix2ang(SOURCE["nside"], pix, nest=SOURCE["nest"], lonlat=True)
@@ -399,11 +403,11 @@ def partial_profile_weighted(inp, source_cut="bin"):
         np.deg2rad(dec0),
     )
 
-    e1 = catdata[cfg.scols["gamma1"]]
-    e2 = -catdata[cfg.scols["gamma2"]]
+    e1 = GAMMA_SIGN[0] * catdata[cfg.scols["gamma1"]]
+    e2 = GAMMA_SIGN[1] * catdata[cfg.scols["gamma2"]]
     if cfg.addnoise:
-        e1 = e1 - catdata[cfg.scols["eps1"]]
-        e2 = e2 + catdata[cfg.scols["eps2"]]
+        e1 = e1 - GAMMA_SIGN[0] * catdata[cfg.scols["eps1"]]
+        e2 = e2 - GAMMA_SIGN[1] * catdata[cfg.scols["eps2"]]
 
     cos2t = np.cos(2.0 * theta)
     sin2t = np.sin(2.0 * theta)
@@ -432,6 +436,28 @@ def jackknife_sample(nmax=10_000):
         return ra, dec
     jidx = np.arange(1, len(SOURCE) - 1, len(SOURCE) // nmax, dtype=int)
     return SOURCE[cfg.scols["ra"]][jidx], SOURCE[cfg.scols["dec"]][jidx]
+
+
+def check_lens_columns(lenses, lcols, bounds, name="lenses"):
+    """Stops if `[lenses.columns]` doesn't point to the columns that `read_sparkling` used
+    to cut the voids. The cut is done with fixed indices (no ID column), so every selected
+    void must satisfy the bounds on the configured columns; if not, the columns of the
+    config are shifted (e.g. an ID column assumed) and the profiles would be computed
+    with the wrong Rv, ra, dec or z.
+
+    bounds: {'rv': (min, max), 'z': (min, max), 'delta': (min, max)}
+    """
+    if lenses.shape[1] == 0:
+        return
+    for key, (lo, hi) in bounds.items():
+        col = lenses[lcols[key]]
+        if not np.all((col >= lo) & (col < hi)):
+            raise ValueError(
+                f"[lenses.columns] {key} = {lcols[key]} doesn't match the {name} catalog: "
+                f"values in [{col.min():.4g}, {col.max():.4g}] but the voids were selected "
+                f"with {lo} <= {key} < {hi}. Check the column numbers in the config "
+                "(the void files have no ID column: rv=0, ra=1, dec=2, z=3, delta=8)."
+            )
 
 
 def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
@@ -466,6 +492,14 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
 
     nvoids = len(lenses.T)
     nrands = len(lensrand.T)
+
+    bounds = {
+        "rv": (rv_min, rv_max),
+        "z": (z_min, z_max),
+        "delta": (delta_min, delta_max),
+    }
+    check_lens_columns(lenses, cfg.lcols, bounds, "lenses")
+    check_lens_columns(lensrand, cfg.lcols, bounds, "randoms")
 
     if delta_max <= 0:
         voidtype = "R"
