@@ -131,13 +131,15 @@ def check_map_resolution():
     pixsize = np.rad2deg(hp.nside2resol(nside))
     rv_min = min(r[0] for r in cfg.rvbins)
     z_max = max(z[1] for z in cfg.zbins)
-    degxmpc = cosmo.arcsec_per_kpc_proper(z_max).to("deg/Mpc").value
     bines = binspace(cfg.RIN, cfg.ROUT, cfg.NBINS + 1)
-    binwidth = degxmpc * rv_min * np.diff(bines).min()
+    binwidth = deg_per_mpch(z_max) * rv_min * np.diff(bines).min()
+    ok = pixsize <= 0.5 * binwidth
     print(
-        f" >> Map NSIDE={nside}: pixel {pixsize * 60:.2f} arcmin, narrowest bin {binwidth * 60:.2f} arcmin"
+        f" >> Map NSIDE={nside}: pixel {pixsize * 60:.2f} arcmin, "
+        f"narrowest bin {binwidth * 60:.2f} arcmin  {'✓' if ok else '✗'}",
+        flush=True,
     )
-    if pixsize > 0.5 * binwidth:
+    if not ok:
         print(
             " WARNING: pixel size > half the narrowest radial bin; profiles will be smeared.",
             flush=True,
@@ -200,6 +202,36 @@ def comoving_chi(z):
     return cosmo.comoving_distance(z).value * cosmo.h
 
 
+def deg_per_mpch(z):
+    """Angle (deg) subtended at redshift z by 1 comoving Mpc/h. The void radius Rv is
+    comoving, so R/Rv = 1 sits at Rv/chi(z) from the centre, not at Rv/D_A(z), which
+    is (1+z) times larger (that is what the proper scale arcsec_per_kpc_proper gives)."""
+    return cosmo.arcsec_per_kpc_comoving(z).to("deg/Mpc").value / cosmo.h
+
+
+def bin_centres():
+    """Centres of the radial bins (in units of Rv): arithmetic midpoints of the edges
+    for linear binning, geometric midpoints for log binning."""
+    edges = binspace(cfg.RIN, cfg.ROUT, cfg.NBINS + 1)
+    if cfg.binning == "log":
+        return np.sqrt(edges[:-1] * edges[1:])
+    return 0.5 * (edges[:-1] + edges[1:])
+
+
+def lens_summary(lenses):
+    """Mean and median of the properties of the stacked voids"""
+    col = lambda key: lenses[cfg.lcols[key]]
+    return dict(
+        nvoids=lenses.shape[1],
+        z_mean=col("z").mean(),
+        z_median=np.median(col("z")),
+        Rv_mean=col("rv").mean(),
+        Rv_median=np.median(col("rv")),
+        delta_mean=col("delta").mean(),
+        delta_median=np.median(col("delta")),
+    )
+
+
 def inv_sigma_crit_prefactor(z_l):
     """A(z_l) such that, in a flat universe, 1/sigma_crit(z_l, z_s) = A * (1 - chi_l/chi_s).
     This makes the sum of 1/sigma_crit over sources linear in sum(1/chi_s), which is
@@ -252,6 +284,24 @@ def get_masked_idx_fast(psi, ra0, dec0, z0):
     return idx_arrays[mask_z]
 
 
+_PROPER_SCALE_WARNED = False
+
+
+def warn_proper_scale():
+    """Prints once that `partial_profile` still uses the proper angular scale"""
+    global _PROPER_SCALE_WARNED
+    if not _PROPER_SCALE_WARNED:
+        print(
+            " WARNING: catalog mode runs the original `partial_profile`, which converts\n"
+            "          Rv to an angle with the PROPER scale. Rv is comoving, so its radial\n"
+            "          bins are at R/(1+z) of the label (map mode and\n"
+            "          `partial_profile_weighted` use the comoving scale). Do not compare\n"
+            "          profiles of the two modes before this is resolved.",
+            flush=True,
+        )
+        _PROPER_SCALE_WARNED = True
+
+
 ## distance: is needed a cosmo.h dividing sigma_c when h!=1, else is not needed.
 ## leaving it for general case...
 def partial_profile(inp):
@@ -265,6 +315,10 @@ def partial_profile(inp):
     # for ni in range(N):
     # adentro del for, mask depende de n... solo quiero las gx en un anillo
 
+    # TODO(compare): kept as it was ON PURPOSE for comparison with the new functions.
+    # Rv is comoving, so the angle per Mpc/h should be `deg_per_mpch(z0)` (comoving, as in
+    # partial_profile_map / partial_profile_weighted). This proper scale is (1+z) larger:
+    # the bins are labelled at R/(1+z) and the disc is too big. See `warn_proper_scale`.
     DEGxMPC = cosmo.arcsec_per_kpc_proper(z0).to("deg/Mpc").value
     psi = DEGxMPC * cfg.ROUT * Rv0
 
@@ -329,7 +383,7 @@ def partial_profile_map(inp):
 
     Rv0, ra0, dec0, z0 = inp
 
-    DEGxMPC = cosmo.arcsec_per_kpc_proper(z0).to("deg/Mpc").value
+    DEGxMPC = deg_per_mpch(z0)  # Rv is comoving (Mpc/h)
     psi = DEGxMPC * cfg.ROUT * Rv0
 
     pix = hp.query_disc(
@@ -385,7 +439,7 @@ def partial_profile_weighted(inp, source_cut="bin"):
 
     Rv0, ra0, dec0, z0 = inp
 
-    DEGxMPC = cosmo.arcsec_per_kpc_proper(z0).to("deg/Mpc").value
+    DEGxMPC = deg_per_mpch(z0)  # Rv is comoving (Mpc/h)
     psi = DEGxMPC * cfg.ROUT * Rv0
 
     zmin = ZSRC_MIN if source_cut == "bin" else z0 + cfg.dz_buffer
@@ -554,6 +608,7 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
         )
     else:
         profile_func = partial_profile
+        warn_proper_scale()
 
     N_inbin = np.zeros((cfg.NJK + 1, cfg.NBINS))
     W_inbin = np.zeros((cfg.NJK + 1, cfg.NBINS))
@@ -661,15 +716,7 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
 
     Sigma_rand = Sigma_wsum_rand / W_inbin_rand
 
-    extradata = dict(
-        nvoids=nvoids,
-        z_mean=lenses[cfg.lcols["z"]].mean(),
-        z_median=np.median(lenses[cfg.lcols["z"]]),
-        Rv_mean=lenses[cfg.lcols["rv"]].mean(),
-        Rv_median=np.median(lenses[cfg.lcols["rv"]]),
-        delta_mean=lenses[cfg.lcols["delta"]].mean(),
-        delta_median=lenses[cfg.lcols["delta"]].mean(),
-    )
+    extradata = lens_summary(lenses)
 
     # return Sigma, DSigma_t, DSigma_x, extradata
     # =======================
@@ -717,7 +764,7 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
 
     table = Table(
         {
-            "R": binspace(cfg.RIN, cfg.ROUT, cfg.NBINS),
+            "R": bin_centres(),
             "Sigma": Sigma[0],
             "DSigma_t": DSigma_t[0],
             "DSigma_x": DSigma_x[0],
@@ -784,6 +831,12 @@ def main():
             cfg.set_ncores(args.ncores)
 
         if i == 0:
+            if cfg.source_mode == "map":
+                print(
+                    f" >> Source mode: MAP (HEALPix lensing cube, {cfg.weighting} weights)"
+                )
+            else:
+                print(" >> Source mode: CATALOG (galaxy catalog)")
             total = (
                 len(cfg.zbins) * len(cfg.rvbins) * len(cfg.voidtype) * len(args.gravity)
             )
@@ -792,7 +845,7 @@ def main():
             )
             print(f" >> Calculating {total} void profiles")
 
-        print(f" >> Running for -{grav.upper()}-")
+        print(f" >> Running for -{grav.upper()}-  ({cfg.source_mode}: {cfg.sourcename})")
         init_globals()
         if cfg.source_mode == "catalog":
             make_pix2idx_dict(SOURCE)

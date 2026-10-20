@@ -40,6 +40,8 @@ COSMO = FlatLambdaCDM(H0=100.0, Om0=0.3089)  # h = 1
 
 
 def make_galaxies(on_centres):
+    # own generator: the galaxies don't depend on which tests ran before
+    rng = np.random.default_rng(1)
     # galaxies in a cap around the void centre, in the pixels of the cube
     vec = hp.ang2vec(RA0, DEC0, lonlat=True)
     pix = hp.query_disc(NSIDE_MAP, vec, np.deg2rad(NPIX_CAT), nest=True)
@@ -234,12 +236,103 @@ def test_lens_columns_check():
     st.check_lens_columns(voids[:, :0], shifted, bounds)
 
 
+@pytest.mark.parametrize("h", [1.0, 0.7])
+def test_angular_scale_is_comoving(h):
+    # 1 comoving Mpc/h subtends 1/chi(z) with chi in Mpc/h, and (1+z) less than the proper
+    # scale that the original partial_profile uses
+    st.cosmo = FlatLambdaCDM(H0=100.0 * h, Om0=0.3089)
+    for z in (0.15, 0.4, 0.6):
+        chi = st.comoving_chi(z)  # Mpc/h
+        assert st.deg_per_mpch(z) == pytest.approx(np.rad2deg(1.0 / chi), rel=1e-6)
+    proper = st.cosmo.arcsec_per_kpc_proper(0.6).to("deg/Mpc").value / st.cosmo.h
+    assert proper / st.deg_per_mpch(0.6) == pytest.approx(1.6, rel=1e-6)
+
+
+def test_ring_at_one_comoving_rv_is_in_the_bin_of_r_over_rv_equal_one():
+    # sources on a ring at exactly Rv (comoving) from the void: R/Rv = 1, i.e. bin 3 of
+    # NBINS=10 in [0.2, 2.5]. With the proper scale they would land at R/Rv = 1/(1+z0).
+    n = 4000
+    phi = rng.uniform(0, 2 * np.pi, n)
+    theta = np.rad2deg(RV0 / (COSMO.comoving_distance(Z0).value))  # deg
+    ra = RA0 + theta * np.cos(phi) / np.cos(np.deg2rad(DEC0))
+    dec = DEC0 + theta * np.sin(phi)
+    z = rng.uniform(0.3, 1.0, n)
+    gal = Table(
+        {"ra": ra, "dec": dec, "z": z, "gamma1": np.full(n, 0.01),
+         "gamma2": np.full(n, 0.01), "kappa": np.full(n, 0.01)}
+    )
+    gal = setup(gal, make_cube(gal))
+    st.SOURCE = gal
+    n_bin = st.partial_profile_weighted((RV0, RA0, DEC0, Z0), source_cut="bin")[4]
+
+    edges = np.linspace(st.cfg.RIN, st.cfg.ROUT, st.cfg.NBINS + 1)
+    expected = np.searchsorted(edges, 1.0) - 1
+    assert n_bin[expected] == n_bin.sum() == n
+    assert 1.0 / (1.0 + Z0) < edges[expected]  # the proper scale would be another bin
+
+
+def test_resolution_check_marks(capsys):
+    gal = make_galaxies(on_centres=True)
+    setup(gal, make_cube(gal))
+    st.cfg.rvbins = [(10.0, 20.0)]
+    st.cfg.zbins = [(Z_LOW, Z_HIGH)]
+    st.SOURCE = dict(st.SOURCE, nside=2048)  # 1.7 arcmin pixels
+    st.check_map_resolution()
+    out = capsys.readouterr().out
+    assert "NSIDE=2048" in out and "✓" in out and "WARNING" not in out
+    st.SOURCE = dict(st.SOURCE, nside=64)  # 55 arcmin pixels
+    st.check_map_resolution()
+    out = capsys.readouterr().out
+    assert "✗" in out and "WARNING" in out
+
+
+@pytest.mark.parametrize("binning", ["lin", "log"])
+def test_bin_centres(binning):
+    st.cfg = SimpleNamespace(NBINS=4, RIN=0.1, ROUT=2.5, binning=binning)
+    st.binspace = np.linspace if binning == "lin" else np.geomspace
+    centres = st.bin_centres()
+    edges = st.binspace(0.1, 2.5, 5)
+    assert len(centres) == 4
+    assert np.all((centres > edges[:-1]) & (centres < edges[1:]))
+    if binning == "lin":
+        np.testing.assert_allclose(centres, [0.4, 1.0, 1.6, 2.2])
+    else:
+        np.testing.assert_allclose(centres, np.sqrt(edges[:-1] * edges[1:]))
+        # equidistant in log: centre ratio is constant
+        assert np.ptp(np.diff(np.log(centres))) < 1e-12
+
+
+def test_lens_summary_median_is_not_the_mean():
+    voids = np.zeros((12, 5))
+    voids[0] = [10, 11, 12, 13, 20]  # Rv: mean 13.2, median 12
+    voids[3] = [0.1, 0.1, 0.1, 0.15, 0.19]  # z
+    voids[8] = [-0.9, -0.9, -0.8, -0.1, 50.0]  # delta: mean 9.46, median -0.8
+    st.cfg = SimpleNamespace(lcols={"rv": 0, "ra": 1, "dec": 2, "z": 3, "delta": 8})
+    s = st.lens_summary(voids)
+    assert s["nvoids"] == 5
+    assert s["Rv_mean"] == pytest.approx(13.2) and s["Rv_median"] == 12
+    assert s["delta_mean"] == pytest.approx(9.46)
+    assert s["delta_median"] == pytest.approx(-0.8)
+
+
+def test_catalog_mode_warns_once_about_proper_scale(capsys):
+    st._PROPER_SCALE_WARNED = False
+    st.warn_proper_scale()
+    st.warn_proper_scale()
+    out = capsys.readouterr().out
+    assert out.count("PROPER") == 1 and "partial_profile" in out
+
+
 def test_pixelization():
     # galaxies spread inside the pixels: only the pixel-centre positions differ
     gal = make_galaxies(on_centres=False)
     (k_c, t_c, x_c, w_c, n_c), (k_m, t_m, x_m, w_m, n_m) = profiles(gal, make_cube(gal))
 
-    np.testing.assert_allclose(n_m, n_c, rtol=0.1)
+    # the pixels (0.23 deg at order 8) are about as wide as the radial bins here, so the
+    # pixel grid moves up to ~10% of the sources between neighbouring bins (the same for
+    # any seed) but conserves the total
+    np.testing.assert_allclose(n_m.sum(), n_c.sum(), rtol=0.02)
+    np.testing.assert_allclose(n_m, n_c, rtol=0.15)
     for c, m in ((k_c / w_c, k_m / w_m), (t_c / w_c, t_m / w_m)):
         np.testing.assert_allclose(m, c, atol=0.1 * np.abs(c).max())
     # the cross component is zero by construction; the map leaks a few % of the signal
