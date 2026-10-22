@@ -80,7 +80,9 @@ def load_map_source(path, order=None):
             raise ValueError(
                 f"[sources.map] order={order} is higher than the cube's ({cube['order']})."
             )
-        print(f" >> Degrading the cube from order {cube['order']} to {order}", flush=True)
+        print(
+            f" >> Degrading the cube from order {cube['order']} to {order}", flush=True
+        )
         cube = degrade_cube(cube, order)
     if not cube["nest"]:
         raise ValueError("The lensing cube must be in NESTED ordering.")
@@ -193,7 +195,7 @@ def check_output_exists(output_file, overwrite=False):
 def sigma_crit(z_l, z_s):
     d_l = cosmo.angular_diameter_distance(z_l).value
     d_s = cosmo.angular_diameter_distance(z_s).value
-    d_ls = cosmo.angular_diameter_distance_z1z2(z_l, z_s).value
+    d_ls = cosmo.angular_diameter_distance(z_l, z_s).value
     return SC_CONSTANT * (d_s / (d_ls * d_l))
 
 
@@ -271,7 +273,7 @@ def get_masked_idx_fast(psi, ra0, dec0, z0):
     queried_pix = hp.query_disc(
         cfg.NSIDE,
         vec=hp.ang2vec(ra0, dec0, lonlat=True),
-        radius=np.deg2rad(psi * 1.1),
+        radius=np.deg2rad(psi * 1.0),
         inclusive=True,
     )
 
@@ -475,9 +477,13 @@ def partial_profile_weighted(inp, source_cut="bin"):
     def binsum(x):
         return np.bincount(dig, weights=x, minlength=cfg.NBINS + 2)[1 : cfg.NBINS + 1]
 
-    return binsum(f * k), binsum(f * et), binsum(f * ex), binsum(w), np.bincount(
-        dig, minlength=cfg.NBINS + 2
-    )[1 : cfg.NBINS + 1].astype(np.float64)
+    return (
+        binsum(f * k),
+        binsum(f * et),
+        binsum(f * ex),
+        binsum(w),
+        np.bincount(dig, minlength=cfg.NBINS + 2)[1 : cfg.NBINS + 1].astype(np.float64),
+    )
 
 
 def jackknife_sample(nmax=10_000):
@@ -845,7 +851,9 @@ def main():
             )
             print(f" >> Calculating {total} void profiles")
 
-        print(f" >> Running for -{grav.upper()}-  ({cfg.source_mode}: {cfg.sourcename})")
+        print(
+            f" >> Running for -{grav.upper()}-  ({cfg.source_mode}: {cfg.sourcename})"
+        )
         init_globals()
         if cfg.source_mode == "catalog":
             make_pix2idx_dict(SOURCE)
