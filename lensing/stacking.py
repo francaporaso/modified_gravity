@@ -498,6 +498,120 @@ def check_lens_columns(lenses, lcols, bounds, name="lenses"):
             )
 
 
+def in_footprint(ra, dec):
+    """True where (ra, dec) [deg] is on a pixel with sources: the pixels of the collapsed
+    maps in map mode (`collapse_slices` must have been called), the pixels of the catalog
+    index in catalog mode."""
+    if cfg.source_mode == "map":
+        pix = hp.ang2pix(SOURCE["nside"], ra, dec, nest=SOURCE["nest"], lonlat=True)
+        return MAPS["nobj"][pix] > 0
+    pix = hp.ang2pix(cfg.NSIDE, ra, dec, lonlat=True)
+    keys = np.fromiter(PIX_TO_IDX.keys(), dtype=np.int64, count=len(PIX_TO_IDX))
+    return np.isin(pix, keys)
+
+
+def stack_rng(*bin_edges):
+    """Generator of the randoms of a stack: set by `[randoms] seed` and the edges of the
+    z, Rv and delta bins, so a rerun gives the same randoms, whatever the gravity."""
+    key = [cfg.rand_seed] + [int(round(1000 * (x + 10.0))) for x in bin_edges]
+    return np.random.default_rng(key)
+
+
+def generate_randoms(lenses, factor, rng, footprint):
+    """Random voids for the subtraction of the signal that is not due to the voids.
+
+    There are `factor` times as many as voids. Each takes the (Rv, z) pair, and the rest of
+    the columns, of a void of the stack drawn with replacement, so they have the same
+    distribution as the voids of that stack, jointly. Only (ra, dec) change: uniform on
+    the sphere, redrawn while they fall outside `footprint(ra, dec)`. Voids at the edge of
+    a partial footprint aren't excluded, which is only right for full-sky (or nearly) mocks.
+
+    Returns an array with the layout of `lenses`.
+    """
+    nvoids = lenses.shape[1]
+    if nvoids == 0:
+        raise ValueError("No voids in this bin: nothing to draw the randoms from.")
+    nrand = int(round(factor * nvoids))
+    rands = lenses[:, rng.integers(0, nvoids, nrand)]
+
+    def sphere(u):
+        return 360.0 * u[:, 0], np.rad2deg(np.arcsin(2.0 * u[:, 1] - 1.0))
+
+    ra, dec = sphere(rng.random((nrand, 2)))
+    bad = ~footprint(ra, dec)
+    for _ in range(10_000):
+        if not bad.any():
+            break
+        ra[bad], dec[bad] = sphere(rng.random((bad.sum(), 2)))
+        bad[bad] = ~footprint(ra[bad], dec[bad])
+    else:
+        raise RuntimeError(
+            f"{bad.sum()} random voids are outside the source footprint after 10000 redraws."
+        )
+    rands[cfg.lcols["ra"]] = ra
+    rands[cfg.lcols["dec"]] = dec
+    return rands
+
+
+def unpack_profiles(res):
+    """Stacks the results of a profile function, which return (kappa, gamma_t, gamma_x, N)
+    with unit weights or (kappa, gamma_t, gamma_x, W, N) with the sum of the weights W,
+    into (kappa, gamma_t, gamma_x, W, N), each of shape (nvoids, NBINS)."""
+    cols = [np.vstack(x) for x in zip(*res)]
+    if len(cols) == 4:
+        cols.append(cols[3])
+    return tuple(cols)
+
+
+def jackknife_sums(x, labels, njk):
+    """Sums of the rows of x over all of them (row 0) and leaving out each region
+    (rows 1..njk), for the region `labels` of every row."""
+    total = x.sum(axis=0)
+    regions = np.vstack([x[labels == k].sum(axis=0) for k in range(njk)])
+    return np.vstack([total, total - regions])
+
+
+def reduce_profiles(resmap, randmap, kidx, kidx_rand, njk):
+    """Profiles of the void stack, of the random stack and of their difference, for the
+    full sample (row 0) and the njk jackknife samples (rows 1..njk), the voids and randoms
+    being left out together by region.
+
+    The estimator (Singh et al. 2017): X = X_voids - X_rand for Sigma, DSigma_t and
+    DSigma_x. Returns a dict with those (X), X_raw and X_rand, and the number of sources of
+    the voids and of the randoms.
+    """
+    kappa, gamma_t, gamma_x, w, n = unpack_profiles(resmap)
+    kappa_r, gamma_t_r, gamma_x_r, w_r, n_r = unpack_profiles(randmap)
+
+    W = jackknife_sums(w, kidx, njk)
+    W_r = jackknife_sums(w_r, kidx_rand, njk)
+
+    profiles = {}
+    for name, v, r in (
+        ("Sigma", kappa, kappa_r),
+        ("DSigma_t", gamma_t, gamma_t_r),
+        ("DSigma_x", gamma_x, gamma_x_r),
+    ):
+        raw = jackknife_sums(v, kidx, njk) / W
+        rand = jackknife_sums(r, kidx_rand, njk) / W_r
+        profiles[name] = raw - rand
+        profiles[name + "_raw"] = raw
+        profiles[name + "_rand"] = rand
+    return profiles, jackknife_sums(n, kidx, njk), jackknife_sums(n_r, kidx_rand, njk)
+
+
+PROFILE_NAMES = ("Sigma", "DSigma_t", "DSigma_x")
+
+
+def profile_hdus(profiles):
+    """Covariance and jackknife samples (HDUs `cov_*` and `jack_*`) of each profile, the
+    covariance being that of the same estimator as the profile."""
+    names = [n + s for s in ("", "_raw", "_rand") for n in PROFILE_NAMES]
+    cov = [fits.ImageHDU(cov_matrix(profiles[n][1:]), name=f"cov_{n}") for n in names]
+    jack = [fits.ImageHDU(profiles[n][1:], name=f"jack_{n}") for n in names]
+    return cov + jack
+
+
 def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
 
     lenses = read_lens_catalog(
@@ -513,23 +627,8 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
         has_id=False,
         fullshape=cfg.fullshape,
     )
-    # TODO: maybe shuffle the cutted catalogue? the # of voids is not the same
-    lensrand = read_lens_catalog(
-        filename=cfg.randsname,
-        cat="sparkling",
-        Rv_min=rv_min,
-        Rv_max=rv_max,
-        z_min=z_min,
-        z_max=z_max,
-        delta_min=delta_min,
-        delta_max=delta_max,
-        flag=cfg.flag,
-        has_id=False,
-        fullshape=cfg.fullshape,
-    )
 
     nvoids = len(lenses.T)
-    nrands = len(lensrand.T)
 
     bounds = {
         "rv": (rv_min, rv_max),
@@ -537,7 +636,6 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
         "delta": (delta_min, delta_max),
     }
     check_lens_columns(lenses, cfg.lcols, bounds, "lenses")
-    check_lens_columns(lensrand, cfg.lcols, bounds, "randoms")
 
     if delta_max <= 0:
         voidtype = "R"
@@ -593,79 +691,40 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
     else:
         profile_func = partial_profile
 
-    N_inbin = np.zeros((cfg.NJK + 1, cfg.NBINS))
-    W_inbin = np.zeros((cfg.NJK + 1, cfg.NBINS))
-    Sigma_wsum = np.zeros((cfg.NJK + 1, cfg.NBINS))
-    DSigma_t_wsum = np.zeros((cfg.NJK + 1, cfg.NBINS))
-    DSigma_x_wsum = np.zeros((cfg.NJK + 1, cfg.NBINS))
+    # random voids: same (Rv, z) as the voids of this stack, uniform on the footprint
+    lensrand = generate_randoms(
+        lenses,
+        cfg.rand_factor,
+        stack_rng(z_min, z_max, rv_min, rv_max, delta_min, delta_max),
+        in_footprint,
+    )
+    nrands = lensrand.shape[1]
+    print(
+        f" Randoms {': ':.>11}{nrands} (x{cfg.rand_factor:g}, seed {cfg.rand_seed})\n",
+        flush=True,
+    )
 
-    Sigma_wsum_rand = np.zeros((cfg.NJK + 1, cfg.NBINS))
-    N_inbin_rand = np.zeros((cfg.NJK + 1, cfg.NBINS))
-    W_inbin_rand = np.zeros((cfg.NJK + 1, cfg.NBINS))
-    # calculating voids
+    def lens_input(voids):
+        cols = [cfg.lcols[k] for k in ("rv", "ra", "dec", "z")]
+        return voids[cols].T
+
+    def run(pool, voids):
+        chunk = max(1, voids.shape[1] // (cfg.ncores * 20))
+        return list(
+            tqdm(
+                pool.imap(profile_func, lens_input(voids), chunksize=chunk),
+                total=voids.shape[1],
+            )
+        )
+
     with ctx.Pool(processes=cfg.ncores) as pool:
-        resmap = list(
-            tqdm(
-                pool.imap(
-                    profile_func,
-                    lenses[
-                        [
-                            cfg.lcols["rv"],
-                            cfg.lcols["ra"],
-                            cfg.lcols["dec"],
-                            cfg.lcols["z"],
-                        ]
-                    ].T,
-                ),
-                total=nvoids,
-            )
-        )
-
-        # calculating randoms
+        resmap = run(pool, lenses)
         print("\n >> Calculating profiles for random voids...", flush=True)
-        randmap = list(
-            tqdm(
-                pool.imap(
-                    profile_func,
-                    lensrand[
-                        [
-                            cfg.lcols["rv"],
-                            cfg.lcols["ra"],
-                            cfg.lcols["dec"],
-                            cfg.lcols["z"],
-                        ]
-                    ].T,
-                ),
-                total=nrands,
-            )
-        )
+        randmap = run(pool, lensrand)
 
     print("\n >> Pool ended, stacking...", flush=True)
 
-    # -- reducing...
-    # profile functions return (kappa, gamma_t, gamma_x, N) with unit weights, or
-    # (kappa, gamma_t, gamma_x, W, N) with the sum of the weights W
-    def unpack(res):
-        cols = [np.vstack(x) for x in zip(*res)]
-        if len(cols) == 4:
-            cols.append(cols[3])
-        kappa, gamma_t, gamma_x, w, n = cols
-        return kappa, gamma_t, gamma_x, w, n
-
-    kappa, gamma_t, gamma_x, wbin, nbin = unpack(resmap)
-    kappa_rand, _, _, wbin_rand, nbin_rand = unpack(randmap)
-
-    N_inbin[0] = nbin.sum(axis=0)
-    W_inbin[0] = wbin.sum(axis=0)
-    Sigma_wsum[0] = kappa.sum(axis=0)
-    DSigma_t_wsum[0] = gamma_t.sum(axis=0)
-    DSigma_x_wsum[0] = gamma_x.sum(axis=0)
-
-    N_inbin_rand[0] = nbin_rand.sum(axis=0)
-    W_inbin_rand[0] = wbin_rand.sum(axis=0)
-    Sigma_wsum_rand[0] = kappa_rand.sum(axis=0)
-
-    # calculate jackknife regions and profiles
+    # calculate jackknife regions: voids and randoms are left out together
     ra_sample, dec_sample = jackknife_sample()
     kidx, km = get_jackknife_kmeans(
         ra_sample=ra_sample,
@@ -679,25 +738,9 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
         np.column_stack([lensrand[cfg.lcols["ra"]], lensrand[cfg.lcols["dec"]]])
     )
 
-    for j, k in enumerate(range(cfg.NJK)):
-        mask = kidx != k
-        mask_rand = kidx_rand != k
-
-        N_inbin[j + 1, :] = nbin[mask].sum(axis=0)
-        W_inbin[j + 1, :] = wbin[mask].sum(axis=0)
-        Sigma_wsum[j + 1, :] = kappa[mask].sum(axis=0)
-        DSigma_t_wsum[j + 1, :] = gamma_t[mask].sum(axis=0)
-        DSigma_x_wsum[j + 1, :] = gamma_x[mask].sum(axis=0)
-
-        N_inbin_rand[j + 1, :] = nbin_rand[mask_rand].sum(axis=0)
-        W_inbin_rand[j + 1, :] = wbin_rand[mask_rand].sum(axis=0)
-        Sigma_wsum_rand[j + 1, :] = kappa_rand[mask_rand].sum(axis=0)
-
-    Sigma = Sigma_wsum / W_inbin
-    DSigma_t = DSigma_t_wsum / W_inbin
-    DSigma_x = DSigma_x_wsum / W_inbin
-
-    Sigma_rand = Sigma_wsum_rand / W_inbin_rand
+    profiles, N_inbin, N_inbin_rand = reduce_profiles(
+        resmap, randmap, kidx, kidx_rand, cfg.NJK
+    )
 
     extradata = lens_summary(lenses)
 
@@ -730,6 +773,10 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
             "NJK": cfg.NJK,
             "binning": cfg.binning,
             "srcmode": cfg.source_mode,
+            "nrand": nrands,
+            "randfac": cfg.rand_factor,
+            "randseed": cfg.rand_seed,
+            "randsub": True,
             "HISTORY": f"{asctime()}",
         }
     )
@@ -745,40 +792,19 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
             }
         )
 
-    table = Table(
-        {
-            "R": bin_centres(),
-            "Sigma": Sigma[0],
-            "DSigma_t": DSigma_t[0],
-            "DSigma_x": DSigma_x[0],
-            "Sigma_rand": Sigma_rand[0],
-        }
-    )
-    if cfg.source_mode == "map":
-        table["N"] = N_inbin[0]
-
-    # sigma cov_matrix
-    covS = cov_matrix(Sigma[1:, :] - Sigma_rand[1:, :])
-    cov_hdu = [
-        fits.ImageHDU(covS, name="cov_Sigma"),
-        fits.ImageHDU(cov_matrix(DSigma_t[1:, :]), name="cov_DSigma_t"),
-        fits.ImageHDU(cov_matrix(DSigma_x[1:, :]), name="cov_DSigma_x"),
-        fits.ImageHDU(cov_matrix(Sigma_rand[1:, :]), name="cov_Sigma_rand"),
-    ]
-
-    jack_hdu = [
-        fits.ImageHDU(Sigma[1:, :], name="jack_Sigma"),
-        fits.ImageHDU(DSigma_t[1:, :], name="jack_DSigma_t"),
-        fits.ImageHDU(DSigma_x[1:, :], name="jack_DSigma_x"),
-        fits.ImageHDU(Sigma_rand[1:, :], name="jack_Sigma_rand"),
-    ]
+    # Sigma, DSigma_t, DSigma_x: voids minus randoms; *_raw: voids; *_rand: randoms
+    table = Table({"R": bin_centres()})
+    for suffix in ("", "_raw", "_rand"):
+        for name in PROFILE_NAMES:
+            table[name + suffix] = profiles[name + suffix][0]
+    table["N"] = N_inbin[0]
+    table["N_rand"] = N_inbin_rand[0]
 
     hdul = fits.HDUList(
         [
             fits.PrimaryHDU(header=head),
             fits.BinTableHDU(table, name="profiles"),
-            *cov_hdu,
-            *jack_hdu,
+            *profile_hdus(profiles),
         ]
     )
 

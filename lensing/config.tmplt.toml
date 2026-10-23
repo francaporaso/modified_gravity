@@ -26,11 +26,9 @@ fullshape = true
 
 [lenses.gr]
 name = '~/cats/L768/voids_LCDM_09.dat'
-randname = '~/cats/L768/voids_rand_LCDM_09.dat'
 
 [lenses.mg]
 name = '~/cats/L768/voids_fR_09.dat'
-randname = '~/cats/L768/voids_rand_fR_09.dat'
 
 [lenses.columns]
 # column numbers of the void files, which have no ID column (checked against the voids selected)
@@ -39,6 +37,12 @@ ra = 1
 dec = 2
 z = 3 #redshift
 delta = 8 # integrated density between 2-3 Rv, for void classification
+
+[randoms]
+# Random voids of the subtraction (Singh et al. 2017), generated in each stack, not read from a file.
+# Same (Rv, z) as the voids of the stack, uniform on the source footprint.
+factor = 10 # number of randoms per void
+seed = 42
 
 [sources]
 

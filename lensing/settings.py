@@ -29,7 +29,14 @@ class Config:
             raise ValueError(f"[sources.map] weighting must be 'invsc', got {self.weighting}")
         # HEALPix order to degrade the cube to when loading it (None: native order)
         self.map_order = mapcfg.get('order')
-        self.randsname = cfg['lenses'][gravity.lower()]['randname']
+        # random voids for the subtraction: generated in each stack, `factor` times the voids
+        rands = cfg.get('randoms', {})
+        self.rand_factor = rands.get('factor', 10)
+        self.rand_seed = rands.get('seed', 42)
+        if self.rand_factor <= 0:
+            raise ValueError(f"[randoms] factor must be positive, got {self.rand_factor}")
+        if not isinstance(self.rand_seed, int) or self.rand_seed < 0:
+            raise ValueError(f"[randoms] seed must be a non-negative integer, got {self.rand_seed}")
         
         self.swap_threshold(threshold)
 
@@ -70,7 +77,6 @@ class Config:
         if current_th != threshold:
             print(f' >> Using void thr {threshold[1:]}')
             self.lensname = re.sub(r'_\d{2}', threshold, self.lensname) 
-            self.randsname = re.sub(r'_\d{2}', threshold, self.randsname) 
             self.voidthr = threshold[1:]
 
     def _edges_to_bins(self, edges, name):
