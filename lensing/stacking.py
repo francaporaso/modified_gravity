@@ -321,7 +321,8 @@ def partial_profile(inp):
     # Rv is comoving, so the angle per Mpc/h should be `deg_per_mpch(z0)` (comoving, as in
     # partial_profile_map / partial_profile_weighted). This proper scale is (1+z) larger:
     # the bins are labelled at R/(1+z) and the disc is too big. See `warn_proper_scale`.
-    DEGxMPC = cosmo.arcsec_per_kpc_proper(z0).to("deg/Mpc").value
+    ##DEGxMPC = cosmo.arcsec_per_kpc_proper(z0).to("deg/Mpc").value
+    DEGxMPC = deg_per_mpch(z0)
     psi = DEGxMPC * cfg.ROUT * Rv0
 
     idx = get_masked_idx_fast(psi, ra0, dec0, z0)
