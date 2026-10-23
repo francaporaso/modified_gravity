@@ -286,7 +286,7 @@ def get_masked_idx_fast(psi, ra0, dec0, z0):
     return idx_arrays[mask_z]
 
 
-_PROPER_SCALE_WARNED = False
+_PROPER_SCALE_WARNED = True
 
 
 def warn_proper_scale():
@@ -615,7 +615,7 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
         )
     else:
         profile_func = partial_profile
-        warn_proper_scale()
+        # warn_proper_scale() ## partial_profile now with comoving
 
     N_inbin = np.zeros((cfg.NJK + 1, cfg.NBINS))
     W_inbin = np.zeros((cfg.NJK + 1, cfg.NBINS))
