@@ -286,24 +286,6 @@ def get_masked_idx_fast(psi, ra0, dec0, z0):
     return idx_arrays[mask_z]
 
 
-_PROPER_SCALE_WARNED = False
-
-
-def warn_proper_scale():
-    """Prints once that `partial_profile` still uses the proper angular scale"""
-    global _PROPER_SCALE_WARNED
-    if not _PROPER_SCALE_WARNED:
-        print(
-            " WARNING: catalog mode runs the original `partial_profile`, which converts\n"
-            "          Rv to an angle with the PROPER scale. Rv is comoving, so its radial\n"
-            "          bins are at R/(1+z) of the label (map mode and\n"
-            "          `partial_profile_weighted` use the comoving scale). Do not compare\n"
-            "          profiles of the two modes before this is resolved.",
-            flush=True,
-        )
-        _PROPER_SCALE_WARNED = True
-
-
 ## distance: is needed a cosmo.h dividing sigma_c when h!=1, else is not needed.
 ## leaving it for general case...
 def partial_profile(inp):
@@ -317,12 +299,7 @@ def partial_profile(inp):
     # for ni in range(N):
     # adentro del for, mask depende de n... solo quiero las gx en un anillo
 
-    # TODO(compare): kept as it was ON PURPOSE for comparison with the new functions.
-    # Rv is comoving, so the angle per Mpc/h should be `deg_per_mpch(z0)` (comoving, as in
-    # partial_profile_map / partial_profile_weighted). This proper scale is (1+z) larger:
-    # the bins are labelled at R/(1+z) and the disc is too big. See `warn_proper_scale`.
-    ##DEGxMPC = cosmo.arcsec_per_kpc_proper(z0).to("deg/Mpc").value
-    DEGxMPC = deg_per_mpch(z0)
+    DEGxMPC = deg_per_mpch(z0)  # Rv is comoving (Mpc/h)
     psi = DEGxMPC * cfg.ROUT * Rv0
 
     idx = get_masked_idx_fast(psi, ra0, dec0, z0)
@@ -615,7 +592,6 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
         )
     else:
         profile_func = partial_profile
-        warn_proper_scale()
 
     N_inbin = np.zeros((cfg.NJK + 1, cfg.NBINS))
     W_inbin = np.zeros((cfg.NJK + 1, cfg.NBINS))

@@ -270,6 +270,11 @@ def test_ring_at_one_comoving_rv_is_in_the_bin_of_r_over_rv_equal_one():
     assert n_bin[expected] == n_bin.sum() == n
     assert 1.0 / (1.0 + Z0) < edges[expected]  # the proper scale would be another bin
 
+    # the original catalog function (unit weights, its own source cut) uses the same scale
+    n_orig = st.partial_profile((RV0, RA0, DEC0, Z0))[3]
+    assert n_orig.sum() > 0.9 * n and np.argmax(n_orig) == expected
+    assert n_orig[expected] == n_orig.sum()
+
 
 def test_resolution_check_marks(capsys):
     gal = make_galaxies(on_centres=True)
@@ -313,14 +318,6 @@ def test_lens_summary_median_is_not_the_mean():
     assert s["Rv_mean"] == pytest.approx(13.2) and s["Rv_median"] == 12
     assert s["delta_mean"] == pytest.approx(9.46)
     assert s["delta_median"] == pytest.approx(-0.8)
-
-
-def test_catalog_mode_warns_once_about_proper_scale(capsys):
-    st._PROPER_SCALE_WARNED = False
-    st.warn_proper_scale()
-    st.warn_proper_scale()
-    out = capsys.readouterr().out
-    assert out.count("PROPER") == 1 and "partial_profile" in out
 
 
 def test_pixelization():
