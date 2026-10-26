@@ -1,53 +1,24 @@
-#--------------------------- Functions --------------------------------------------
+"""Standalone helpers: covariances for analysis, validation tools and the legacy void loader.
+
+The scripts of density/ and statistics/ import this file as a top-level module
+(`from funcs import ...`, with lensing/ in sys.path), so it must not import from the
+`lensing` package.
+"""
 import numpy as np
-from astropy.coordinates import angular_separation, position_angle
-#from astropy.constants import G,c,M_sun,pc
-from astropy.io import fits
-from astropy.table import Table
-from kmeans_radec import kmeans_sample
-#import healpy as hp
-#parameters
-# cvel = c.value;    # Speed of light (m.s-1)
-# G    = G.value;    # Gravitational constant (m3.kg-1.s-2)
-# pc   = pc.value    # 1 pc (m)
-# Msun = M_sun.value # Solar mass (kg)
 
 def cov_matrix(array):
+    """Jackknife covariance of K samples (rows of `array`)"""
 
     K = len(array)
-    Kmean = np.average(array,axis=0)
-    bins = array.shape[1]
-
-    COV = np.zeros((bins,bins))
-
-    for k in range(K):
-        dif = (array[k]- Kmean)
-        COV += np.outer(dif,dif)
-
-    COV *= (K-1)/K
-    return COV
+    dif = array - np.average(array, axis=0)
+    return (K-1)/K * (dif.T @ dif)
 
 def normalize_cov(cov):
-    norm_cov = np.zeros_like(cov)
-    for i in range(len(cov)):
-        for j in range(len(cov)):
-            norm_cov[i,j]=cov[i,j]/np.sqrt(cov[i,i]*cov[j,j])
-    return norm_cov
+    """Correlation matrix of a covariance matrix"""
+    sigma = np.sqrt(np.diag(cov))
+    return cov / np.outer(sigma, sigma)
 
-def eq2p2(ra_gal, dec_gal, RA0,DEC0):
-    """
-    angular separation and position angle from centre (RA0,DEC0) to gal position (ra_gal, dec_gal)
-    returns two angles in radians
-    all parameters must be in radians.
-    """
-
-    ra_prime = ra_gal - RA0
-
-    rad = angular_separation(ra_prime, dec_gal, 0.0, DEC0)
-    theta = position_angle(0.0, DEC0, ra_prime, dec_gal).value
-
-    return rad, theta
-
+## validation: the regions of a rectangular footprint, independent of kmeans_radec
 def get_jackknife_naive(ra_sample, dec_sample, ra_cl, dec_cl, NK=100):
     '''
     divides the sky in NK = n*m rectangular regions of the same area.
@@ -82,22 +53,6 @@ def get_jackknife_naive(ra_sample, dec_sample, ra_cl, dec_cl, NK=100):
 
     return kidx
 
-def get_jackknife_kmeans(ra_sample, dec_sample, ra_cl, dec_cl, nlenses, NJK):
-
-    #K = np.zeros((NJK+1, nlenses), dtype=bool)
-    #K[0] = True
-    sam = np.column_stack([ra_sample, dec_sample])
-    L = np.column_stack([ra_cl, dec_cl])
-
-    km = kmeans_sample(sam, ncen=NJK, verbose=0)
-    labels = km.find_nearest(L)
-
-    #for j in range(1, NJK+1):
-    #    K[j] = ~(labels==j-1)
-
-    # return K, labels
-    return labels, km
-
 def lenscat_load(name,
                  Rv_min, Rv_max, z_min, z_max, delta_min, delta_max, rho1_min=-1.0, rho1_max=0.0, flag=2,
                  NCHUNKS:int=1, NK:int=1, octant=False, is_MICE=False, fullshape=True):
@@ -129,8 +84,6 @@ def lenscat_load(name,
     else:
         L = L[[RV,RA,DEC,Z]][:, mask]
 
-    #K = get_jackknife_kmeans(L, nvoids=nvoids, NK=NK, RA=RA, DEC=DEC)
-
     if bool(NCHUNKS-1):
         if NCHUNKS > nvoids:
             NCHUNKS = nvoids
@@ -138,34 +91,12 @@ def lenscat_load(name,
         slices = (np.arange(lbins)+1)*NCHUNKS
         slices = slices[(slices < nvoids)]
         L = np.split(L.T, slices)
-        #K = np.split(K.T, slices)
 
     return L, nvoids
 
-def sourcecat_load_nback(name, nback=30.0, seed=0):
-    """Get a subsample of with nback density of sources. Uses random selection of rows with seed. Inefficient for nback near 26.9. For nback bigger use directly sorucecat_load. ONLY WORKS FOR MICECAT (hardcoded)."""
-    # nback :: number density of background sources [arcsec^-2]
-    # octant surface = 5157.0 deg^2
-    LENDATAMICE = 499609996
-    n_select = int(nback*5157.0*3600.0)
-
-    rng = np.random.default_rng(seed)
-    with fits.open(name, memmap=True) as f:
-        j = np.sort(rng.choice(LENDATAMICE, size=n_select, shuffle=False, replace=False))
-        sample = f[1].data[j]
-
-    return Table(sample, copy=False)
-
-def sourcecat_load(name):
-    """Can only load sourcecat as it is. For different Nback use sourcecat_load_nback"""
-
-    #S = Table.read(name, memmap=True, format='fits')
-    #return S
-
-    S = fits.open(name, memmap=True)
-    return S[1].data
-
 # ## Cuentas en drive 'IATE/sphere_plane_cut.pdf'
+# ## validation: source selection by intersecting the sphere with a plane, to compare
+# ## with the pixel queries of stacking.query_sources
 # def get_masked_data_intersection(psi, ra0, dec0, z0):
 #     '''
 #     objects are selected by intersecting the sphere with a plane

@@ -5,8 +5,7 @@ same synthetic galaxies. Also tests the setup checks of the map mode.
 Run with: python -m pytest lensing/tests/test_map_profile.py
 """
 
-import sys
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 
 import healpy as hp
 import numpy as np
@@ -14,17 +13,9 @@ import pytest
 from astropy.cosmology import FlatLambdaCDM
 from astropy.table import Table
 
-# optional heavy deps not needed here (jackknife, parquet): stub them if missing
-for _mod in ("kmeans_radec", "pyarrow", "pyarrow.parquet"):
-    try:
-        __import__(_mod)
-    except ImportError:
-        sys.modules[_mod] = ModuleType(_mod)
-sys.modules["kmeans_radec"].__dict__.setdefault("kmeans_sample", None)
-if not hasattr(sys.modules["pyarrow"], "parquet"):
-    sys.modules["pyarrow"].parquet = sys.modules["pyarrow.parquet"]
-
 import lensing.stacking as st
+from lensing import cosmology, geometry, io
+from lensing.geometry import eq2p2
 from shearmap import table2cube as t2c
 
 rng = np.random.default_rng(0)
@@ -56,7 +47,7 @@ def make_galaxies(on_centres):
     # noise-free tangential shear around the void, in the L768 convention: the code
     # rotates (e1, e2) = (-gamma1, -gamma2), so gamma = a * (cos 2theta, sin 2theta)
     # gives a purely tangential, positive signal
-    rad, theta = st.eq2p2(
+    rad, theta = eq2p2(
         np.deg2rad(ra), np.deg2rad(dec), np.deg2rad(RA0), np.deg2rad(DEC0)
     )
     a = 0.05 * np.exp(-np.rad2deg(rad) / 3.0) * (1.0 + z)
@@ -123,7 +114,7 @@ def setup(gal, cube):
         zbins=[(Z_LOW, Z_HIGH)],
     )
     st.cosmo = COSMO
-    st.binspace = np.linspace
+    st.set_binning()
 
     # map: sources behind the void bin
     st.SOURCE = cube
@@ -169,7 +160,7 @@ def test_gamma_convention_in_all_profile_functions():
     # the original catalog function, the weighted one and the map one must agree on the
     # sign: positive tangential, no cross component, for a tangential field in L768
     # convention. With the MICE convention (e1, e2) = (+gamma1, -gamma2) this fails.
-    assert st.GAMMA_SIGN == (-1.0, -1.0)
+    assert geometry.GAMMA_SIGN == (-1.0, -1.0)
     gal = make_galaxies(on_centres=False)
     cube = make_cube(gal)
     gal = setup(gal, cube)
@@ -178,7 +169,7 @@ def test_gamma_convention_in_all_profile_functions():
     map_res = st.partial_profile_map(inp)
     st.SOURCE = gal
     weighted_res = st.partial_profile_weighted(inp, source_cut="bin")
-    k, t, x, n = st.partial_profile(inp)  # unit weights, 4-tuple
+    k, t, x, w, n = st.partial_profile(inp)  # W = N
 
     for name, (t_, x_) in {
         "map": (map_res[1], map_res[2]),
@@ -200,40 +191,13 @@ def test_catalog_selection_reads_every_source_in_the_disc():
     degxmpc = COSMO.arcsec_per_kpc_proper(z_src_min - 0.1).to("deg/Mpc").value
     psi = degxmpc * st.cfg.ROUT * rv
 
-    # get_masked_idx_fast keeps the sources with z > z0 + 0.1
-    idx = st.get_masked_idx_fast(psi, RA0, DEC0, z_src_min - 0.1)
-    rad, _ = st.eq2p2(
+    idx = st.query_sources(psi, RA0, DEC0, z_src_min, strict=True)
+    rad, _ = eq2p2(
         np.deg2rad(gal["ra"]), np.deg2rad(gal["dec"]), np.deg2rad(RA0), np.deg2rad(DEC0)
     )
     inside = np.flatnonzero((np.rad2deg(rad) < psi) & (gal["z"] > z_src_min))
     assert len(inside) > 1000
     assert set(inside) <= set(idx.tolist())
-
-
-def test_lens_columns_check():
-    # voids as read_sparkling returns them (no ID column): 12 columns
-    n = 50
-    voids = rng.normal(size=(12, n))
-    voids[0] = rng.uniform(10, 20, n)  # Rv
-    voids[1] = rng.uniform(0, 360, n)  # ra
-    voids[2] = rng.uniform(-90, 90, n)  # dec
-    voids[3] = rng.uniform(0.1, 0.2, n)  # z
-    voids[8] = rng.uniform(-1, 100, n)  # delta
-    bounds = {"rv": (10.0, 20.0), "z": (0.1, 0.2), "delta": (-1.0, 100.0)}
-
-    good = {"rv": 0, "ra": 1, "dec": 2, "z": 3, "delta": 8}
-    st.check_lens_columns(voids, good, bounds)
-
-    # the template used to assume an ID column: every column shifted by one
-    shifted = {"rv": 1, "ra": 2, "dec": 3, "z": 4, "delta": 9}
-    with pytest.raises(ValueError, match="rv = 1"):
-        st.check_lens_columns(voids, shifted, bounds)
-    # only z shifted: the check must still find it
-    with pytest.raises(ValueError, match="z = 4"):
-        st.check_lens_columns(voids, dict(good, z=4), bounds)
-
-    # no voids selected: nothing to check
-    st.check_lens_columns(voids[:, :0], shifted, bounds)
 
 
 @pytest.mark.parametrize("h", [1.0, 0.7])
@@ -242,10 +206,10 @@ def test_angular_scale_is_comoving(h):
     # scale that the original partial_profile uses
     st.cosmo = FlatLambdaCDM(H0=100.0 * h, Om0=0.3089)
     for z in (0.15, 0.4, 0.6):
-        chi = st.comoving_chi(z)  # Mpc/h
-        assert st.deg_per_mpch(z) == pytest.approx(np.rad2deg(1.0 / chi), rel=1e-6)
+        chi = cosmology.comoving_chi(st.cosmo, z)  # Mpc/h
+        assert cosmology.deg_per_mpch(st.cosmo, z) == pytest.approx(np.rad2deg(1.0 / chi), rel=1e-6)
     proper = st.cosmo.arcsec_per_kpc_proper(0.6).to("deg/Mpc").value / st.cosmo.h
-    assert proper / st.deg_per_mpch(0.6) == pytest.approx(1.6, rel=1e-6)
+    assert proper / cosmology.deg_per_mpch(st.cosmo, 0.6) == pytest.approx(1.6, rel=1e-6)
 
 
 def test_ring_at_one_comoving_rv_is_in_the_bin_of_r_over_rv_equal_one():
@@ -271,7 +235,7 @@ def test_ring_at_one_comoving_rv_is_in_the_bin_of_r_over_rv_equal_one():
     assert 1.0 / (1.0 + Z0) < edges[expected]  # the proper scale would be another bin
 
     # the original catalog function (unit weights, its own source cut) uses the same scale
-    n_orig = st.partial_profile((RV0, RA0, DEC0, Z0))[3]
+    n_orig = st.partial_profile((RV0, RA0, DEC0, Z0))[4]
     assert n_orig.sum() > 0.9 * n and np.argmax(n_orig) == expected
     assert n_orig[expected] == n_orig.sum()
 
@@ -293,10 +257,8 @@ def test_resolution_check_marks(capsys):
 
 @pytest.mark.parametrize("binning", ["lin", "log"])
 def test_bin_centres(binning):
-    st.cfg = SimpleNamespace(NBINS=4, RIN=0.1, ROUT=2.5, binning=binning)
-    st.binspace = np.linspace if binning == "lin" else np.geomspace
-    centres = st.bin_centres()
-    edges = st.binspace(0.1, 2.5, 5)
+    centres = geometry.bin_centres(0.1, 2.5, 4, binning)
+    edges = geometry.bin_edges(0.1, 2.5, 4, binning)
     assert len(centres) == 4
     assert np.all((centres > edges[:-1]) & (centres < edges[1:]))
     if binning == "lin":
@@ -312,8 +274,7 @@ def test_lens_summary_median_is_not_the_mean():
     voids[0] = [10, 11, 12, 13, 20]  # Rv: mean 13.2, median 12
     voids[3] = [0.1, 0.1, 0.1, 0.15, 0.19]  # z
     voids[8] = [-0.9, -0.9, -0.8, -0.1, 50.0]  # delta: mean 9.46, median -0.8
-    st.cfg = SimpleNamespace(lcols={"rv": 0, "ra": 1, "dec": 2, "z": 3, "delta": 8})
-    s = st.lens_summary(voids)
+    s = io.lens_summary(voids, {"rv": 0, "ra": 1, "dec": 2, "z": 3, "delta": 8})
     assert s["nvoids"] == 5
     assert s["Rv_mean"] == pytest.approx(13.2) and s["Rv_median"] == 12
     assert s["delta_mean"] == pytest.approx(9.46)
@@ -344,8 +305,10 @@ def test_inverse_sigma_crit_from_moments():
     z_s = rng.uniform(0.3, 1.3, 1000)
     chi_s = COSMO.comoving_distance(z_s).value
     chi_l = COSMO.comoving_distance(z_l).value
-    via_moments = st.inv_sigma_crit_prefactor(z_l) * (len(z_s) - chi_l * np.sum(1 / chi_s))
-    direct = np.sum(1.0 / st.sigma_crit(z_l, z_s))
+    via_moments = cosmology.inv_sigma_crit_prefactor(COSMO, z_l) * (
+        len(z_s) - chi_l * np.sum(1 / chi_s)
+    )
+    direct = np.sum(1.0 / cosmology.sigma_crit(COSMO, z_l, z_s))
     assert via_moments == pytest.approx(direct, rel=1e-8)
 
 
@@ -371,6 +334,15 @@ def test_setup_checks():
     st.cfg.zbins = [(0.15, 0.2)]
     with pytest.raises(ValueError, match="slice"):
         st.check_map_zbins()
+
+
+def test_empty_disc_in_the_map_is_an_error():
+    # a void in the part of the sky without sources, or with its disc empty
+    gal = make_galaxies(on_centres=True)
+    setup(gal, make_cube(gal))
+    with pytest.raises(ValueError, match="No sources within"):
+        st.partial_profile_map((RV0, RA0 + 120.0, -DEC0, Z0))
+    st.partial_profile_map((RV0, RA0, DEC0, Z0))  # the void of the other tests is fine
 
 
 def test_collapse_sums_selected_slices():

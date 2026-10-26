@@ -1,62 +1,77 @@
 from argparse import ArgumentParser
 
-# from astropy.cosmology import WMAP5 as cosmo ## MICE uses WMAP5
-from astropy.cosmology import FlatLambdaCDM  ## MICE uses WMAP5
-from astropy.constants import G, c, M_sun, pc
-from astropy.io import fits
-from astropy.table import Table
 import healpy as hp
 from multiprocessing import get_context
 import numpy as np
 import os
 from pathlib import Path
-from time import time, asctime
+from time import time
 
-# import toml
 from tqdm import tqdm
 from itertools import product
 
-from lensing.funcs import eq2p2, cov_matrix, get_jackknife_kmeans
-from lensing.io import read_lens_catalog, read_sources_catalog
-from lensing.settings import Config
+from lensing.cosmology import (
+    comoving_chi,
+    deg_per_mpch,
+    inv_sigma_crit_prefactor,
+    make_cosmo,
+    sigma_crit,
+)
+from lensing.geometry import (
+    bin_centres,
+    bin_edges,
+    binsum,
+    radial_bin,
+    rotate_shear,
+    void_offsets,
+)
+from lensing.io import (
+    check_output_exists,
+    make_header,
+    output_path,
+    read_lens_catalog,
+    read_sources_catalog,
+    write_profiles,
+)
+from lensing.jackknife import assign_regions, fit_regions, reduce_profiles
+from lensing.randoms import generate_randoms, stack_rng
+from lensing.settings import VOIDTYPE_DELTA, Config
 from shearmap.table2cube import degrade_cube
 
 ctx = get_context("fork")
 
-# --- Fixed globals
+# --- Fixed globals: set by `init_globals` (and `collapse_slices` in each stack) before the
+# pool forks, so the workers share them
 cfg: Config
-# SOURCE = None
+cosmo = None
+EDGES = None  # edges of the radial bins [Rv]
 PIX_TO_IDX: dict = {}
 SOURCE = None
+# k-means regions of the jackknife
+REGIONS = None
 # map mode: slices of the cube summed behind the current void bin, see `collapse_slices`
 MAPS: dict = {}
 ZSRC_MIN: float = 0.0
-# Signs applied to (gamma1, gamma2) of the sources to get the (e1, e2) that are rotated to
-# the tangential/cross components. L768 convention: both negative, as in the old
-# voidsmodgrav.py. The MICE convention (+1, -1) gives no tangential signal in L768.
-GAMMA_SIGN: tuple = (-1.0, -1.0)
-SC_CONSTANT: float = (
-    (c.value**2.0 / (4.0 * np.pi * G.value)) * (pc.value / M_sun.value) * 1e-6
-)
 
 # "z_cgal" : true-z
 # "z_cgal_v" : spec-z
 # "z_desdm_mc" : photo-z
-# REDSHIFT = "z_cgal_v" # name of the redshift column in the source file
 # -----------------
+
+
+def set_binning():
+    global EDGES
+    EDGES = bin_edges(cfg.RIN, cfg.ROUT, cfg.NBINS, cfg.binning)
 
 
 def init_globals():
 
     global SOURCE
-    global binspace
     global cosmo
+    global REGIONS
 
-    # set cosmology
-    cosmo = FlatLambdaCDM(H0=100.0 * cfg.h, Om0=cfg.Om0, Ob0=cfg.Ob0)
-
-    # set binning
-    binspace = np.linspace if cfg.binning == "lin" else np.geomspace
+    cosmo = make_cosmo(cfg.h, cfg.Om0, cfg.Ob0, cfg.Ode0)
+    set_binning()
 
     # read sources: galaxy catalog or lensing cube (healpix maps)
     if cfg.source_mode == "map":
@@ -69,6 +84,10 @@ def init_globals():
         check_map_resolution()
     else:
         SOURCE = read_sources_catalog(cfg.sourcename, cat="fits")
+
+    # the same regions for all the stacks of this source
+    print(f" >> Fitting {cfg.NJK} jackknife regions (seed {cfg.jk_seed})", flush=True)
+    REGIONS = fit_regions(*jackknife_sample(), cfg.NJK, cfg.jk_seed)
 
 
 def load_map_source(path, order=None):
@@ -133,8 +152,7 @@ def check_map_resolution():
     pixsize = np.rad2deg(hp.nside2resol(nside))
     rv_min = min(r[0] for r in cfg.rvbins)
     z_max = max(z[1] for z in cfg.zbins)
-    bines = binspace(cfg.RIN, cfg.ROUT, cfg.NBINS + 1)
-    binwidth = deg_per_mpch(z_max) * rv_min * np.diff(bines).min()
+    binwidth = deg_per_mpch(cosmo, z_max) * rv_min * np.diff(EDGES).min()
     ok = pixsize <= 0.5 * binwidth
     print(
         f" >> Map NSIDE={nside}: pixel {pixsize * 60:.2f} arcmin, "
@@ -173,99 +191,53 @@ def make_pix2idx_dict(source):
         )
 
 
-def check_output_exists(output_file, overwrite=False):
-
-    if os.path.exists(output_file):
-        if not overwrite:
-            raise OSError(
-                f"\n{'=' * 60}\n"
-                f"Output file already exists: {output_file}\n"
-                f"Use --overwrite flag to allow overwriting, or choose a different sample name.\n"
-                f"{'=' * 60}"
-            )
-        else:
-            print(f" WARNING: Will overwrite existing file: {output_file}", flush=True)
-    return True
+def jackknife_sample(nmax=10_000):
+    """ra, dec (deg) of points sampling the source footprint, for the jackknife k-means"""
+    if cfg.source_mode == "map":
+        npix = hp.nside2npix(SOURCE["nside"])
+        pix = np.unique(np.linspace(0, npix - 1, nmax).astype(int))
+        pix = pix[np.asarray(SOURCE["nobj"][pix]).sum(axis=1) > 0]
+        ra, dec = hp.pix2ang(SOURCE["nside"], pix, nest=SOURCE["nest"], lonlat=True)
+        return ra, dec
+    jidx = np.arange(1, len(SOURCE) - 1, len(SOURCE) // nmax, dtype=int)
+    return SOURCE[cfg.scols["ra"]][jidx], SOURCE[cfg.scols["dec"]][jidx]
 
 
-## WARNING :
-## cosmo.distance is in physical units (ie Mpc)
-## need to divide out by littleh to get Mpc/h
-## important only if h!=1
-def sigma_crit(z_l, z_s):
-    d_l = cosmo.angular_diameter_distance(z_l).value
-    d_s = cosmo.angular_diameter_distance(z_s).value
-    d_ls = cosmo.angular_diameter_distance(z_l, z_s).value
-    return SC_CONSTANT * (d_s / (d_ls * d_l))
+def in_footprint(ra, dec):
+    """True where (ra, dec) [deg] is on a pixel with sources: the pixels of the collapsed
+    maps in map mode (`collapse_slices` must have been called), the pixels of the catalog
+    index in catalog mode."""
+    if cfg.source_mode == "map":
+        pix = hp.ang2pix(SOURCE["nside"], ra, dec, nest=SOURCE["nest"], lonlat=True)
+        return MAPS["nobj"][pix] > 0
+    pix = hp.ang2pix(cfg.NSIDE, ra, dec, lonlat=True)
+    keys = np.fromiter(PIX_TO_IDX.keys(), dtype=np.int64, count=len(PIX_TO_IDX))
+    return np.isin(pix, keys)
 
 
-def comoving_chi(z):
-    """Comoving distance in Mpc/h"""
-    return cosmo.comoving_distance(z).value * cosmo.h
+# --- profiles
 
 
-def deg_per_mpch(z):
-    """Angle (deg) subtended at redshift z by 1 comoving Mpc/h. The void radius Rv is
-    comoving, so R/Rv = 1 sits at Rv/chi(z) from the centre, not at Rv/D_A(z), which
-    is (1+z) times larger (that is what the proper scale arcsec_per_kpc_proper gives)."""
-    return cosmo.arcsec_per_kpc_comoving(z).to("deg/Mpc").value / cosmo.h
+def aperture(Rv0, z0):
+    """Degrees per comoving Mpc/h at the void (Rv is comoving) and angular radius [deg] of
+    the disc of sources of the stack"""
+    deg = deg_per_mpch(cosmo, z0)
+    return deg, deg * cfg.ROUT * Rv0
 
 
-def bin_centres():
-    """Centres of the radial bins (in units of Rv): arithmetic midpoints of the edges
-    for linear binning, geometric midpoints for log binning."""
-    edges = binspace(cfg.RIN, cfg.ROUT, cfg.NBINS + 1)
-    if cfg.binning == "log":
-        return np.sqrt(edges[:-1] * edges[1:])
-    return 0.5 * (edges[:-1] + edges[1:])
-
-
-def lens_summary(lenses):
-    """Mean and median of the properties of the stacked voids"""
-    col = lambda key: lenses[cfg.lcols[key]]
-    return dict(
-        nvoids=lenses.shape[1],
-        z_mean=col("z").mean(),
-        z_median=np.median(col("z")),
-        Rv_mean=col("rv").mean(),
-        Rv_median=np.median(col("rv")),
-        delta_mean=col("delta").mean(),
-        delta_median=np.median(col("delta")),
+def empty_disc(what, psi, ra0, dec0):
+    return ValueError(
+        f"No {what} within {psi:.2f} deg of the void at (ra, dec) = ({ra0:.3f}, {dec0:.3f}): "
+        "the void is outside the footprint of the sources, or the sources don't match the voids."
     )
 
 
-def inv_sigma_crit_prefactor(z_l):
-    """A(z_l) such that, in a flat universe, 1/sigma_crit(z_l, z_s) = A * (1 - chi_l/chi_s).
-    This makes the sum of 1/sigma_crit over sources linear in sum(1/chi_s), which is
-    what the lensing cube stores."""
-    return cosmo.angular_diameter_distance(z_l).value / SC_CONSTANT
-
-
-def get_masked_idx_zmin(psi, ra0, dec0, zmin):
-    """Same as `get_masked_idx_fast` but selecting the sources with z >= zmin"""
-
-    queried_pix = hp.query_disc(
-        cfg.NSIDE,
-        vec=hp.ang2vec(ra0, dec0, lonlat=True),
-        radius=np.deg2rad(psi * 1.1),
-        inclusive=True,
-    )
-
-    queried_idranges = np.array([PIX_TO_IDX[p] for p in queried_pix if p in PIX_TO_IDX])
-
-    idx_arrays = np.concatenate([np.arange(s, e) for s, e in queried_idranges])
-
-    mask_z = SOURCE[cfg.scols["redshift"]].data[idx_arrays] >= zmin
-
-    return idx_arrays[mask_z]
-
-
-def get_masked_idx_fast(psi, ra0, dec0, z0):
-    """
-    objects are selected by pixel on a disc of rad=psi+pad where pad = 0.1*psi
-    uses prebuilt _PIX_TO_INDEX dict
-    returns the indices of _S where to select
-    """
+def query_sources(psi, ra0, dec0, zmin, strict=True):
+    """Indices of the sources of the catalog (`SOURCE`) on the pixels of a disc of radius
+    `psi` [deg] around (ra0, dec0), with z > zmin (z >= zmin if not `strict`). The pixels
+    are those of the prebuilt index `PIX_TO_IDX`. Some sources are farther than psi: they
+    fall outside the radial bins. Stops if there are none: a void without sources around
+    means that the voids and the sources don't cover the same sky."""
 
     # inclusive=True: with the default only the pixels whose *centre* is inside the disc
     # are read, so sources inside psi that sit in pixels centred outside it were lost
@@ -273,76 +245,81 @@ def get_masked_idx_fast(psi, ra0, dec0, z0):
     queried_pix = hp.query_disc(
         cfg.NSIDE,
         vec=hp.ang2vec(ra0, dec0, lonlat=True),
-        radius=np.deg2rad(psi * 1.0),
+        radius=np.deg2rad(psi),
         inclusive=True,
     )
 
-    queried_idranges = np.array([PIX_TO_IDX[p] for p in queried_pix if p in PIX_TO_IDX])
+    idxranges = [PIX_TO_IDX[p] for p in queried_pix if p in PIX_TO_IDX]
+    if not idxranges:
+        raise empty_disc("sources", psi, ra0, dec0)
+    idx = np.concatenate([np.arange(s, e) for s, e in idxranges])
 
-    idx_arrays = np.concatenate([np.arange(s, e) for s, e in queried_idranges])
+    z = SOURCE[cfg.scols["redshift"]].data[idx]
+    idx = idx[z > zmin] if strict else idx[z >= zmin]
+    if len(idx) == 0:
+        raise empty_disc(f"sources with z {'>' if strict else '>='} {zmin:.3f}", psi, ra0, dec0)
+    return idx
 
-    mask_z = SOURCE[cfg.scols["redshift"]].data[idx_arrays] > (z0 + 0.1)
 
-    return idx_arrays[mask_z]
+def source_shear(cat):
+    """(gamma1, gamma2) of the sources of the catalog `cat`, minus the intrinsic
+    ellipticities (eps) to remove the shape noise if `addnoise`"""
+    g1 = cat[cfg.scols["gamma1"]]
+    g2 = cat[cfg.scols["gamma2"]]
+    if cfg.addnoise:
+        g1 = g1 - cat[cfg.scols["eps1"]]
+        g2 = g2 - cat[cfg.scols["eps2"]]
+    return g1, g2
 
 
-## distance: is needed a cosmo.h dividing sigma_c when h!=1, else is not needed.
-## leaving it for general case...
+def radial_sums(ra, dec, ra0, dec0, deg, Rv0, g1, g2, kappa, weight=None, count=None):
+    """Sums per radial bin of sources (or pixels of a map) at (ra, dec) [deg] around the void
+    at (ra0, dec0) of comoving radius Rv0, with `deg` degrees per Mpc/h.
+
+    Returns kappa, gamma_t and gamma_x (all divided by Rv*h: Rv is in Mpc/h but sigma_crit
+    in physical units), the sum of the `weight` (the number of sources if None) and the
+    number of sources (`count` of each pixel; one per row if None).
+    """
+    rads, theta = void_offsets(ra, dec, ra0, dec0)
+    et, ex = rotate_shear(g1, g2, theta)
+    dig = radial_bin(rads, deg, Rv0, EDGES)
+
+    f = 1.0 / (Rv0 * cosmo.h)
+    nb = cfg.NBINS
+    n = binsum(dig, count, nb)
+    w = n if weight is None else binsum(dig, weight, nb)
+    return binsum(dig, f * kappa, nb), binsum(dig, f * et, nb), binsum(dig, f * ex, nb), w, n
+
+
 def partial_profile(inp):
-
-    Sigma_wsum = np.zeros(cfg.NBINS)
-    DSigma_t_wsum = np.zeros(cfg.NBINS)
-    DSigma_x_wsum = np.zeros(cfg.NBINS)
-    N_inbin = np.zeros(cfg.NBINS)
+    """
+    Original estimator of the galaxy catalogs: the sums of Sigma_crit * (kappa, gamma_t,
+    gamma_x) of the sources with z > z_void + 0.1, so the weights are Sigma_crit and
+    W = N. Returns the same as `partial_profile_map`.
+    """
 
     Rv0, ra0, dec0, z0 = inp
-    # for ni in range(N):
-    # adentro del for, mask depende de n... solo quiero las gx en un anillo
 
-    DEGxMPC = deg_per_mpch(z0)  # Rv is comoving (Mpc/h)
-    psi = DEGxMPC * cfg.ROUT * Rv0
+    deg, psi = aperture(Rv0, z0)
 
-    idx = get_masked_idx_fast(psi, ra0, dec0, z0)
-    catdata = SOURCE[idx]
+    # the buffer is 0.1 whatever `dz_buffer` is (the map and weighted functions use it)
+    idx = query_sources(psi, ra0, dec0, z0 + 0.1, strict=True)
+    cat = SOURCE[idx]
 
-    # sigma_c = sigma_crit(z0, catdata[REDSHIFT])/Rv0
-    ## dividing by cosmo.h gives the correct units! (Rv0 in Mpc/h but sigma_crit in physical Msun*pc^-2)
-    ## factor of almost 1.5 difference!
-    sigma_c = sigma_crit(z0, catdata[cfg.scols["redshift"]]) / (Rv0 * cosmo.h)
+    sc = sigma_crit(cosmo, z0, cat[cfg.scols["redshift"]])
+    g1, g2 = source_shear(cat)
 
-    rads, theta = eq2p2(
-        np.deg2rad(catdata[cfg.scols["ra"]]),
-        np.deg2rad(catdata[cfg.scols["dec"]]),
-        np.deg2rad(ra0),
-        np.deg2rad(dec0),
+    return radial_sums(
+        cat[cfg.scols["ra"]],
+        cat[cfg.scols["dec"]],
+        ra0,
+        dec0,
+        deg,
+        Rv0,
+        sc * g1,
+        sc * g2,
+        sc * cat[cfg.scols["kappa"]],
     )
-
-    e1 = GAMMA_SIGN[0] * catdata[cfg.scols["gamma1"]]
-    e2 = GAMMA_SIGN[1] * catdata[cfg.scols["gamma2"]]
-    if cfg.addnoise:
-        e1 -= GAMMA_SIGN[0] * catdata[cfg.scols["eps1"]]
-        e2 -= GAMMA_SIGN[1] * catdata[cfg.scols["eps2"]]
-
-    # get tangential ellipticities
-    cos2t = np.cos(2.0 * theta)
-    sin2t = np.sin(2.0 * theta)
-    et = -(e1 * cos2t + e2 * sin2t) * sigma_c
-    ex = (-e1 * sin2t + e2 * cos2t) * sigma_c
-
-    # get convergence
-    k = catdata[cfg.scols["kappa"]] * sigma_c
-
-    bines = binspace(cfg.RIN, cfg.ROUT, cfg.NBINS + 1)
-    dig = np.digitize((np.rad2deg(rads) / DEGxMPC) / Rv0, bines)
-
-    for nbin in range(cfg.NBINS):
-        mbin = dig == nbin + 1
-        Sigma_wsum[nbin] = k[mbin].sum()
-        DSigma_t_wsum[nbin] = et[mbin].sum()
-        DSigma_x_wsum[nbin] = ex[mbin].sum()
-        N_inbin[nbin] = np.count_nonzero(mbin)  ## idem mbin.sum(), faster
-
-    return Sigma_wsum, DSigma_t_wsum, DSigma_x_wsum, N_inbin
 
 
 def partial_profile_map(inp):
@@ -363,8 +340,7 @@ def partial_profile_map(inp):
 
     Rv0, ra0, dec0, z0 = inp
 
-    DEGxMPC = deg_per_mpch(z0)  # Rv is comoving (Mpc/h)
-    psi = DEGxMPC * cfg.ROUT * Rv0
+    deg, psi = aperture(Rv0, z0)
 
     pix = hp.query_disc(
         SOURCE["nside"],
@@ -373,45 +349,38 @@ def partial_profile_map(inp):
         inclusive=False,  # pixels are assigned to bins by their centre
         nest=SOURCE["nest"],
     )
-    if len(pix) == 0:
-        return tuple(np.zeros(cfg.NBINS) for _ in range(5))
     pix.sort()
 
     n = MAPS["nobj"][pix]
-    f = 1.0 / (Rv0 * cosmo.h)
+    if n.sum() == 0:
+        raise empty_disc("sources", psi, ra0, dec0)
     # 1/sigma_crit summed over the sources of each pixel
-    w = inv_sigma_crit_prefactor(z0) * (
-        n - (comoving_chi(z0) / SOURCE["chiref"]) * MAPS["invchi"][pix]
+    w = inv_sigma_crit_prefactor(cosmo, z0) * (
+        n - (comoving_chi(cosmo, z0) / SOURCE["chiref"]) * MAPS["invchi"][pix]
     )
-
-    g1 = GAMMA_SIGN[0] * MAPS["gamma1"][pix]
-    g2 = GAMMA_SIGN[1] * MAPS["gamma2"][pix]
-    k = MAPS["kappa"][pix]
 
     ra_p, dec_p = hp.pix2ang(SOURCE["nside"], pix, nest=SOURCE["nest"], lonlat=True)
-    rads, theta = eq2p2(
-        np.deg2rad(ra_p), np.deg2rad(dec_p), np.deg2rad(ra0), np.deg2rad(dec0)
+
+    return radial_sums(
+        ra_p,
+        dec_p,
+        ra0,
+        dec0,
+        deg,
+        Rv0,
+        MAPS["gamma1"][pix],
+        MAPS["gamma2"][pix],
+        MAPS["kappa"][pix],
+        weight=w,
+        count=n,
     )
-
-    cos2t = np.cos(2.0 * theta)
-    sin2t = np.sin(2.0 * theta)
-    et = -(g1 * cos2t + g2 * sin2t)
-    ex = -g1 * sin2t + g2 * cos2t
-
-    bines = binspace(cfg.RIN, cfg.ROUT, cfg.NBINS + 1)
-    dig = np.digitize((np.rad2deg(rads) / DEGxMPC) / Rv0, bines)
-
-    def binsum(x):
-        return np.bincount(dig, weights=x, minlength=cfg.NBINS + 2)[1 : cfg.NBINS + 1]
-
-    return binsum(f * k), binsum(f * et), binsum(f * ex), binsum(w), binsum(n)
 
 
 def partial_profile_weighted(inp, source_cut="bin"):
     """
     Galaxy-catalog counterpart of `partial_profile_map`, to check it. Same estimator
     (sources weighted by 1/sigma_crit) and same return values. `partial_profile` is
-    left untouched.
+    the original one.
 
     source_cut: 'bin'  : sources with z >= ZSRC_MIN, like the slices of the cube
                 'void' : sources with z >= z_void + dz_buffer
@@ -419,246 +388,35 @@ def partial_profile_weighted(inp, source_cut="bin"):
 
     Rv0, ra0, dec0, z0 = inp
 
-    DEGxMPC = deg_per_mpch(z0)  # Rv is comoving (Mpc/h)
-    psi = DEGxMPC * cfg.ROUT * Rv0
+    deg, psi = aperture(Rv0, z0)
 
     zmin = ZSRC_MIN if source_cut == "bin" else z0 + cfg.dz_buffer
-    idx = get_masked_idx_zmin(psi, ra0, dec0, zmin)
-    catdata = SOURCE[idx]
+    cat = SOURCE[query_sources(psi, ra0, dec0, zmin, strict=False)]
 
-    f = 1.0 / (Rv0 * cosmo.h)
-    zs = catdata[cfg.scols["redshift"]]
-    w = inv_sigma_crit_prefactor(z0) * (1.0 - comoving_chi(z0) / comoving_chi(zs))
-
-    rads, theta = eq2p2(
-        np.deg2rad(catdata[cfg.scols["ra"]]),
-        np.deg2rad(catdata[cfg.scols["dec"]]),
-        np.deg2rad(ra0),
-        np.deg2rad(dec0),
+    zs = cat[cfg.scols["redshift"]]
+    w = inv_sigma_crit_prefactor(cosmo, z0) * (
+        1.0 - comoving_chi(cosmo, z0) / comoving_chi(cosmo, zs)
     )
+    g1, g2 = source_shear(cat)
 
-    e1 = GAMMA_SIGN[0] * catdata[cfg.scols["gamma1"]]
-    e2 = GAMMA_SIGN[1] * catdata[cfg.scols["gamma2"]]
-    if cfg.addnoise:
-        e1 = e1 - GAMMA_SIGN[0] * catdata[cfg.scols["eps1"]]
-        e2 = e2 - GAMMA_SIGN[1] * catdata[cfg.scols["eps2"]]
-
-    cos2t = np.cos(2.0 * theta)
-    sin2t = np.sin(2.0 * theta)
-    et = -(e1 * cos2t + e2 * sin2t)
-    ex = -e1 * sin2t + e2 * cos2t
-    k = catdata[cfg.scols["kappa"]]
-
-    bines = binspace(cfg.RIN, cfg.ROUT, cfg.NBINS + 1)
-    dig = np.digitize((np.rad2deg(rads) / DEGxMPC) / Rv0, bines)
-
-    def binsum(x):
-        return np.bincount(dig, weights=x, minlength=cfg.NBINS + 2)[1 : cfg.NBINS + 1]
-
-    return (
-        binsum(f * k),
-        binsum(f * et),
-        binsum(f * ex),
-        binsum(w),
-        np.bincount(dig, minlength=cfg.NBINS + 2)[1 : cfg.NBINS + 1].astype(np.float64),
+    return radial_sums(
+        cat[cfg.scols["ra"]],
+        cat[cfg.scols["dec"]],
+        ra0,
+        dec0,
+        deg,
+        Rv0,
+        g1,
+        g2,
+        cat[cfg.scols["kappa"]],
+        weight=w,
     )
 
 
-def jackknife_sample(nmax=10_000):
-    """ra, dec (deg) of points sampling the source footprint, for the jackknife k-means"""
-    if cfg.source_mode == "map":
-        npix = hp.nside2npix(SOURCE["nside"])
-        pix = np.unique(np.linspace(0, npix - 1, nmax).astype(int))
-        pix = pix[np.asarray(SOURCE["nobj"][pix]).sum(axis=1) > 0]
-        ra, dec = hp.pix2ang(SOURCE["nside"], pix, nest=SOURCE["nest"], lonlat=True)
-        return ra, dec
-    jidx = np.arange(1, len(SOURCE) - 1, len(SOURCE) // nmax, dtype=int)
-    return SOURCE[cfg.scols["ra"]][jidx], SOURCE[cfg.scols["dec"]][jidx]
+# --- stacks
 
 
-def check_lens_columns(lenses, lcols, bounds, name="lenses"):
-    """Stops if `[lenses.columns]` doesn't point to the columns that `read_sparkling` used
-    to cut the voids. The cut is done with fixed indices (no ID column), so every selected
-    void must satisfy the bounds on the configured columns; if not, the columns of the
-    config are shifted (e.g. an ID column assumed) and the profiles would be computed
-    with the wrong Rv, ra, dec or z.
-
-    bounds: {'rv': (min, max), 'z': (min, max), 'delta': (min, max)}
-    """
-    if lenses.shape[1] == 0:
-        return
-    for key, (lo, hi) in bounds.items():
-        col = lenses[lcols[key]]
-        if not np.all((col >= lo) & (col < hi)):
-            raise ValueError(
-                f"[lenses.columns] {key} = {lcols[key]} doesn't match the {name} catalog: "
-                f"values in [{col.min():.4g}, {col.max():.4g}] but the voids were selected "
-                f"with {lo} <= {key} < {hi}. Check the column numbers in the config "
-                "(the void files have no ID column: rv=0, ra=1, dec=2, z=3, delta=8)."
-            )
-
-
-def in_footprint(ra, dec):
-    """True where (ra, dec) [deg] is on a pixel with sources: the pixels of the collapsed
-    maps in map mode (`collapse_slices` must have been called), the pixels of the catalog
-    index in catalog mode."""
-    if cfg.source_mode == "map":
-        pix = hp.ang2pix(SOURCE["nside"], ra, dec, nest=SOURCE["nest"], lonlat=True)
-        return MAPS["nobj"][pix] > 0
-    pix = hp.ang2pix(cfg.NSIDE, ra, dec, lonlat=True)
-    keys = np.fromiter(PIX_TO_IDX.keys(), dtype=np.int64, count=len(PIX_TO_IDX))
-    return np.isin(pix, keys)
-
-
-def stack_rng(*bin_edges):
-    """Generator of the randoms of a stack: set by `[randoms] seed` and the edges of the
-    z, Rv and delta bins, so a rerun gives the same randoms, whatever the gravity."""
-    key = [cfg.rand_seed] + [int(round(1000 * (x + 10.0))) for x in bin_edges]
-    return np.random.default_rng(key)
-
-
-def generate_randoms(lenses, factor, rng, footprint):
-    """Random voids for the subtraction of the signal that is not due to the voids.
-
-    There are `factor` times as many as voids. Each takes the (Rv, z) pair, and the rest of
-    the columns, of a void of the stack drawn with replacement, so they have the same
-    distribution as the voids of that stack, jointly. Only (ra, dec) change: uniform on
-    the sphere, redrawn while they fall outside `footprint(ra, dec)`. Voids at the edge of
-    a partial footprint aren't excluded, which is only right for full-sky (or nearly) mocks.
-
-    Returns an array with the layout of `lenses`.
-    """
-    nvoids = lenses.shape[1]
-    if nvoids == 0:
-        raise ValueError("No voids in this bin: nothing to draw the randoms from.")
-    nrand = int(round(factor * nvoids))
-    rands = lenses[:, rng.integers(0, nvoids, nrand)]
-
-    def sphere(u):
-        return 360.0 * u[:, 0], np.rad2deg(np.arcsin(2.0 * u[:, 1] - 1.0))
-
-    ra, dec = sphere(rng.random((nrand, 2)))
-    bad = ~footprint(ra, dec)
-    for _ in range(10_000):
-        if not bad.any():
-            break
-        ra[bad], dec[bad] = sphere(rng.random((bad.sum(), 2)))
-        bad[bad] = ~footprint(ra[bad], dec[bad])
-    else:
-        raise RuntimeError(
-            f"{bad.sum()} random voids are outside the source footprint after 10000 redraws."
-        )
-    rands[cfg.lcols["ra"]] = ra
-    rands[cfg.lcols["dec"]] = dec
-    return rands
-
-
-def unpack_profiles(res):
-    """Stacks the results of a profile function, which return (kappa, gamma_t, gamma_x, N)
-    with unit weights or (kappa, gamma_t, gamma_x, W, N) with the sum of the weights W,
-    into (kappa, gamma_t, gamma_x, W, N), each of shape (nvoids, NBINS)."""
-    cols = [np.vstack(x) for x in zip(*res)]
-    if len(cols) == 4:
-        cols.append(cols[3])
-    return tuple(cols)
-
-
-def jackknife_sums(x, labels, njk):
-    """Sums of the rows of x over all of them (row 0) and leaving out each region
-    (rows 1..njk), for the region `labels` of every row."""
-    total = x.sum(axis=0)
-    regions = np.vstack([x[labels == k].sum(axis=0) for k in range(njk)])
-    return np.vstack([total, total - regions])
-
-
-def reduce_profiles(resmap, randmap, kidx, kidx_rand, njk):
-    """Profiles of the void stack, of the random stack and of their difference, for the
-    full sample (row 0) and the njk jackknife samples (rows 1..njk), the voids and randoms
-    being left out together by region.
-
-    The estimator (Singh et al. 2017): X = X_voids - X_rand for Sigma, DSigma_t and
-    DSigma_x. Returns a dict with those (X), X_raw and X_rand, and the number of sources of
-    the voids and of the randoms.
-    """
-    kappa, gamma_t, gamma_x, w, n = unpack_profiles(resmap)
-    kappa_r, gamma_t_r, gamma_x_r, w_r, n_r = unpack_profiles(randmap)
-
-    W = jackknife_sums(w, kidx, njk)
-    W_r = jackknife_sums(w_r, kidx_rand, njk)
-
-    profiles = {}
-    for name, v, r in (
-        ("Sigma", kappa, kappa_r),
-        ("DSigma_t", gamma_t, gamma_t_r),
-        ("DSigma_x", gamma_x, gamma_x_r),
-    ):
-        raw = jackknife_sums(v, kidx, njk) / W
-        rand = jackknife_sums(r, kidx_rand, njk) / W_r
-        profiles[name] = raw - rand
-        profiles[name + "_raw"] = raw
-        profiles[name + "_rand"] = rand
-    return profiles, jackknife_sums(n, kidx, njk), jackknife_sums(n_r, kidx_rand, njk)
-
-
-PROFILE_NAMES = ("Sigma", "DSigma_t", "DSigma_x")
-
-
-def profile_hdus(profiles):
-    """Covariance and jackknife samples (HDUs `cov_*` and `jack_*`) of each profile, the
-    covariance being that of the same estimator as the profile."""
-    names = [n + s for s in ("", "_raw", "_rand") for n in PROFILE_NAMES]
-    cov = [fits.ImageHDU(cov_matrix(profiles[n][1:]), name=f"cov_{n}") for n in names]
-    jack = [fits.ImageHDU(profiles[n][1:], name=f"jack_{n}") for n in names]
-    return cov + jack
-
-
-def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
-
-    lenses = read_lens_catalog(
-        filename=cfg.lensname,
-        cat="sparkling",
-        Rv_min=rv_min,
-        Rv_max=rv_max,
-        z_min=z_min,
-        z_max=z_max,
-        delta_min=delta_min,
-        delta_max=delta_max,
-        flag=cfg.flag,
-        has_id=False,
-        fullshape=cfg.fullshape,
-    )
-
-    nvoids = len(lenses.T)
-
-    bounds = {
-        "rv": (rv_min, rv_max),
-        "z": (z_min, z_max),
-        "delta": (delta_min, delta_max),
-    }
-    check_lens_columns(lenses, cfg.lcols, bounds, "lenses")
-
-    if delta_max <= 0:
-        voidtype = "R"
-    elif delta_min >= 0:
-        voidtype = "S"
-    else:
-        voidtype = "mixed"
-
-    output_filename = (
-        f"lensing/results/lensing_{gravity}_thr{cfg.voidthr}_{cfg.sample}_N{cfg.NBINS}_"
-        f"Rv{rv_min:02.0f}-{rv_max:02.0f}_"
-        f"z{100 * z_min:03.0f}-{100 * z_max:03.0f}_"
-        f"type{voidtype}_bin{cfg.binning}"
-    )
-    if cfg.source_mode == "map":
-        output_filename += "_map"
-    if cfg.addnoise:
-        output_filename += "w-noise"
-    output_filename += ".fits"
-    output_filename = Path(output_filename).expanduser()
-
-    assert check_output_exists(output_filename, overwrite=cfg.overwrite)
-
+def print_stack_settings(rv_bin, z_bin, delta_bin, voidtype, nvoids):
     # === program arguments
     print(f" {' Settings ':=^60}")
     print(" Lens cat " + f"{': ':.>10}{cfg.lensname}")
@@ -675,34 +433,14 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
 
     # === lens arguments
     print(f" {' Void sample ':=^60}")
-    print(" Radii " + f"{': ':.>13}[{rv_min:.2f}, {rv_max:.2f}) Mpc/h")
-    print(" Redshift " + f"{': ':.>10}[{z_min:.2f}, {z_max:.2f})")
-    print(" Type " + f"{': ':.>14}[{delta_min},{delta_max}) => {voidtype}")
+    print(" Radii " + f"{': ':.>13}[{rv_bin[0]:.2f}, {rv_bin[1]:.2f}) Mpc/h")
+    print(" Redshift " + f"{': ':.>10}[{z_bin[0]:.2f}, {z_bin[1]:.2f})")
+    print(" Type " + f"{': ':.>14}[{delta_bin[0]},{delta_bin[1]}) => {voidtype}")
     print(" # of voids " + f"{': ':.>12}{nvoids}\n", flush=True)
 
-    if cfg.source_mode == "map":
-        profile_func = partial_profile_map
-        # before the pool forks: the workers share the collapsed maps
-        collapse_slices(z_min)
-        print(
-            f" Sources {': ':.>11}z >= {ZSRC_MIN:.2f} ({cfg.weighting} weights)\n",
-            flush=True,
-        )
-    else:
-        profile_func = partial_profile
 
-    # random voids: same (Rv, z) as the voids of this stack, uniform on the footprint
-    lensrand = generate_randoms(
-        lenses,
-        cfg.rand_factor,
-        stack_rng(z_min, z_max, rv_min, rv_max, delta_min, delta_max),
-        in_footprint,
-    )
-    nrands = lensrand.shape[1]
-    print(
-        f" Randoms {': ':.>11}{nrands} (x{cfg.rand_factor:g}, seed {cfg.rand_seed})\n",
-        flush=True,
-    )
+def run_pool(profile_func, lenses, lensrand):
+    """Per-void sums (see `partial_profile_map`) of the voids and of the random voids"""
 
     def lens_input(voids):
         cols = [cfg.lcols[k] for k in ("rv", "ra", "dec", "z")]
@@ -721,97 +459,97 @@ def stacking(rv_min, rv_max, z_min, z_max, delta_min, delta_max, gravity):
         resmap = run(pool, lenses)
         print("\n >> Calculating profiles for random voids...", flush=True)
         randmap = run(pool, lensrand)
+    return resmap, randmap
+
+
+def stacking(rv_min, rv_max, z_min, z_max, voidtype, gravity):
+
+    delta_min, delta_max = VOIDTYPE_DELTA[voidtype]
+    rv_bin, z_bin, delta_bin = (rv_min, rv_max), (z_min, z_max), (delta_min, delta_max)
+
+    output_filename = output_path(cfg, gravity, rv_bin, z_bin, voidtype)
+    check_output_exists(output_filename, overwrite=cfg.overwrite)
+
+    lenses = read_lens_catalog(
+        filename=cfg.lensname,
+        cat="sparkling",
+        Rv_min=rv_min,
+        Rv_max=rv_max,
+        z_min=z_min,
+        z_max=z_max,
+        delta_min=delta_min,
+        delta_max=delta_max,
+        flag=cfg.flag,
+        has_id=False,
+        columns=cfg.lcols,
+    )
+    nvoids = lenses.shape[1]
+
+    print_stack_settings(rv_bin, z_bin, delta_bin, voidtype, nvoids)
+
+    if cfg.source_mode == "map":
+        profile_func = partial_profile_map
+        # before the pool forks: the workers share the collapsed maps
+        collapse_slices(z_min)
+        print(
+            f" Sources {': ':.>11}z >= {ZSRC_MIN:.2f} ({cfg.weighting} weights)\n",
+            flush=True,
+        )
+    else:
+        profile_func = partial_profile
+
+    # random voids: same (Rv, z) as the voids of this stack, uniform on the footprint
+    lensrand = generate_randoms(
+        lenses,
+        cfg.rand_factor,
+        stack_rng(cfg.rand_seed, z_min, z_max, rv_min, rv_max, delta_min, delta_max),
+        in_footprint,
+        cfg.lcols["ra"],
+        cfg.lcols["dec"],
+    )
+    nrands = lensrand.shape[1]
+    print(
+        f" Randoms {': ':.>11}{nrands} (x{cfg.rand_factor:g}, seed {cfg.rand_seed})\n",
+        flush=True,
+    )
+
+    resmap, randmap = run_pool(profile_func, lenses, lensrand)
 
     print("\n >> Pool ended, stacking...", flush=True)
 
-    # calculate jackknife regions: voids and randoms are left out together
-    ra_sample, dec_sample = jackknife_sample()
-    kidx, km = get_jackknife_kmeans(
-        ra_sample=ra_sample,
-        dec_sample=dec_sample,
-        ra_cl=lenses[cfg.lcols["ra"]],
-        dec_cl=lenses[cfg.lcols["dec"]],
-        nlenses=nvoids,
-        NJK=cfg.NJK,
-    )
-    kidx_rand = km.find_nearest(
-        np.column_stack([lensrand[cfg.lcols["ra"]], lensrand[cfg.lcols["dec"]]])
+    # voids and randoms are left out together by region
+    kidx = assign_regions(REGIONS, lenses[cfg.lcols["ra"]], lenses[cfg.lcols["dec"]])
+    kidx_rand = assign_regions(
+        REGIONS, lensrand[cfg.lcols["ra"]], lensrand[cfg.lcols["dec"]]
     )
 
     profiles, N_inbin, N_inbin_rand = reduce_profiles(
         resmap, randmap, kidx, kidx_rand, cfg.NJK
     )
 
-    extradata = lens_summary(lenses)
-
-    # return Sigma, DSigma_t, DSigma_x, extradata
-    # =======================
-
-    # ==== Saving
-    head = fits.Header()
-    head.update(
-        {
-            "nvoids": extradata["nvoids"],
-            "lenscat": cfg.lensname,
-            "sourcat": cfg.sourcename,
-            "Rv_min": rv_min,
-            "Rv_max": rv_max,
-            "Rv_mean": extradata["Rv_mean"],
-            "Rv_med": extradata["Rv_median"],
-            "z_min": z_min,
-            "z_max": z_max,
-            "z_mean": extradata["z_mean"],
-            "z_med": extradata["z_median"],
-            "voidtype": voidtype,
-            "deltamin": delta_min,
-            "deltamax": delta_max,
-            "deltamea": extradata["delta_mean"],
-            "deltamed": extradata["delta_median"],
-            "RIN": cfg.RIN,
-            "ROUT": cfg.ROUT,
-            "NBINS": cfg.NBINS,
-            "NJK": cfg.NJK,
-            "binning": cfg.binning,
-            "srcmode": cfg.source_mode,
-            "nrand": nrands,
-            "randfac": cfg.rand_factor,
-            "randseed": cfg.rand_seed,
-            "randsub": True,
-            "HISTORY": f"{asctime()}",
-        }
-    )
+    extra = None
     if cfg.source_mode == "map":
-        head.update(
-            {
-                "nside": SOURCE["nside"],
-                "order": SOURCE["order"],
-                "weight": cfg.weighting,
-                "dzbuffer": cfg.dz_buffer,
-                "zsrcmin": ZSRC_MIN,
-                "chiref": SOURCE["chiref"],
-            }
-        )
+        extra = {
+            "nside": SOURCE["nside"],
+            "order": SOURCE["order"],
+            "weight": cfg.weighting,
+            "dzbuffer": cfg.dz_buffer,
+            "zsrcmin": ZSRC_MIN,
+            "chiref": SOURCE["chiref"],
+        }
+    head = make_header(cfg, lenses, rv_bin, z_bin, delta_bin, voidtype, nrands, extra)
 
-    # Sigma, DSigma_t, DSigma_x: voids minus randoms; *_raw: voids; *_rand: randoms
-    table = Table({"R": bin_centres()})
-    for suffix in ("", "_raw", "_rand"):
-        for name in PROFILE_NAMES:
-            table[name + suffix] = profiles[name + suffix][0]
-    table["N"] = N_inbin[0]
-    table["N_rand"] = N_inbin_rand[0]
-
-    hdul = fits.HDUList(
-        [
-            fits.PrimaryHDU(header=head),
-            fits.BinTableHDU(table, name="profiles"),
-            *profile_hdus(profiles),
-        ]
+    write_profiles(
+        output_filename,
+        head,
+        bin_centres(cfg.RIN, cfg.ROUT, cfg.NBINS, cfg.binning),
+        profiles,
+        N_inbin,
+        N_inbin_rand,
+        REGIONS.centers,
+        overwrite=cfg.overwrite,
     )
-
-    hdul.writeto(output_filename, overwrite=cfg.overwrite)
     print(f" >> File saved in: {output_filename}.\n", flush=True)
-
-    return 0
 
 
 def main():
@@ -824,7 +562,12 @@ def main():
     parser.add_argument("--ncores", type=int, action="store")
     parser.add_argument("--gravity", type=str, action="store", nargs="+", required=True)
     parser.add_argument(
-        "--use_threshold", type=str, action="store", choices=["08", "09"], default="09"
+        "--use_threshold",
+        type=str,
+        action="store",
+        choices=["08", "09"],
+        default=None,
+        help="void threshold of the file names; by default, the one of the config",
     )
     args = parser.parse_args()
 
@@ -846,6 +589,12 @@ def main():
                 )
             else:
                 print(" >> Source mode: CATALOG (galaxy catalog)")
+            if cfg.plot:
+                print(" WARNING: [run] plot is not implemented yet, ignoring it.")
+            if cfg.nback is not None:
+                print(
+                    " WARNING: [profile] nback is not implemented yet, using all the sources."
+                )
             total = (
                 len(cfg.zbins) * len(cfg.rvbins) * len(cfg.voidtype) * len(args.gravity)
             )
@@ -868,21 +617,11 @@ def main():
             )
 
         for (z_min, z_max), (rv_min, rv_max) in product(cfg.zbins, cfg.rvbins):
-            for void in cfg.voidtype:
+            for voidtype in cfg.voidtype:
                 i += 1
-                # reset in each loop
-                delta_min, delta_max = -1.0, 100.0
-
-                if void == "S":
-                    delta_min = 0.0
-                elif void == "R":
-                    delta_max = 0.0
 
                 print(f"\n [{i}/{total}]")
-                check = stacking(
-                    rv_min, rv_max, z_min, z_max, delta_min, delta_max, grav.upper()
-                )
-                assert check == 0, " >> Something went wrong. << "
+                stacking(rv_min, rv_max, z_min, z_max, voidtype, grav.upper())
 
     print(" End! ".center(15, "="))
     print(f" >> Took {(time() - tini) / 60.0:.3f} min <<\n\n")

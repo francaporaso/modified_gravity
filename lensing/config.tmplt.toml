@@ -11,8 +11,10 @@ rin = 0.1
 rout = 3.0
 nbins = 15
 njk = 100
+jk_seed = 0 # seed of the k-means of the jackknife regions: same seed, same regions
 nside = 64
 addnoise = false
+# nback = 10.0 # not implemented yet: density of sources [arcmin^-2] to degrade the galaxy catalog to
 binning = 'lin' # 'lin' or 'log'
 
 [lenses]
@@ -21,8 +23,6 @@ rv_edges = [10.0, 20.0]
 voidtype = ['mixed'] # ['mixed', 'S', 'R']
 # delta_edges = [-1.0, 10.0] # TODO: add the option to cut by delta values
 flag = 2.0
-# is_mice = false
-fullshape = true
 
 [lenses.gr]
 name = '~/cats/L768/voids_LCDM_09.dat'
@@ -31,12 +31,14 @@ name = '~/cats/L768/voids_LCDM_09.dat'
 name = '~/cats/L768/voids_fR_09.dat'
 
 [lenses.columns]
-# column numbers of the void files, which have no ID column (checked against the voids selected)
+# column numbers of the void files, which have no ID column. They are used to cut the voids
 rv = 0 # void radius
 ra = 1
 dec = 2
 z = 3 #redshift
+rho1 = 7 # integrated density contrast at the void centre
 delta = 8 # integrated density between 2-3 Rv, for void classification
+flag = 11 # proximity to the survey wall (see [lenses] flag)
 
 [randoms]
 # Random voids of the subtraction (Singh et al. 2017), generated in each stack, not read from a file.

@@ -28,3 +28,7 @@ tests.ipynb
 
 # ignorando plotting
 **/plotting.py
+
+# ignorando logs de slurm
+slurm-*.out
+logs/

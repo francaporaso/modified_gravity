@@ -4,30 +4,25 @@ the estimator (voids - randoms) and the jackknife covariances of the saved profi
 Run with: python -m pytest lensing/tests/test_randoms.py
 """
 
-import sys
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 
 import healpy as hp
 import numpy as np
 import pytest
 import toml
 
-# optional heavy deps not needed here (jackknife, parquet): stub them if missing
-for _mod in ("kmeans_radec", "pyarrow", "pyarrow.parquet"):
-    try:
-        __import__(_mod)
-    except ImportError:
-        sys.modules[_mod] = ModuleType(_mod)
-sys.modules["kmeans_radec"].__dict__.setdefault("kmeans_sample", None)
-if not hasattr(sys.modules["pyarrow"], "parquet"):
-    sys.modules["pyarrow"].parquet = sys.modules["pyarrow.parquet"]
-
 import lensing.stacking as st
+from lensing import io, randoms
 from lensing.funcs import cov_matrix
+from lensing.jackknife import reduce_profiles
 from lensing.settings import Config
 
 LCOLS = {"rv": 0, "ra": 1, "dec": 2, "z": 3, "delta": 8}
 everywhere = lambda ra, dec: np.ones(len(ra), dtype=bool)
+
+
+def gen(voids, factor, rng, footprint):
+    return randoms.generate_randoms(voids, factor, rng, footprint, LCOLS["ra"], LCOLS["dec"])
 
 
 def make_voids(n=300, seed=0):
@@ -50,7 +45,7 @@ def config():
 def test_randoms_have_the_rv_z_pairs_of_the_voids():
     voids = make_voids()
     # another seed than make_voids: with the same one the two share their uniform draws
-    rands = st.generate_randoms(voids, 10, np.random.default_rng(123), everywhere)
+    rands = gen(voids, 10, np.random.default_rng(123), everywhere)
     assert rands.shape == (12, 3000)
 
     # every random is a void with another position: (Rv, z, delta, ...) are those of a void
@@ -69,7 +64,7 @@ def test_randoms_have_the_rv_z_pairs_of_the_voids():
 
 def test_random_positions_are_uniform_on_the_sphere():
     voids = make_voids(n=500)
-    rands = st.generate_randoms(voids, 100, np.random.default_rng(1), everywhere)
+    rands = gen(voids, 100, np.random.default_rng(1), everywhere)
     n = rands.shape[1]
     ra, dec = rands[LCOLS["ra"]], rands[LCOLS["dec"]]
     assert ra.min() >= 0 and ra.max() < 360 and np.abs(dec).max() <= 90
@@ -84,7 +79,7 @@ def test_random_positions_are_uniform_on_the_sphere():
 def test_randoms_stay_on_the_footprint():
     voids = make_voids()
     cap = lambda ra, dec: (dec > 30.0) & (ra < 90.0)
-    rands = st.generate_randoms(voids, 10, np.random.default_rng(0), cap)
+    rands = gen(voids, 10, np.random.default_rng(0), cap)
     assert rands.shape[1] == 3000  # redrawn, not dropped
     assert np.all(cap(rands[LCOLS["ra"]], rands[LCOLS["dec"]]))
     # still uniform inside the cap
@@ -92,26 +87,25 @@ def test_randoms_stay_on_the_footprint():
     assert sin_dec.mean() == pytest.approx(0.5 * (0.5 + 1.0), abs=0.02)
 
     with pytest.raises(RuntimeError, match="outside the source footprint"):
-        st.generate_randoms(voids, 1, np.random.default_rng(0), lambda ra, dec: dec > 89.9999999)
+        gen(voids, 1, np.random.default_rng(0), lambda ra, dec: dec > 89.9999999)
     with pytest.raises(ValueError, match="No voids"):
-        st.generate_randoms(voids[:, :0], 10, np.random.default_rng(0), everywhere)
+        gen(voids[:, :0], 10, np.random.default_rng(0), everywhere)
 
 
 def test_randoms_are_reproducible_and_seed_dependent():
     voids = make_voids()
     args = (z0, z1, r0, r1, d0, d1) = (0.1, 0.2, 10.0, 20.0, -1.0, 100.0)
-    a = st.generate_randoms(voids, 5, st.stack_rng(*args), everywhere)
-    b = st.generate_randoms(voids, 5, st.stack_rng(*args), everywhere)
+    a = gen(voids, 5, randoms.stack_rng(42, *args), everywhere)
+    b = gen(voids, 5, randoms.stack_rng(42, *args), everywhere)
     np.testing.assert_array_equal(a, b)
 
     # another void bin or void type: another stream. The type has delta_min = -1 (negative)
-    c = st.generate_randoms(voids, 5, st.stack_rng(z0, z1, r0, r1, -1.0, 0.0), everywhere)
-    d = st.generate_randoms(voids, 5, st.stack_rng(z0, z1, 20.0, 30.0, d0, d1), everywhere)
+    c = gen(voids, 5, randoms.stack_rng(42, z0, z1, r0, r1, -1.0, 0.0), everywhere)
+    d = gen(voids, 5, randoms.stack_rng(42, z0, z1, 20.0, 30.0, d0, d1), everywhere)
     assert not np.array_equal(a[LCOLS["ra"]], c[LCOLS["ra"]])
     assert not np.array_equal(a[LCOLS["ra"]], d[LCOLS["ra"]])
 
-    st.cfg.rand_seed = 43
-    e = st.generate_randoms(voids, 5, st.stack_rng(*args), everywhere)
+    e = gen(voids, 5, randoms.stack_rng(43, *args), everywhere)
     assert not np.array_equal(a[LCOLS["ra"]], e[LCOLS["ra"]])
 
 
@@ -141,7 +135,7 @@ def test_footprint_of_the_map_and_of_the_catalog():
 NBINS, NJK = 4, 6
 
 
-def fake_profiles(n, seed, regions, offsets, weights=True):
+def fake_profiles(n, seed, regions, offsets):
     """Per-void sums of a profile function: kappa, gamma_t, gamma_x, W, N. Each void is in
     a region; the kappa and gamma of every void have `offsets[region]` per unit weight,
     which is what a large-scale mode over the region does to voids and randoms alike."""
@@ -152,24 +146,22 @@ def fake_profiles(n, seed, regions, offsets, weights=True):
     kappa = shift + r.normal(0, 0.5, (n, NBINS)) * np.sqrt(w)
     gt = 0.3 * w + shift + r.normal(0, 0.5, (n, NBINS)) * np.sqrt(w)
     gx = r.normal(0, 0.5, (n, NBINS)) * np.sqrt(w)
-    if not weights:
-        return [(kappa[i], gt[i], gx[i], nsrc[i]) for i in range(n)]
     return [(kappa[i], gt[i], gx[i], w[i], nsrc[i]) for i in range(n)]
 
 
-def setup_fake(nvoids=400, factor=10, offset_scale=0.0, weights=True):
+def setup_fake(nvoids=400, factor=10, offset_scale=0.0):
     r = np.random.default_rng(5)
     kidx = r.integers(0, NJK, nvoids)
     kidx_rand = r.integers(0, NJK, factor * nvoids)
     offsets = r.normal(0, offset_scale, NJK)
-    resmap = fake_profiles(nvoids, 1, kidx, offsets, weights)
-    randmap = fake_profiles(factor * nvoids, 2, kidx_rand, offsets, weights)
+    resmap = fake_profiles(nvoids, 1, kidx, offsets)
+    randmap = fake_profiles(factor * nvoids, 2, kidx_rand, offsets)
     return resmap, randmap, kidx, kidx_rand
 
 
 def test_estimator_is_voids_minus_randoms_in_every_jackknife_sample():
     resmap, randmap, kidx, kidx_rand = setup_fake()
-    prof, n, n_rand = st.reduce_profiles(resmap, randmap, kidx, kidx_rand, NJK)
+    prof, n, n_rand = reduce_profiles(resmap, randmap, kidx, kidx_rand, NJK)
 
     kappa, gt, gx, w, nn = (np.vstack(x) for x in zip(*resmap))
     kappa_r, gt_r, gx_r, w_r, nn_r = (np.vstack(x) for x in zip(*randmap))
@@ -187,25 +179,16 @@ def test_estimator_is_voids_minus_randoms_in_every_jackknife_sample():
     assert prof["Sigma"].shape == (NJK + 1, NBINS)
 
 
-def test_unit_weight_profile_functions_are_reduced_too():
-    # partial_profile (catalog mode) returns 4 values: W is the number of sources
-    resmap, randmap, kidx, kidx_rand = setup_fake(weights=False)
-    prof, n, n_rand = st.reduce_profiles(resmap, randmap, kidx, kidx_rand, NJK)
-    kappa, n_src = np.vstack([r[0] for r in resmap]), np.vstack([r[3] for r in resmap])
-    np.testing.assert_allclose(prof["Sigma_raw"][0], kappa.sum(0) / n_src.sum(0))
-    np.testing.assert_allclose(n[0], n_src.sum(0))
-
-
 def test_a_constant_kappa_shifts_the_raw_profile_not_the_subtracted_one():
     # a constant kappa0 in every source: it's in the voids and in the randoms alike
     resmap, randmap, kidx, kidx_rand = setup_fake()
-    base, _, _ = st.reduce_profiles(resmap, randmap, kidx, kidx_rand, NJK)
+    base, _, _ = reduce_profiles(resmap, randmap, kidx, kidx_rand, NJK)
     kappa0 = 0.03
 
     def shifted(res):
         return [(k + kappa0 * w, gt, gx, w, n) for k, gt, gx, w, n in res]
 
-    prof, _, _ = st.reduce_profiles(shifted(resmap), shifted(randmap), kidx, kidx_rand, NJK)
+    prof, _, _ = reduce_profiles(shifted(resmap), shifted(randmap), kidx, kidx_rand, NJK)
     np.testing.assert_allclose(prof["Sigma"], base["Sigma"], atol=1e-12)
     np.testing.assert_allclose(prof["Sigma_raw"], base["Sigma_raw"] + kappa0, atol=1e-12)
     np.testing.assert_allclose(prof["Sigma_rand"], base["Sigma_rand"] + kappa0, atol=1e-12)
@@ -217,7 +200,7 @@ def test_region_offsets_common_to_voids_and_randoms_drop_out_of_the_covariance()
     # a large-scale mode per jackknife region (Singh et al. 2017; Davies et al. 2018): it is
     # in the voids and in the randoms of the region, so it only inflates the raw covariance
     resmap, randmap, kidx, kidx_rand = setup_fake(offset_scale=0.3)
-    prof, _, _ = st.reduce_profiles(resmap, randmap, kidx, kidx_rand, NJK)
+    prof, _, _ = reduce_profiles(resmap, randmap, kidx, kidx_rand, NJK)
     err = lambda x: np.sqrt(np.diag(cov_matrix(x[1:])))
     assert np.all(err(prof["Sigma_raw"]) > 5 * err(prof["Sigma"]))
     assert np.all(err(prof["DSigma_t_raw"]) > 5 * err(prof["DSigma_t"]))
@@ -229,8 +212,8 @@ def test_region_offsets_common_to_voids_and_randoms_drop_out_of_the_covariance()
 
 def test_each_covariance_is_that_of_its_own_estimator():
     resmap, randmap, kidx, kidx_rand = setup_fake(offset_scale=0.2)
-    prof, _, _ = st.reduce_profiles(resmap, randmap, kidx, kidx_rand, NJK)
-    hdus = {h.name: h.data for h in st.profile_hdus(prof)}
+    prof, _, _ = reduce_profiles(resmap, randmap, kidx, kidx_rand, NJK)
+    hdus = {h.name: h.data for h in io.profile_hdus(prof)}
 
     names = [n + s for s in ("", "_raw", "_rand") for n in ("Sigma", "DSigma_t", "DSigma_x")]
     assert set(hdus) == {f"{p}_{n}".upper() for p in ("cov", "jack") for n in names}
