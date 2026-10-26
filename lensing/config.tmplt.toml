@@ -47,6 +47,9 @@ factor = 10 # number of randoms per void
 seed = 42
 
 [sources]
+# shear convention: (e1, e2) = (s1 * gamma1, s2 * gamma2) are rotated to tangential/cross.
+# [-1, -1] for CosmoHub downloads of plain gamma1, gamma2 (L768); flip if a query flips them.
+gamma_sign = [-1, -1]
 
 [sources.gr]
 name = '~/cats/L768/l768_gr_z020-130_wpix64_23087.fits'

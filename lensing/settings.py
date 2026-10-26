@@ -1,6 +1,8 @@
 import toml
 import re
 
+from lensing.geometry import GAMMA_SIGN
+
 # void types: bounds [delta_min, delta_max) of the integrated density contrast
 VOIDTYPE_DELTA = {'mixed': (-1.0, 100.0), 'S': (0.0, 100.0), 'R': (-1.0, 0.0)}
 
@@ -28,6 +30,11 @@ class Config:
         mapcfg = cfg['sources'].get('map', {})
         # sources of a void bin [z_low, z_high) are the cube slices from the first edge >= z_high + dz_buffer
         self.dz_buffer = mapcfg.get('dz_buffer', 0.1)
+        # shear convention of the sources: (e1, e2) = (s1 gamma1, s2 gamma2)
+        sign = cfg['sources'].get('gamma_sign', list(GAMMA_SIGN))
+        if not isinstance(sign, list) or len(sign) != 2 or any(s not in (-1, 1) for s in sign):
+            raise ValueError(f"[sources] gamma_sign must be two values of +1 or -1, got {sign}")
+        self.gamma_sign = tuple(float(s) for s in sign)
         # weight of each source in the map estimator. Only 'invsc' (Sigma_crit^-1) for now
         self.weighting = mapcfg.get('weighting', 'invsc')
         if self.weighting != 'invsc':

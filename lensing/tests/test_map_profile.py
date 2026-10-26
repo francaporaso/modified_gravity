@@ -110,6 +110,7 @@ def setup(gal, cube):
             "kappa": "kappa",
         },
         dz_buffer=0.1,
+        gamma_sign=geometry.GAMMA_SIGN,
         weighting="invsc",
         zbins=[(Z_LOW, Z_HIGH)],
     )
@@ -178,6 +179,26 @@ def test_gamma_convention_in_all_profile_functions():
     }.items():
         assert np.all(t_ > 0), name
         assert np.abs(x_).max() < 0.05 * np.abs(t_).max(), name
+
+
+def test_profile_functions_use_the_sign_of_the_config():
+    # flipping [sources] gamma_sign flips gamma_t and gamma_x in all three functions
+    gal = make_galaxies(on_centres=False)
+    cube = make_cube(gal)
+    gal = setup(gal, cube)
+    inp = (RV0, RA0, DEC0, Z0)
+    res = {}
+    for sign in ((-1.0, -1.0), (1.0, 1.0)):
+        st.cfg.gamma_sign = sign
+        st.SOURCE = cube
+        m = st.partial_profile_map(inp)
+        st.SOURCE = gal
+        res[sign] = (m, st.partial_profile_weighted(inp), st.partial_profile(inp))
+    for a, b in zip(res[(-1.0, -1.0)], res[(1.0, 1.0)]):
+        assert np.all(a[1] > 0)
+        np.testing.assert_allclose(b[1], -a[1])
+        np.testing.assert_allclose(b[2], -a[2])
+        np.testing.assert_array_equal(b[0], a[0])  # kappa doesn't depend on it
 
 
 def test_catalog_selection_reads_every_source_in_the_disc():

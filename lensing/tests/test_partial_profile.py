@@ -160,6 +160,7 @@ def setup(catalog, addnoise):
         NSIDE=NSIDE,
         binning="lin",
         addnoise=addnoise,
+        gamma_sign=(-1.0, -1.0),
         scols={
             "ra": "ra",
             "dec": "dec",

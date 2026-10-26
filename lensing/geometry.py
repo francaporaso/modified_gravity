@@ -3,9 +3,10 @@
 import numpy as np
 from astropy.coordinates import angular_separation, position_angle
 
-# Signs applied to (gamma1, gamma2) of the sources to get the (e1, e2) that are rotated to
-# the tangential/cross components. L768 convention: both negative, as in the old
-# voidsmodgrav.py. The MICE convention (+1, -1) gives no tangential signal in L768.
+# Default signs applied to (gamma1, gamma2) of the sources to get the (e1, e2) that are
+# rotated to the tangential/cross components (`[sources] gamma_sign` of the config).
+# L768 convention: both negative, as in the old voidsmodgrav.py. The MICE convention
+# (+1, -1) gives no tangential signal in L768.
 GAMMA_SIGN: tuple = (-1.0, -1.0)
 
 
@@ -29,11 +30,12 @@ def void_offsets(ra, dec, ra0, dec0):
     return eq2p2(np.deg2rad(ra), np.deg2rad(dec), np.deg2rad(ra0), np.deg2rad(dec0))
 
 
-def rotate_shear(gamma1, gamma2, theta):
+def rotate_shear(gamma1, gamma2, theta, sign=GAMMA_SIGN):
     """Tangential and cross components, from (gamma1, gamma2) and the position angle
-    `theta` of the sources around the void. The only place where `GAMMA_SIGN` is applied."""
-    e1 = GAMMA_SIGN[0] * gamma1
-    e2 = GAMMA_SIGN[1] * gamma2
+    `theta` of the sources around the void. The only place where the shear sign
+    convention `sign` = (s1, s2), (e1, e2) = (s1 gamma1, s2 gamma2), is applied."""
+    e1 = sign[0] * gamma1
+    e2 = sign[1] * gamma2
     cos2t = np.cos(2.0 * theta)
     sin2t = np.sin(2.0 * theta)
     return -(e1 * cos2t + e2 * sin2t), -e1 * sin2t + e2 * cos2t

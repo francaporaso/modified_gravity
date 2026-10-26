@@ -105,7 +105,7 @@ def fake_cfg(**kw):
     cfg = SimpleNamespace(
         voidthr="09", sample="t", NBINS=NB, binning="lin", source_mode="map", addnoise=False,
         lensname="v.dat", sourcename="cube.fits", RIN=0.1, ROUT=3.0, NJK=NJK, jk_seed=0,
-        rand_factor=10, rand_seed=42, lcols=LCOLS,
+        rand_factor=10, rand_seed=42, lcols=LCOLS, gamma_sign=(-1.0, -1.0),
     )
     cfg.__dict__.update(kw)
     return cfg
@@ -154,6 +154,7 @@ def test_results_file_layout(tmp_path):
         hd = h[0].header
         assert hd["NRAND"] == 500 and hd["RANDFAC"] == 10 and hd["RANDSEED"] == 42
         assert hd["RANDSUB"] is True and hd["JKSEED"] == 0 and hd["NSIDE"] == 128
+        assert hd["GSIGN1"] == -1.0 and hd["GSIGN2"] == -1.0
         assert hd["NVOIDS"] == 50 and hd["VOIDTYPE"] == "mixed"
         reg = h["jk_centres"].data
         np.testing.assert_allclose(reg["ra"], jk_centres[:, 0])

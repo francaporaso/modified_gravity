@@ -39,14 +39,17 @@ def test_rotate_shear_is_tangential_for_the_l768_convention():
     np.testing.assert_allclose(ex, 0.0, atol=1e-15)
 
 
-def test_gamma_sign_is_applied_in_one_place(monkeypatch):
+def test_gamma_sign_is_the_argument():
     theta = np.array([0.3, 1.1])
     g1, g2 = np.array([0.02, -0.01]), np.array([0.01, 0.03])
-    et, ex = geometry.rotate_shear(g1, g2, theta)
-    monkeypatch.setattr(geometry, "GAMMA_SIGN", (1.0, 1.0))
-    et_flipped, ex_flipped = geometry.rotate_shear(g1, g2, theta)
+    et, ex = geometry.rotate_shear(g1, g2, theta)  # default: the L768 convention
+    np.testing.assert_array_equal((et, ex), geometry.rotate_shear(g1, g2, theta, (-1.0, -1.0)))
+    et_flipped, ex_flipped = geometry.rotate_shear(g1, g2, theta, (1.0, 1.0))
     np.testing.assert_allclose(et_flipped, -et)
     np.testing.assert_allclose(ex_flipped, -ex)
+    # MICE convention: another tangential component, not just a sign
+    et_mice, _ = geometry.rotate_shear(g1, g2, theta, (1.0, -1.0))
+    assert not np.allclose(np.abs(et_mice), np.abs(et))
 
 
 @pytest.mark.parametrize("binning", ["lin", "log"])

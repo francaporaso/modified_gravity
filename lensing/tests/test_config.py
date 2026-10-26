@@ -100,3 +100,20 @@ def test_cosmology_must_be_flat():
     cosmology.make_cosmo(0.7, 0.3, 0.05)  # Ode0 not given: nothing to check
     with pytest.raises(ValueError, match="flat"):
         cosmology.make_cosmo(1.0, 0.3089, 0.0486, 0.5)
+
+
+def test_gamma_sign_from_the_config(tmp_path):
+    assert load(tmp_path).gamma_sign == (-1.0, -1.0)
+
+    def drop(c):
+        del c["sources"]["gamma_sign"]
+
+    assert load(tmp_path, drop).gamma_sign == (-1.0, -1.0)  # old configs: L768 default
+
+    def edit(sign):
+        return lambda c: c["sources"].update(gamma_sign=sign)
+
+    assert load(tmp_path, edit([1, -1])).gamma_sign == (1.0, -1.0)
+    for bad in ([1], [1, 0], [2, -1], -1):
+        with pytest.raises(ValueError, match="gamma_sign"):
+            load(tmp_path, edit(bad))

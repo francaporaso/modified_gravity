@@ -304,6 +304,8 @@ def make_header(cfg, lenses, rv_bin, z_bin, delta_bin, voidtype, nrand, extra=No
             "NJK": cfg.NJK,
             "JKSEED": cfg.jk_seed,
             "binning": cfg.binning,
+            "gsign1": cfg.gamma_sign[0],
+            "gsign2": cfg.gamma_sign[1],
             "srcmode": cfg.source_mode,
             "nrand": nrand,
             "randfac": cfg.rand_factor,

@@ -273,7 +273,7 @@ def radial_sums(ra, dec, ra0, dec0, deg, Rv0, g1, g2, kappa, weight=None, count=
     number of sources (`count` of each pixel; one per row if None).
     """
     rads, theta = void_offsets(ra, dec, ra0, dec0)
-    et, ex = rotate_shear(g1, g2, theta)
+    et, ex = rotate_shear(g1, g2, theta, cfg.gamma_sign)
     dig = radial_bin(rads, deg, Rv0, EDGES)
 
     f = 1.0 / (Rv0 * cosmo.h)
@@ -587,6 +587,8 @@ def main():
                 )
             else:
                 print(" >> Source mode: CATALOG (galaxy catalog)")
+            s1, s2 = cfg.gamma_sign
+            print(f" >> Shear convention: (e1, e2) = ({s1:+g} gamma1, {s2:+g} gamma2)")
             if cfg.plot:
                 print(" WARNING: [run] plot is not implemented yet, ignoring it.")
             if cfg.nback is not None:
