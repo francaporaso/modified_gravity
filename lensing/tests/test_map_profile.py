@@ -116,9 +116,9 @@ def setup(gal, cube):
     st.cosmo = COSMO
     st.set_binning()
 
-    # map: sources behind the void bin
+    # map: sources behind the void bin (z >= Z_HIGH + 0.1)
     st.SOURCE = cube
-    st.collapse_slices(Z_LOW)
+    st.collapse_slices(Z_HIGH)
 
     # catalog: pixel index of the galaxies
     gal["pix"] = hp.ang2pix(NSIDE_CAT, gal["ra"], gal["dec"], lonlat=True)
@@ -220,7 +220,7 @@ def test_ring_at_one_comoving_rv_is_in_the_bin_of_r_over_rv_equal_one():
     theta = np.rad2deg(RV0 / (COSMO.comoving_distance(Z0).value))  # deg
     ra = RA0 + theta * np.cos(phi) / np.cos(np.deg2rad(DEC0))
     dec = DEC0 + theta * np.sin(phi)
-    z = rng.uniform(0.3, 1.0, n)
+    z = rng.uniform(0.4, 1.0, n)  # all behind the void bin
     gal = Table(
         {"ra": ra, "dec": dec, "z": z, "gamma1": np.full(n, 0.01),
          "gamma2": np.full(n, 0.01), "kappa": np.full(n, 0.01)}
@@ -312,28 +312,49 @@ def test_inverse_sigma_crit_from_moments():
     assert via_moments == pytest.approx(direct, rel=1e-8)
 
 
-def test_setup_checks():
+def test_setup_checks(capsys):
     gal = make_galaxies(on_centres=True)
     setup(gal, make_cube(gal))
 
-    # z_low + buffer sits on a slice edge: slice k starts at 0.2 + 0.1 k
-    for k, z_low in enumerate((0.1, 0.2, 0.3, 0.4, 0.5)):
-        assert st.collapse_slices(z_low) == k
+    # z_high + buffer on a slice edge: slice k starts at 0.2 + 0.1 k
+    for k, z_high in enumerate((0.1, 0.2, 0.3, 0.4, 0.5)):
+        assert st.collapse_slices(z_high) == k
     assert st.ZSRC_MIN == pytest.approx(0.6)
-
-    # not an edge, or no slice at all
-    for z_low in (0.15, 0.6, 0.0):
+    # not an edge: the next one, so the sources are never closer than the buffer
+    assert st.collapse_slices(0.25) == 2 and st.ZSRC_MIN == pytest.approx(0.4)
+    assert st.collapse_slices(0.0) == 0  # below the first edge: all the slices
+    # no slice at or above z_high + buffer
+    for z_high in (0.55, 0.6, 1.0):
         with pytest.raises(ValueError, match="slice"):
-            st.collapse_slices(z_low)
+            st.collapse_slices(z_high)
 
+    capsys.readouterr()
     st.cfg.zbins = [(0.1, 0.2), (0.4, 0.5)]
     st.check_map_zbins()
-    st.cfg.zbins = [(0.1, 0.3)]  # voids up to 0.3 are behind the 0.2-0.3 sources
-    with pytest.raises(ValueError, match="wider"):
-        st.check_map_zbins()
-    st.cfg.zbins = [(0.15, 0.2)]
+    out = capsys.readouterr().out
+    assert "sources z >= 0.30" in out and "sources z >= 0.60" in out and "✗" not in out
+    st.cfg.zbins = [(0.1, 0.25)]
+    st.check_map_zbins()
+    out = capsys.readouterr().out
+    assert "sources z >= 0.40" in out and "✗" in out and "WARNING" in out
+    st.cfg.zbins = [(0.4, 0.6)]
     with pytest.raises(ValueError, match="slice"):
         st.check_map_zbins()
+
+
+def test_wide_void_bin_takes_the_sources_behind_its_last_void(capsys):
+    # [0.1, 0.3) is wider than dz_buffer: its sources start at 0.3 + 0.1, not 0.1 + 0.1,
+    # so the voids at 0.2-0.3 have no sources in front of them
+    gal = make_galaxies(on_centres=True)
+    cube = make_cube(gal)
+    setup(gal, cube)
+    st.cfg.zbins = [(0.1, 0.3)]
+    st.check_map_zbins()
+    assert "sources z >= 0.40" in capsys.readouterr().out
+    assert st.collapse_slices(0.3) == 2 and st.ZSRC_MIN == pytest.approx(0.4)
+    np.testing.assert_array_equal(st.MAPS["nobj"], cube["nobj"][:, 2:].sum(axis=1))
+    # the farthest void of the bin is in front of all the sources by dz_buffer
+    assert st.ZSRC_MIN - 0.3 >= st.cfg.dz_buffer - 1e-9
 
 
 def test_empty_disc_in_the_map_is_an_error():

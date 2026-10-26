@@ -26,7 +26,7 @@ class Config:
                 raise ValueError(f"[sources.{gravity.lower()}] needs 'cube' in map mode")
             self.sourcename = self.cubename
         mapcfg = cfg['sources'].get('map', {})
-        # sources of a void bin [z_low, z_high) are the cube slices with zmin >= z_low + dz_buffer
+        # sources of a void bin [z_low, z_high) are the cube slices from the first edge >= z_high + dz_buffer
         self.dz_buffer = mapcfg.get('dz_buffer', 0.1)
         # weight of each source in the map estimator. Only 'invsc' (Sigma_crit^-1) for now
         self.weighting = mapcfg.get('weighting', 'invsc')

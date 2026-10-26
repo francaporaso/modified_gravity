@@ -89,37 +89,46 @@ def init_globals():
     REGIONS = fit_regions(*jackknife_sample(), cfg.NJK, cfg.jk_seed)
 
 
-def source_slice_start(z_low, zmin, buffer):
-    """Index of the first cube slice used by a void bin starting at `z_low`: the
-    slice with zmin == z_low + buffer. Raises if there is no such slice edge."""
-    target = z_low + buffer
-    k = int(np.argmin(np.abs(zmin - target)))
-    if abs(zmin[k] - target) > 1e-6:
+def source_slice_start(z_high, zmin, buffer):
+    """Index of the first cube slice used by a void bin ending at `z_high`: the first
+    slice with zmin >= z_high + buffer, so every void of the bin is at least `buffer` in
+    front of its sources, whatever the width of the bin. Raises if there is none."""
+    target = z_high + buffer
+    k = int(np.searchsorted(zmin, target - 1e-6))
+    if k == len(zmin):
         raise ValueError(
-            f"z_low + dz_buffer = {target:.4f} is not the lower edge of a cube slice "
+            f"z_high + dz_buffer = {target:.4f}: no cube slice starts at or above it "
             f"(edges: {np.round(zmin, 4).tolist()})."
         )
     return k
 
 
 def check_map_zbins():
-    """Stops if a void bin of the config can't be served by the cube slices."""
+    """Stops if a void bin of the config can't be served by the cube slices, and prints
+    the sources of each bin (✗ if they start above z_high + dz_buffer, at the next edge)."""
     for z_min, z_max in cfg.zbins:
-        source_slice_start(z_min, SOURCE["zmin"], cfg.dz_buffer)
-        if z_max - z_min > cfg.dz_buffer + 1e-9:
-            raise ValueError(
-                f"Void bin [{z_min}, {z_max}) is wider than dz_buffer={cfg.dz_buffer}: "
-                "its voids would be behind some of the selected sources."
+        k = source_slice_start(z_max, SOURCE["zmin"], cfg.dz_buffer)
+        zsrc = SOURCE["zmin"][k]
+        on_edge = abs(zsrc - (z_max + cfg.dz_buffer)) < 1e-6
+        print(
+            f" >> Void bin [{z_min:.2f}, {z_max:.2f}): sources z >= {zsrc:.2f} "
+            f"(z_high + dz_buffer = {z_max + cfg.dz_buffer:.2f})  {'✓' if on_edge else '✗'}",
+            flush=True,
+        )
+        if not on_edge:
+            print(
+                " WARNING: z_high + dz_buffer is not a slice edge; the sources start at the next one.",
+                flush=True,
             )
 
 
-def collapse_slices(z_low):
-    """Sum the cube slices behind the void bin starting at `z_low` into flat maps
+def collapse_slices(z_high):
+    """Sum the cube slices behind the void bin ending at `z_high` into flat maps
     (npix,) in the global `MAPS`, and set `ZSRC_MIN`. Done once per stack, before the
     pool forks, so the workers share the maps."""
     global MAPS, ZSRC_MIN
 
-    k0 = source_slice_start(z_low, SOURCE["zmin"], cfg.dz_buffer)
+    k0 = source_slice_start(z_high, SOURCE["zmin"], cfg.dz_buffer)
     MAPS = {"nobj": np.asarray(SOURCE["nobj"][:, k0:]).sum(axis=1, dtype=np.int64)}
     for name in ("gamma1", "gamma2", "kappa", "invchi"):
         MAPS[name] = np.asarray(SOURCE[name][:, k0:]).sum(axis=1, dtype=np.float64)
@@ -479,7 +488,7 @@ def stacking(rv_min, rv_max, z_min, z_max, voidtype, gravity):
     if cfg.source_mode == "map":
         profile_func = partial_profile_map
         # before the pool forks: the workers share the collapsed maps
-        collapse_slices(z_min)
+        collapse_slices(z_max)
         print(
             f" Sources {': ':.>11}z >= {ZSRC_MIN:.2f} ({cfg.weighting} weights)\n",
             flush=True,

@@ -60,8 +60,9 @@ cube = '~/cats/L768/lensing-cube_mg.fits' # map mode
 
 [sources.map]
 # only used if source_mode = 'map'
-# The sources of a void bin [z_low, z_high) are the cube slices with zmin = z_low + dz_buffer
-# and above. z_low + dz_buffer must be a slice edge and z_high - z_low <= dz_buffer.
+# The sources of a void bin [z_low, z_high) are the cube slices from the first edge at or
+# above z_high + dz_buffer (if it isn't an edge, the next one: fewer sources), so every void
+# is at least dz_buffer in front of its sources. Any bin width works.
 dz_buffer = 0.1
 weighting = 'invsc' # sources weighted by 1/sigma_crit (the only one for now)
 # order = 10 # optional: degrade the cube to this HEALPix order when loading it
