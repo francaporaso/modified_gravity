@@ -36,7 +36,6 @@ from lensing.io import (
 from lensing.jackknife import assign_regions, fit_regions, reduce_profiles
 from lensing.randoms import generate_randoms, stack_rng
 from lensing.settings import VOIDTYPE_DELTA, Config
-from shearmap.table2cube import degrade_cube
 
 ctx = get_context("fork")
 

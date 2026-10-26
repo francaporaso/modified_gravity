@@ -365,17 +365,17 @@ def test_load_map_source_and_degrade(tmp_path):
     path = tmp_path / "cube.fits"
     t2c.save_cube(cube, path)
 
-    src = st.load_map_source(path)
+    src = io.read_sources_map(path)
     assert src["order"] == ORDER and src["nest"]
     assert src["nobj"].shape == cube["nobj"].shape
 
-    low = st.load_map_source(path, order=ORDER - 2)
+    low = io.read_sources_map(path, order=ORDER - 2)
     assert low["order"] == ORDER - 2 and low["nside"] == NSIDE_MAP // 4
     np.testing.assert_array_equal(
         low["nobj"].sum(axis=0), cube["nobj"].sum(axis=0)
     )
     with pytest.raises(ValueError, match="higher"):
-        st.load_map_source(path, order=ORDER + 1)
+        io.read_sources_map(path, order=ORDER + 1)
     src["hdul"].close()
 
 

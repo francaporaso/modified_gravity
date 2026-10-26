@@ -142,7 +142,7 @@ def read_sources_map(filename, order=None):
     the file is left open on purpose.
 
     If `order` is lower than the native one, the cube is degraded to it by
-    summing the child pixels (exact; loads the cube in memory)."
+    summing the child pixels (exact; loads the cube in memory).
 
     Args:
         filename (str or Path): Name of the cube file.
@@ -153,7 +153,7 @@ def read_sources_map(filename, order=None):
             `chiref`, `optweight`, `zmin`/`zmax` (per slice), `nobj`, and the
             sums `gamma1`, `gamma2`, `kappa`, `invchi` (+ optional ones).
     """
-    from shearmap.table2cube import load_cube
+    from shearmap.table2cube import degrade_cube, load_cube
 
     cube = load_cube(Path(filename).expanduser())
     if order is not None and order != cube["order"]:
@@ -195,7 +195,7 @@ def read_lens(filename, cat="sparkling", **kwargs):
         ValueError: If `cat` is not found in `LENS_READERS`.
 
     Example:
-        >>> catalog = read_lens_catalog("data/lenses.dat", cat="sparkling", Rv_min=10.0, ...)
+        >>> catalog = read_lens("data/lenses.dat", cat="sparkling", Rv_min=10.0, ...)
     """
 
     filepath = Path(filename).expanduser()
@@ -222,7 +222,7 @@ def read_sources(filename, cat="fits", **kwargs):
         ValueError: If `cat` is not found in `SOURCES_READERS`.
 
     Example:
-        >>> catalog = read_sources_catalog("data/sources.fits", cat="fits")
+        >>> catalog = read_sources("data/sources.fits", cat="fits")
     """
     filepath = Path(filename).expanduser()
     if cat not in SOURCES_READERS:
