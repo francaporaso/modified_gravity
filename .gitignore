@@ -10,6 +10,7 @@
 *.fits
 *.out
 *.toml
+*.slurm
 !config.tmplt.toml
 
 # ignorando test.ipynb
