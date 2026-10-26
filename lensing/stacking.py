@@ -29,8 +29,8 @@ from lensing.io import (
     check_output_exists,
     make_header,
     output_path,
-    read_lens_catalog,
-    read_sources_catalog,
+    read_lens,
+    read_sources,
     write_profiles,
 )
 from lensing.jackknife import assign_regions, fit_regions, reduce_profiles
@@ -79,33 +79,15 @@ def init_globals():
             raise ValueError(
                 "addnoise is not available in map mode (the cube has no eps sums)."
             )
-        SOURCE = load_map_source(cfg.cubename, cfg.map_order)
+        SOURCE = read_sources(cfg.cubename, cat="map", order=cfg.map_order)
         check_map_zbins()
         check_map_resolution()
     else:
-        SOURCE = read_sources_catalog(cfg.sourcename, cat="fits")
+        SOURCE = read_sources(cfg.sourcename, cat="fits")
 
     # the same regions for all the stacks of this source
     print(f" >> Fitting {cfg.NJK} jackknife regions (seed {cfg.jk_seed})", flush=True)
     REGIONS = fit_regions(*jackknife_sample(), cfg.NJK, cfg.jk_seed)
-
-
-def load_map_source(path, order=None):
-    """Read the lensing cube. If `order` is lower than the native one, the cube is
-    degraded to it by summing the child pixels (exact; loads the cube in memory)."""
-    cube = read_sources_catalog(path, cat="map")
-    if order is not None and order != cube["order"]:
-        if order > cube["order"]:
-            raise ValueError(
-                f"[sources.map] order={order} is higher than the cube's ({cube['order']})."
-            )
-        print(
-            f" >> Degrading the cube from order {cube['order']} to {order}", flush=True
-        )
-        cube = degrade_cube(cube, order)
-    if not cube["nest"]:
-        raise ValueError("The lensing cube must be in NESTED ordering.")
-    return cube
 
 
 def source_slice_start(z_low, zmin, buffer):
@@ -257,7 +239,9 @@ def query_sources(psi, ra0, dec0, zmin, strict=True):
     z = SOURCE[cfg.scols["redshift"]].data[idx]
     idx = idx[z > zmin] if strict else idx[z >= zmin]
     if len(idx) == 0:
-        raise empty_disc(f"sources with z {'>' if strict else '>='} {zmin:.3f}", psi, ra0, dec0)
+        raise empty_disc(
+            f"sources with z {'>' if strict else '>='} {zmin:.3f}", psi, ra0, dec0
+        )
     return idx
 
 
@@ -288,7 +272,13 @@ def radial_sums(ra, dec, ra0, dec0, deg, Rv0, g1, g2, kappa, weight=None, count=
     nb = cfg.NBINS
     n = binsum(dig, count, nb)
     w = n if weight is None else binsum(dig, weight, nb)
-    return binsum(dig, f * kappa, nb), binsum(dig, f * et, nb), binsum(dig, f * ex, nb), w, n
+    return (
+        binsum(dig, f * kappa, nb),
+        binsum(dig, f * et, nb),
+        binsum(dig, f * ex, nb),
+        w,
+        n,
+    )
 
 
 def partial_profile(inp):
@@ -470,7 +460,7 @@ def stacking(rv_min, rv_max, z_min, z_max, voidtype, gravity):
     output_filename = output_path(cfg, gravity, rv_bin, z_bin, voidtype)
     check_output_exists(output_filename, overwrite=cfg.overwrite)
 
-    lenses = read_lens_catalog(
+    lenses = read_lens(
         filename=cfg.lensname,
         cat="sparkling",
         Rv_min=rv_min,

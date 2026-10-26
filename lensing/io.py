@@ -135,14 +135,18 @@ def read_sources_fits(filename, **kwargs):
     return sources
 
 
-def read_sources_map(filename):
+def read_sources_map(filename, order=None):
     """
     Reads a lensing cube built with `shearmap/table2cube.py`. The image
     arrays (shape (NPIX, NZ), NESTED) are memmapped, not loaded in memory, so
     the file is left open on purpose.
 
+    If `order` is lower than the native one, the cube is degraded to it by
+    summing the child pixels (exact; loads the cube in memory)."
+
     Args:
         filename (str or Path): Name of the cube file.
+        order (int): order of the healpix map
 
     Returns:
         dict: see `shearmap.table2cube.load_cube`. `order`, `nside`, `nest`,
@@ -151,7 +155,19 @@ def read_sources_map(filename):
     """
     from shearmap.table2cube import load_cube
 
-    return load_cube(Path(filename).expanduser())
+    cube = load_cube(Path(filename).expanduser())
+    if order is not None and order != cube["order"]:
+        if order > cube["order"]:
+            raise ValueError(
+                f"[sources.map] order={order} is higher than the cube's ({cube['order']})."
+            )
+        print(
+            f" >> Degrading the cube from order {cube['order']} to {order}", flush=True
+        )
+        cube = degrade_cube(cube, order)
+    if not cube["nest"]:
+        raise ValueError("The lensing cube must be in NESTED ordering.")
+    return cube
 
 
 SOURCES_READERS = {
@@ -161,7 +177,7 @@ SOURCES_READERS = {
 
 
 # ======================================================================
-def read_lens_catalog(filename, cat="sparkling", **kwargs):
+def read_lens(filename, cat="sparkling", **kwargs):
     """
     Read a lens catalog file using the register `LENS_READERS`.
 
@@ -188,7 +204,7 @@ def read_lens_catalog(filename, cat="sparkling", **kwargs):
     return LENS_READERS.get(cat)(filepath, **kwargs)
 
 
-def read_sources_catalog(filename, cat="fits", **kwargs):
+def read_sources(filename, cat="fits", **kwargs):
     """
     Read a sources catalog file using the register `SOURCES_READERS`.
 
