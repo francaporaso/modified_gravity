@@ -28,7 +28,9 @@ from lensing.geometry import (
 from lensing.io import (
     check_output_exists,
     make_header,
+    make_header_halos,
     output_path,
+    output_path_halos,
     read_lens,
     read_sources,
     write_profiles,
@@ -80,7 +82,7 @@ def init_globals():
             )
         SOURCE = read_sources(cfg.cubename, cat="map", order=cfg.map_order)
         check_map_zbins()
-        check_map_resolution()
+        check_map_resolution(radial_scale())
     else:
         SOURCE = read_sources(cfg.sourcename, cat="fits")
 
@@ -111,7 +113,7 @@ def check_map_zbins():
         zsrc = SOURCE["zmin"][k]
         on_edge = abs(zsrc - (z_max + cfg.dz_buffer)) < 1e-6
         print(
-            f" >> Void bin [{z_min:.2f}, {z_max:.2f}): sources z >= {zsrc:.2f} "
+            f" >> Bin [{z_min:.2f}, {z_max:.2f}): sources z >= {zsrc:.2f} "
             f"(z_high + dz_buffer = {z_max + cfg.dz_buffer:.2f})  {'✓' if on_edge else '✗'}",
             flush=True,
         )
@@ -136,13 +138,21 @@ def collapse_slices(z_high):
     return k0
 
 
-def check_map_resolution():
-    # warns if pixels are too big compared to the narrowest radial bin
+def radial_scale():
+    """Comoving size [Mpc/h] of the unit of the radial bins: the smallest Rv of the config
+    for voids (their bins are in units of Rv), 1 for halos (their bins are in Mpc/h)"""
+    if cfg.lens_type == "halos":
+        return 1.0
+    return min(r[0] for r in cfg.rvbins)
+
+
+def check_map_resolution(scale):
+    # warns if pixels are too big compared to the narrowest radial bin, `scale` being
+    # the comoving size of the unit of the bins (`radial_scale`)
     nside = SOURCE["nside"]
     pixsize = np.rad2deg(hp.nside2resol(nside))
-    rv_min = min(r[0] for r in cfg.rvbins)
     z_max = max(z[1] for z in cfg.zbins)
-    binwidth = deg_per_mpch(cosmo, z_max) * rv_min * np.diff(EDGES).min()
+    binwidth = deg_per_mpch(cosmo, z_max) * scale * np.diff(EDGES).min()
     ok = pixsize <= 0.5 * binwidth
     print(
         f" >> Map NSIDE={nside}: pixel {pixsize * 60:.2f} arcmin, "
@@ -374,6 +384,14 @@ def partial_profile_map(inp):
     )
 
 
+def inv_sigma_crit_weights(z_l, z_s):
+    """1/sigma_crit(z_l, z_s) = A(z_l) (1 - chi_l/chi_s) in a flat universe: the weight of
+    each source of a lens at z_l"""
+    return inv_sigma_crit_prefactor(cosmo, z_l) * (
+        1.0 - comoving_chi(cosmo, z_l) / comoving_chi(cosmo, z_s)
+    )
+
+
 def partial_profile_weighted(inp, source_cut="bin"):
     """
     Galaxy-catalog counterpart of `partial_profile_map`, to check it. Same estimator
@@ -391,10 +409,7 @@ def partial_profile_weighted(inp, source_cut="bin"):
     zmin = ZSRC_MIN if source_cut == "bin" else z0 + cfg.dz_buffer
     cat = SOURCE[query_sources(psi, ra0, dec0, zmin, strict=False)]
 
-    zs = cat[cfg.scols["redshift"]]
-    w = inv_sigma_crit_prefactor(cosmo, z0) * (
-        1.0 - comoving_chi(cosmo, z0) / comoving_chi(cosmo, zs)
-    )
+    w = inv_sigma_crit_weights(z0, cat[cfg.scols["redshift"]])
     g1, g2 = source_shear(cat)
 
     return radial_sums(
@@ -409,6 +424,24 @@ def partial_profile_weighted(inp, source_cut="bin"):
         cat[cfg.scols["kappa"]],
         weight=w,
     )
+
+
+# Halos: the same estimators with a unit radius, so the bins are comoving Mpc/h (no
+# rescaling by Rv, the factor of the sums is only 1/h)
+
+
+def partial_profile_halo(inp):
+    """Halo counterpart of `partial_profile_weighted` (catalog, 1/sigma_crit weights, sources
+    with z >= ZSRC_MIN). inp = (ra, dec, z) of the halo."""
+    ra0, dec0, z0 = inp
+    return partial_profile_weighted((1.0, ra0, dec0, z0), source_cut="bin")
+
+
+def partial_profile_halo_map(inp):
+    """Halo counterpart of `partial_profile_map` (cube, 1/sigma_crit weights). inp = (ra,
+    dec, z) of the halo; `collapse_slices` must have been called for its bin."""
+    ra0, dec0, z0 = inp
+    return partial_profile_map((1.0, ra0, dec0, z0))
 
 
 # --- stacks
@@ -437,11 +470,12 @@ def print_stack_settings(rv_bin, z_bin, delta_bin, voidtype, nvoids):
     print(" # of voids " + f"{': ':.>12}{nvoids}\n", flush=True)
 
 
-def run_pool(profile_func, lenses, lensrand):
-    """Per-void sums (see `partial_profile_map`) of the voids and of the random voids"""
+def run_pool(profile_func, lenses, lensrand, keys=("rv", "ra", "dec", "z")):
+    """Per-void sums (see `partial_profile_map`) of the voids and of the random voids. `keys`:
+    the columns of the lenses given to `profile_func`, in its order"""
 
     def lens_input(voids):
-        cols = [cfg.lcols[k] for k in ("rv", "ra", "dec", "z")]
+        cols = [cfg.lcols[k] for k in keys]
         return voids[cols].T
 
     def run(pool, voids):
@@ -458,6 +492,151 @@ def run_pool(profile_func, lenses, lensrand):
         print("\n >> Calculating profiles for random voids...", flush=True)
         randmap = run(pool, lensrand)
     return resmap, randmap
+
+
+def print_halo_settings(z_bin, mag_bin, lm_bin, nhalos):
+    print(f" {' Halo sample ':=^60}")
+    print(" Lens cat " + f"{': ':.>10}{cfg.lensname}")
+    print(" Source cat " + f"{': ':.>8}{cfg.sourcename} ({cfg.source_mode})")
+    print(" NCORES " + f"{': ':.>12}{cfg.ncores}\n")
+
+    print(" RMIN " + f"{': ':.>14}{cfg.RIN:.2f} Mpc/h (comoving)")
+    print(" RMAX " + f"{': ':.>14}{cfg.ROUT:.2f} Mpc/h (comoving)")
+    print(" NBINS " + f"{': ':.>13}{cfg.NBINS:<2d}")
+    print(" NJK " + f"{': ':.>15}{cfg.NJK:<2d}")
+    print(" Binning " + f"{': ':.>11}{cfg.binning}\n")
+
+    print(f" {' Halos ':=^60}")
+    print(" Redshift " + f"{': ':.>10}[{z_bin[0]:.2f}, {z_bin[1]:.2f})")
+    print(" M_r " + f"{': ':.>13}[{mag_bin[0]:.2f}, {mag_bin[1]:.2f})")
+    if lm_bin is not None:
+        print(" log10 M " + f"{': ':.>10}[{lm_bin[0]:.2f}, {lm_bin[1]:.2f})")
+    print(" Colour " + f"{': ':.>11}{cfg.color}")
+    print(" # of halos " + f"{': ':.>9}{nhalos}\n", flush=True)
+
+
+def warn_empty_bins(centres, N, N_rand):
+    """Warns of the radial bins of the full sample without sources or randoms: their
+    profiles are NaN"""
+    empty = np.flatnonzero((N[0] == 0) | (N_rand[0] == 0))
+    if len(empty):
+        R = ", ".join(f"{r:.3f}" for r in centres[empty])
+        print(
+            f" WARNING: {len(empty)} radial bin(s) without sources at R = {R} Mpc/h "
+            "(the pixels are too big for them): their profiles are NaN.",
+            flush=True,
+        )
+
+
+def stacking_halos(z_bin, mag_bin, lm_bin, gravity):
+    global ZSRC_MIN
+
+    z_min, z_max = z_bin
+    mag_min, mag_max = mag_bin
+    lm_min, lm_max = lm_bin if lm_bin is not None else (None, None)
+
+    output_filename = output_path_halos(cfg, gravity, z_bin, mag_bin, lm_bin)
+    check_output_exists(output_filename, overwrite=cfg.overwrite)
+
+    halos = read_lens(
+        filename=cfg.lensname,
+        cat="halos",
+        z_min=z_min,
+        z_max=z_max,
+        mag_min=mag_min,
+        mag_max=mag_max,
+        color=None if cfg.color == "all" else cfg.color,
+        lm_min=lm_min,
+        lm_max=lm_max,
+        columns=cfg.hcols,
+    )
+    nhalos = halos.shape[1]
+    if nhalos == 0:
+        raise ValueError(
+            f"No halos with z in [{z_min}, {z_max}), M_r in [{mag_min}, {mag_max}) "
+            f"and colour {cfg.color}."
+        )
+    print_halo_settings(z_bin, mag_bin, lm_bin, nhalos)
+
+    if cfg.source_mode == "map":
+        profile_func = partial_profile_halo_map
+        # before the pool forks: the workers share the collapsed maps
+        collapse_slices(z_max)
+    else:
+        profile_func = partial_profile_halo
+        # the sources of the bin: at least dz_buffer behind its farthest halo
+        ZSRC_MIN = z_max + cfg.dz_buffer
+    print(
+        f" Sources {': ':.>11}z >= {ZSRC_MIN:.2f} ({cfg.weighting} weights)\n",
+        flush=True,
+    )
+
+    # randoms: same (z, M_r, log M) as the halos of this stack, uniform on the footprint.
+    # The seed needs positive numbers: the absolute magnitudes
+    seed_edges = (z_min, z_max, -mag_max, -mag_min)
+    if lm_bin is not None:
+        seed_edges += (lm_min, lm_max)
+    lensrand = generate_randoms(
+        halos,
+        cfg.rand_factor,
+        stack_rng(cfg.rand_seed, *seed_edges),
+        in_footprint,
+        cfg.lcols["ra"],
+        cfg.lcols["dec"],
+    )
+    nrands = lensrand.shape[1]
+    print(
+        f" Randoms {': ':.>11}{nrands} (x{cfg.rand_factor:g}, seed {cfg.rand_seed})\n",
+        flush=True,
+    )
+
+    resmap, randmap = run_pool(
+        profile_func, halos, lensrand, keys=("ra", "dec", "z")
+    )
+
+    print("\n >> Pool ended, stacking...", flush=True)
+
+    kidx = assign_regions(REGIONS, halos[cfg.lcols["ra"]], halos[cfg.lcols["dec"]])
+    kidx_rand = assign_regions(
+        REGIONS, lensrand[cfg.lcols["ra"]], lensrand[cfg.lcols["dec"]]
+    )
+    # empty bins give 0/0 = NaN, reported by warn_empty_bins
+    with np.errstate(divide="ignore", invalid="ignore"):
+        profiles, N_inbin, N_inbin_rand = reduce_profiles(
+            resmap, randmap, kidx, kidx_rand, cfg.NJK
+        )
+    centres = bin_centres(cfg.RIN, cfg.ROUT, cfg.NBINS, cfg.binning)
+    warn_empty_bins(centres, N_inbin, N_inbin_rand)
+
+    extra = {
+        "weight": cfg.weighting,
+        "dzbuffer": cfg.dz_buffer,
+        "zsrcmin": ZSRC_MIN,
+    }
+    if cfg.source_mode == "map":
+        extra.update(
+            nside=SOURCE["nside"], order=SOURCE["order"], chiref=SOURCE["chiref"]
+        )
+    head = make_header_halos(cfg, halos, z_bin, mag_bin, lm_bin, nrands, extra)
+
+    write_profiles(
+        output_filename,
+        head,
+        centres,
+        profiles,
+        N_inbin,
+        N_inbin_rand,
+        REGIONS.centers,
+        overwrite=cfg.overwrite,
+    )
+    print(f" >> File saved in: {output_filename}.\n", flush=True)
+
+
+def n_stacks(cfg):
+    """Number of stacks of one gravity in the config"""
+    if cfg.lens_type == "halos":
+        return len(cfg.zbins) * len(cfg.magbins) * len(cfg.lmbins)
+    return len(cfg.zbins) * len(cfg.rvbins) * len(cfg.voidtype)
 
 
 def stacking(rv_min, rv_max, z_min, z_max, voidtype, gravity):
@@ -595,13 +774,16 @@ def main():
                 print(
                     " WARNING: [profile] nback is not implemented yet, using all the sources."
                 )
-            total = (
-                len(cfg.zbins) * len(cfg.rvbins) * len(cfg.voidtype) * len(args.gravity)
-            )
-            print(
-                f" >> Running {len(cfg.zbins)} redshift bin(s) x {len(cfg.rvbins)} radius bin(s), for {len(cfg.voidtype)} void types."
-            )
-            print(f" >> Calculating {total} void profiles")
+            total = n_stacks(cfg) * len(args.gravity)
+            if cfg.lens_type == "halos":
+                print(
+                    f" >> Running {len(cfg.zbins)} redshift bin(s) x {len(cfg.magbins)} magnitude bin(s) x {len(cfg.lmbins)} mass bin(s), halos of colour {cfg.color}."
+                )
+            else:
+                print(
+                    f" >> Running {len(cfg.zbins)} redshift bin(s) x {len(cfg.rvbins)} radius bin(s), for {len(cfg.voidtype)} void types."
+                )
+            print(f" >> Calculating {total} profiles")
 
         print(
             f" >> Running for -{grav.upper()}-  ({cfg.source_mode}: {cfg.sourcename})"
@@ -616,12 +798,19 @@ def main():
                 flush=True,
             )
 
-        for (z_min, z_max), (rv_min, rv_max) in product(cfg.zbins, cfg.rvbins):
-            for voidtype in cfg.voidtype:
+        if cfg.lens_type == "halos":
+            for z_bin, mag_bin, lm_bin in product(cfg.zbins, cfg.magbins, cfg.lmbins):
                 i += 1
 
                 print(f"\n [{i}/{total}]")
-                stacking(rv_min, rv_max, z_min, z_max, voidtype, grav.upper())
+                stacking_halos(z_bin, mag_bin, lm_bin, grav.upper())
+        else:
+            for (z_min, z_max), (rv_min, rv_max) in product(cfg.zbins, cfg.rvbins):
+                for voidtype in cfg.voidtype:
+                    i += 1
+
+                    print(f"\n [{i}/{total}]")
+                    stacking(rv_min, rv_max, z_min, z_max, voidtype, grav.upper())
 
     print(" End! ".center(15, "="))
     print(f" >> Took {(time() - tini) / 60.0:.3f} min <<\n\n")

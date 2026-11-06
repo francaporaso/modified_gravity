@@ -4,10 +4,11 @@ ncores = 32
 plot = false
 overwrite = true
 source_mode = 'catalog' # 'catalog' (galaxy table) or 'map' (healpix lensing cube from shearmap/)
+lens_type = 'voids' # 'voids' (Sparkling void files, [lenses]) or 'halos' (central galaxies, [halos])
 #gravity = ['GR', 'MG']
 
 [profile]
-rin = 0.1
+rin = 0.1 # voids: in units of Rv (halos: see [halos])
 rout = 3.0
 nbins = 15
 njk = 100
@@ -40,6 +41,34 @@ rho1 = 7 # integrated density contrast at the void centre
 delta = 8 # integrated density between 2-3 Rv, for void classification
 flag = 11 # proximity to the survey wall (see [lenses] flag)
 
+[halos]
+# Only used if [run] lens_type = 'halos': central galaxies (kind = 0) of the mocks, one row
+# each. Same estimator and randoms as the voids, but the radial bins are comoving Mpc/h.
+z_edges = [0.1, 0.2, 0.3, 0.4, 0.5] # in map mode the last edge + [sources.map] dz_buffer must be a cube slice edge (<= 0.6)
+mag_edges = [-30.0, -22.0] # bins [lo, hi) of the absolute magnitude M_r (brighter = more negative)
+# lm_edges = [13.0, 14.0, 15.0] # optional: bins [lo, hi) of log10 halo mass, e.g. for a fixed-mass control
+color = 'all' # 'all', or the colour of the HOD: 0 red sequence, 1 green valley, 2 blue cloud
+rin = 0.05 # Mpc/h (comoving)
+rout = 5.0 # Mpc/h (comoving)
+nbins = 15
+binning = 'log'
+
+[halos.gr]
+name = '~/cats/L768/l768_gr_halos.fits'
+
+[halos.mg]
+name = '~/cats/L768/l768_mg_halos.fits'
+
+[halos.columns]
+# column names of the halo files (CosmoHub download of l768_{gr,mg}_v1_1_lensing_c_zphot)
+ra = 'ra_gal'
+dec = 'dec_gal'
+z = 'true_redshift_gal'
+mag = 'abs_mag_r01_evolved'
+lm = 'halo_lm'
+color = 'color_kind'
+richness = 'true_richness' # centrals + satellites of the halo
+
 [randoms]
 # Random voids of the subtraction (Singh et al. 2017), generated in each stack, not read from a file.
 # Same (Rv, z) as the voids of the stack, uniform on the source footprint.
@@ -66,6 +95,7 @@ cube = '~/cats/L768/l768_map_MG_27655.fits' # map mode
 # The sources of a void bin [z_low, z_high) are the cube slices from the first edge at or
 # above z_high + dz_buffer (if it isn't an edge, the next one: fewer sources), so every void
 # is at least dz_buffer in front of its sources. Any bin width works.
+# Halos: the same dz_buffer. In catalog mode their sources are z >= z_high + dz_buffer.
 dz_buffer = 0.1
 weighting = 'invsc' # sources weighted by 1/sigma_crit (the only one for now)
 # order = 10 # optional: degrade the cube to this HEALPix order when loading it

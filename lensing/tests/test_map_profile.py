@@ -267,11 +267,11 @@ def test_resolution_check_marks(capsys):
     st.cfg.rvbins = [(10.0, 20.0)]
     st.cfg.zbins = [(Z_LOW, Z_HIGH)]
     st.SOURCE = dict(st.SOURCE, nside=2048)  # 1.7 arcmin pixels
-    st.check_map_resolution()
+    st.check_map_resolution(10.0)  # rv_min of the bins
     out = capsys.readouterr().out
     assert "NSIDE=2048" in out and "✓" in out and "WARNING" not in out
     st.SOURCE = dict(st.SOURCE, nside=64)  # 55 arcmin pixels
-    st.check_map_resolution()
+    st.check_map_resolution(10.0)
     out = capsys.readouterr().out
     assert "✗" in out and "WARNING" in out
 

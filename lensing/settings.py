@@ -2,6 +2,7 @@ import toml
 import re
 
 from lensing.geometry import GAMMA_SIGN
+from lensing.io import HALO_COLUMNS
 
 # void types: bounds [delta_min, delta_max) of the integrated density contrast
 VOIDTYPE_DELTA = {'mixed': (-1.0, 100.0), 'S': (0.0, 100.0), 'R': (-1.0, 0.0)}
@@ -15,7 +16,11 @@ class Config:
 
         cfg = toml.load(configfile)
 
-        self.lensname = cfg['lenses'][gravity.lower()]['name']
+        self.lens_type = cfg['run'].get('lens_type', 'voids')
+        if self.lens_type not in ('voids', 'halos'):
+            raise ValueError(f"[run] lens_type must be 'voids' or 'halos', got {self.lens_type}")
+        lens_section = 'lenses' if self.lens_type == 'voids' else 'halos'
+        self.lensname = cfg[lens_section][gravity.lower()]['name']
         self.source_mode = cfg['run'].get('source_mode', 'catalog')
         if self.source_mode not in ('catalog', 'map'):
             raise ValueError(f"[run] source_mode must be 'catalog' or 'map', got {self.source_mode}")
@@ -50,7 +55,10 @@ class Config:
         if not isinstance(self.rand_seed, int) or self.rand_seed < 0:
             raise ValueError(f"[randoms] seed must be a non-negative integer, got {self.rand_seed}")
 
-        self.swap_threshold(threshold)
+        if self.lens_type == 'voids':
+            self.swap_threshold(threshold)
+        elif threshold is not None:
+            print(' WARNING: the void threshold is ignored for halos.')
 
         self.sample = cfg['run']['sample']
         self.ncores = cfg['run']['ncores']
@@ -71,16 +79,19 @@ class Config:
         # density of sources [arcmin^-2] to degrade the galaxy catalog to (None: all). Not implemented yet
         self.nback = cfg['profile'].get('nback')
 
-        self.zbins = self._edges_to_bins(cfg['lenses']['z_edges'], 'z_edges')
-        self.rvbins = self._edges_to_bins(cfg['lenses']['rv_edges'], 'rv_edges')
-        self.voidtype = cfg['lenses']['voidtype']
-        for t in self.voidtype:
-            if t not in VOIDTYPE_DELTA:
-                raise ValueError(f"[lenses] voidtype must be in {list(VOIDTYPE_DELTA)}, got {t}")
-        self.flag = cfg['lenses']['flag']
+        if self.lens_type == 'voids':
+            self.zbins = self._edges_to_bins(cfg['lenses']['z_edges'], 'z_edges')
+            self.rvbins = self._edges_to_bins(cfg['lenses']['rv_edges'], 'rv_edges')
+            self.voidtype = cfg['lenses']['voidtype']
+            for t in self.voidtype:
+                if t not in VOIDTYPE_DELTA:
+                    raise ValueError(f"[lenses] voidtype must be in {list(VOIDTYPE_DELTA)}, got {t}")
+            self.flag = cfg['lenses']['flag']
+            self.lcols = cfg['lenses']['columns']
+        else:
+            self._read_halos(cfg['halos'])
 
         self.scols = cfg['sources']['columns']
-        self.lcols = cfg['lenses']['columns']
 
         self.h = cfg['cosmology']['h']
         self.Om0 = cfg['cosmology']['Om0']
@@ -103,6 +114,20 @@ class Config:
             self.lensname = head + sep + name
             self.voidthr = threshold
         print(f' >> Using void thr {self.voidthr}')
+
+    def _read_halos(self, hcfg):
+        """Halo sample of `[halos]`. Its radial bins replace the ones of `[profile]`: they are
+        in comoving Mpc/h, not in units of Rv."""
+        self.zbins = self._edges_to_bins(hcfg['z_edges'], 'z_edges')
+        self.magbins = self._edges_to_bins(hcfg['mag_edges'], 'mag_edges')
+        self.lmbins = self._edges_to_bins(hcfg['lm_edges'], 'lm_edges') if 'lm_edges' in hcfg else [None]
+        self.color = hcfg.get('color', 'all')
+        if self.color not in ('all', 0, 1, 2):
+            raise ValueError(f"[halos] color must be 'all', 0 (red), 1 (green) or 2 (blue), got {self.color}")
+        self.hcols = hcfg['columns']
+        self.lcols = HALO_COLUMNS
+        self.RIN, self.ROUT = hcfg['rin'], hcfg['rout']
+        self.NBINS, self.binning = hcfg['nbins'], hcfg['binning']
 
     def _edges_to_bins(self, edges, name):
         if not isinstance(edges, list) or len(edges) < 2:

@@ -108,9 +108,85 @@ def read_redmapper(filename, **kwargs):
     raise NotImplementedError
 
 
+# ======================================================================
+# halos: central galaxies of the mocks, one row per halo. Rows of the array returned by
+# `read_halos`, in this order
+HALO_COLUMNS = dict(ra=0, dec=1, z=2, mag=3, lm=4, color=5, richness=6)
+
+
+def check_halo_table(table, columns):
+    """Stops if the halo table doesn't look like central galaxies (the column `kind` must
+    be 0 if present), if a name of `columns` (`[halos.columns]`) is missing, or if the
+    coordinates or the magnitudes don't look right."""
+    missing = [name for name in columns.values() if name not in table.colnames]
+    if missing:
+        raise ValueError(f"[halos.columns] names not in the halo file: {missing}")
+    if "kind" in table.colnames and np.any(np.asarray(table["kind"]) != 0):
+        raise ValueError(
+            "The halo file has satellites (kind != 0): download the central galaxies only."
+        )
+    if len(table) == 0:
+        raise ValueError("The halo file is empty.")
+    ra, dec = np.asarray(table[columns["ra"]]), np.asarray(table[columns["dec"]])
+    if ra.min() < 0.0 or ra.max() > 360.0 or dec.min() < -90.0 or dec.max() > 90.0:
+        raise ValueError(
+            f"[halos.columns] ra = {columns['ra']}, dec = {columns['dec']} don't look like "
+            f"coordinates: ra in [{ra.min():.4g}, {ra.max():.4g}], dec in "
+            f"[{dec.min():.4g}, {dec.max():.4g}]."
+        )
+    mag = np.asarray(table[columns["mag"]])
+    if mag.min() < -30.0 or mag.max() > -10.0:
+        raise ValueError(
+            f"[halos.columns] mag = {columns['mag']} doesn't look like an absolute magnitude: "
+            f"in [{mag.min():.4g}, {mag.max():.4g}]."
+        )
+
+
+def read_halos(
+    filename,
+    z_min,
+    z_max,
+    mag_min,
+    mag_max,
+    color=None,
+    lm_min=None,
+    lm_max=None,
+    columns=None,
+):
+    """
+    Reads the halos (central galaxies) of a FITS table into an array with the rows of
+    `HALO_COLUMNS`, keeping z_min <= z < z_max and mag_min <= M_r < mag_max. Also the
+    colour `color` (if not None) and lm_min <= log10 M < lm_max (if not None).
+
+    Args:
+        columns (dict): names of the FITS columns of ra, dec, z, mag, lm, color and richness
+            (the `[halos.columns]` of the config).
+
+    Returns:
+        ndarray: shape (7, N), N being the number of halos kept.
+    """
+    table = Table.read(filename, format="fits")
+    check_halo_table(table, columns)
+    get = lambda key: np.asarray(table[columns[key]])
+
+    mask = (
+        (get("z") >= z_min)
+        & (get("z") < z_max)
+        & (get("mag") >= mag_min)
+        & (get("mag") < mag_max)
+    )
+    if color is not None:
+        mask &= get("color") == color
+    if lm_min is not None:
+        mask &= (get("lm") >= lm_min) & (get("lm") < lm_max)
+
+    return np.array([get(key)[mask] for key in HALO_COLUMNS], dtype=np.float64)
+
+
 LENS_READERS = {
     "sparkling": read_sparkling,
     "redmapper": read_redmapper,
+    "halos": read_halos,
 }
 
 
@@ -314,6 +390,69 @@ def make_header(cfg, lenses, rv_bin, z_bin, delta_bin, voidtype, nrand, extra=No
             "HISTORY": f"{asctime()}",
         }
     )
+    head.update(extra or {})
+    return head
+
+
+def output_path_halos(cfg, gravity, z_bin, mag_bin, lm_bin):
+    """Path of the results file of a halo stack"""
+    z_min, z_max = z_bin
+    mag_min, mag_max = mag_bin
+    name = (
+        f"lensing/results/halos_{gravity}_{cfg.sample}_N{cfg.NBINS}_"
+        f"mag{mag_min:.1f}to{mag_max:.1f}_z{100 * z_min:03.0f}-{100 * z_max:03.0f}_"
+        f"col{cfg.color}_bin{cfg.binning}"
+    )
+    if lm_bin is not None:
+        name += f"_lm{lm_bin[0]:.1f}to{lm_bin[1]:.1f}"
+    if cfg.source_mode == "map":
+        name += "_map"
+    if cfg.addnoise:
+        name += "w-noise"
+    return Path(name + ".fits").expanduser()
+
+
+def make_header_halos(cfg, halos, z_bin, mag_bin, lm_bin, nrand, extra=None):
+    """Header of the results file of a halo stack; `extra` (dict) is added to it. The radial
+    bins are in comoving Mpc/h (RUNITS), not in units of Rv."""
+    col = lambda key: halos[cfg.lcols[key]]
+    head = fits.Header()
+    head.update(
+        {
+            "nhalos": halos.shape[1],
+            "lenscat": cfg.lensname,
+            "sourcat": cfg.sourcename,
+            "z_min": z_bin[0],
+            "z_max": z_bin[1],
+            "z_mean": col("z").mean(),
+            "z_med": np.median(col("z")),
+            "mag_min": mag_bin[0],
+            "mag_max": mag_bin[1],
+            "mag_mean": col("mag").mean(),
+            "mag_med": np.median(col("mag")),
+            "lm_mean": col("lm").mean(),
+            "lm_med": np.median(col("lm")),
+            "color": str(cfg.color),
+            "RIN": cfg.RIN,
+            "ROUT": cfg.ROUT,
+            "NBINS": cfg.NBINS,
+            "NJK": cfg.NJK,
+            "JKSEED": cfg.jk_seed,
+            "binning": cfg.binning,
+            "runits": "comoving",
+            "gsign1": cfg.gamma_sign[0],
+            "gsign2": cfg.gamma_sign[1],
+            "srcmode": cfg.source_mode,
+            "weight": cfg.weighting,
+            "nrand": nrand,
+            "randfac": cfg.rand_factor,
+            "randseed": cfg.rand_seed,
+            "randsub": True,
+            "HISTORY": f"{asctime()}",
+        }
+    )
+    if lm_bin is not None:
+        head.update({"lm_min": lm_bin[0], "lm_max": lm_bin[1]})
     head.update(extra or {})
     return head
 
