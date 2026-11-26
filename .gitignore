@@ -14,21 +14,22 @@
 !config.tmplt.toml
 
 # ignorando test.ipynb
-**/test.ipynb
+/tests
 tests.ipynb
 
 # ignorando cats
-**/cats/
+cats/
 
 # ignorando checkpoints
-**/.ipynb_checkpoints/
-**/__pycache__/
+.ipynb_checkpoints/
+__pycache__/
 
 # ignorando resultados
-**/profiles/
+profiles/
+results/
 
 # ignorando plotting
-**/plotting.py
+plotting.py
 
 # ignorando logs de slurm
 slurm-*.out
